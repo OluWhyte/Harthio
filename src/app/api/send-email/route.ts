@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend client only if API key is available
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +23,22 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Invalid email format' },
         { status: 400 }
       );
+    }
+
+    // Check if Resend is configured
+    if (!resend) {
+      // Fallback: Log email for development/beta
+      console.log('📧 EMAIL FALLBACK (Resend not configured):');
+      console.log('To:', to);
+      console.log('Subject:', subject);
+      console.log('HTML:', html?.substring(0, 200) + '...');
+      console.log('Text:', text?.substring(0, 200) + '...');
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Email logged (beta mode - Resend not configured)',
+        fallback: true
+      });
     }
 
     // Send email using Resend
@@ -49,11 +65,11 @@ export async function POST(request: NextRequest) {
       console.error('Resend email failed:', resendError);
       
       // Fallback: Log email for development
-      console.log('📧 EMAIL FALLBACK (logged to console):');
+      console.log('📧 EMAIL FALLBACK (Resend failed):');
       console.log('To:', to);
       console.log('Subject:', subject);
-      console.log('HTML:', html.substring(0, 200) + '...');
-      console.log('Text:', text.substring(0, 200) + '...');
+      console.log('HTML:', html?.substring(0, 200) + '...');
+      console.log('Text:', text?.substring(0, 200) + '...');
       
       return NextResponse.json({ 
         success: true, 
