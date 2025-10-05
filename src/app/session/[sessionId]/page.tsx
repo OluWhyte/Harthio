@@ -29,6 +29,7 @@ import { WebRTCManager, type ConnectionState } from "@/lib/webrtc-manager";
 import { realtimeManager } from "@/lib/realtime-manager";
 import { formatTimeRemaining } from "@/lib/time-utils";
 import { PublicProfileDialog } from "@/components/harthio/public-profile-dialog";
+
 import { 
   getUserMediaWithFallback, 
   checkMediaSupport, 
@@ -398,7 +399,13 @@ export default function SessionPage() {
 
   // Load topic data and messages from Supabase
   useEffect(() => {
-    if (!sessionId || !user?.uid) return;
+    if (!sessionId) return;
+
+    // If user is not authenticated, redirect to login
+    if (!user?.uid) {
+      router.push('/login');
+      return;
+    }
 
     const loadSessionData = async () => {
       try {
@@ -406,45 +413,7 @@ export default function SessionPage() {
         const topics = await topicService.getAllTopics();
         const currentTopic = topics.find((t) => t.id === sessionId);
 
-        if (currentTopic) {
-          // Check if user has permission to join this session (must be author or approved participant)
-          const isAuthor = currentTopic.author_id === user.uid;
-          const isApprovedParticipant = currentTopic.participants?.includes(user.uid) || false;
-          
-          if (!isAuthor && !isApprovedParticipant) {
-            toast({
-              variant: "destructive",
-              title: "Access Denied",
-              description: "You don't have permission to join this session. Only the host and approved participants can join.",
-            });
-            router.push('/dashboard');
-            return;
-          }
-
-          // Check if session has enough participants (need at least 1 approved participant + author)
-          const approvedParticipants = currentTopic.participants?.length || 0;
-          if (approvedParticipants < 1) {
-            toast({
-              variant: "destructive",
-              title: "Session Not Ready",
-              description: "This session doesn't have enough participants yet. At least one participant must be approved to start the session.",
-            });
-            router.push('/dashboard');
-            return;
-          }
-
-          const topicData: TopicData = {
-            title: currentTopic.title,
-            participants: currentTopic.participants,
-            author: {
-              userId: currentTopic.author.id,
-              name:
-                currentTopic.author.display_name || currentTopic.author.email,
-            },
-            endTime: new Date(currentTopic.end_time),
-          };
-          setTopic(topicData);
-        } else {
+        if (!currentTopic) {
           // Session not found (might have been cancelled)
           toast({
             variant: "destructive",
@@ -454,6 +423,57 @@ export default function SessionPage() {
           router.push('/dashboard');
           return;
         }
+
+        // Check if user has permission to join this session (must be author or approved participant)
+        const isAuthor = currentTopic.author_id === user.uid;
+        const isApprovedParticipant = currentTopic.participants?.includes(user.uid) || false;
+        
+        if (!isAuthor && !isApprovedParticipant) {
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: "You don't have permission to join this session. Only the host and approved participants can join.",
+          });
+          router.push('/dashboard');
+          return;
+        }
+
+        // Check if session has enough participants (need at least 1 approved participant + author)
+        const approvedParticipants = currentTopic.participants?.length || 0;
+        if (approvedParticipants < 1) {
+          toast({
+            variant: "destructive",
+            title: "Session Not Ready",
+            description: "This session doesn't have enough participants yet. At least one participant must be approved to start the session.",
+          });
+          router.push('/dashboard');
+          return;
+        }
+
+        // Check if session has ended
+        const sessionEndTime = new Date(currentTopic.end_time);
+        const now = new Date();
+        if (now > sessionEndTime) {
+          toast({
+            variant: "destructive",
+            title: "Session Ended",
+            description: "This session has already ended.",
+          });
+          router.push('/dashboard');
+          return;
+        }
+
+        const topicData: TopicData = {
+          title: currentTopic.title,
+          participants: currentTopic.participants,
+          author: {
+            userId: currentTopic.author.id,
+            name:
+              currentTopic.author.display_name || currentTopic.author.email,
+          },
+          endTime: sessionEndTime,
+        };
+        setTopic(topicData);
 
         // Load messages
         const supabaseMessages = await messageService.getTopicMessages(
@@ -751,20 +771,33 @@ export default function SessionPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !sessionId) return;
+    if (!newMessage.trim() || !user || !sessionId || !topic) return;
+
+    // Validate user has permission to send messages
+    const isAuthor = topic.author.userId === user.uid;
+    const isParticipant = topic.participants?.includes(user.uid) || false;
+    
+    if (!isAuthor && !isParticipant) {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "You don't have permission to send messages in this session.",
+      });
+      return;
+    }
 
     try {
       await messageService.sendMessage({
         topic_id: sessionId as string,
         sender_id: user.uid,
-        text: newMessage,
+        text: newMessage.trim(),
       });
       setNewMessage("");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending message:", error);
       toast({
-        title: "Error",
-        description: "Failed to send message.",
+        title: "Message Failed",
+        description: error?.message || "Failed to send message. Please try again.",
         variant: "destructive",
       });
     }
@@ -842,7 +875,23 @@ export default function SessionPage() {
     };
   }, [remoteStream]);
 
-  if (authLoading || !topic) {
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Redirect unauthenticated users
+  if (!user) {
+    router.push('/login');
+    return null;
+  }
+
+  // Show loading while loading session data
+  if (!topic) {
     return (
       <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1166,6 +1215,8 @@ export default function SessionPage() {
           </Button>
         </div>
       </footer>
+
+
     </div>
   );
 }

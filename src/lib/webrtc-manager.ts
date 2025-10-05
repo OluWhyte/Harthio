@@ -19,67 +19,145 @@ function isMobileDevice(): boolean {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
-// ICE server configuration with Google TURN as primary, COTURN as fallback
-async function getIceServers(userId: string, sessionId: string) {
+// ICE server configuration optimized for mobile localhost testing
+async function getIceServers(userId: string, sessionId: string): Promise<RTCIceServer[]> {
   const config = validateWebRTCConfig();
   const turnCreds = config.coturnSecret ? 
     await generateTurnCredentials(userId, sessionId, config.coturnSecret) : 
     null;
   
-  const servers = [
-    // Google STUN servers (always available)
+  // Check if we're on localhost/local network for testing
+  const isLocalhost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' || 
+    window.location.hostname.startsWith('192.168.') ||
+    window.location.hostname.startsWith('10.') ||
+    window.location.hostname.startsWith('172.')
+  );
+  
+  const servers: RTCIceServer[] = [
+    // Google STUN servers (always available, work well for localhost testing)
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    
-    // Primary: Free Google TURN servers (most reliable for mobile)
-    {
-      urls: [
-        'turn:142.250.82.127:19305?transport=udp',
-        'turn:142.250.82.127:19305?transport=tcp'
-      ],
-      username: 'webrtc',
-      credential: 'turnserver'
-    },
-    
-    // Secondary: OpenRelay TURN servers
-    {
-      urls: [
-        'turn:openrelay.metered.ca:80',
-        'turn:openrelay.metered.ca:443',
-        'turn:openrelay.metered.ca:80?transport=tcp',
-        'turn:openrelay.metered.ca:443?transport=tcp'
-      ],
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    
-    // Additional free TURN servers for better mobile support
-    {
-      urls: [
-        'turn:relay.backups.cz',
-        'turn:relay.backups.cz:443',
-        'turn:relay.backups.cz:80?transport=tcp'
-      ],
-      username: 'webrtc',
-      credential: 'webrtc'
-    }
   ];
 
-  // Add your COTURN server as fallback if configured
+  // For localhost testing, prioritize reliable TURN servers
+  if (isLocalhost) {
+    // Add reliable TURN servers for localhost mobile testing
+    servers.push(
+      // OpenRelay TURN servers (very reliable for testing)
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:80?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      
+      // Backup TURN servers
+      {
+        urls: 'turn:relay.backups.cz',
+        username: 'webrtc',
+        credential: 'webrtc'
+      },
+      {
+        urls: 'turn:relay.backups.cz:443',
+        username: 'webrtc',
+        credential: 'webrtc'
+      }
+    );
+  } else {
+    // Production TURN servers
+    servers.push(
+      // Primary: Free Google TURN servers (most reliable for mobile)
+      {
+        urls: 'turn:142.250.82.127:19305?transport=udp',
+        username: 'webrtc',
+        credential: 'turnserver'
+      },
+      {
+        urls: 'turn:142.250.82.127:19305?transport=tcp',
+        username: 'webrtc',
+        credential: 'turnserver'
+      },
+      
+      // Secondary: OpenRelay TURN servers
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:80?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      
+      // Additional free TURN servers for better mobile support
+      {
+        urls: 'turn:relay.backups.cz',
+        username: 'webrtc',
+        credential: 'webrtc'
+      },
+      {
+        urls: 'turn:relay.backups.cz:443',
+        username: 'webrtc',
+        credential: 'webrtc'
+      },
+      {
+        urls: 'turn:relay.backups.cz:80?transport=tcp',
+        username: 'webrtc',
+        credential: 'webrtc'
+      }
+    );
+  }
+
+  // Add your COTURN server if configured (works for both localhost and production)
   if (config.coturnServer && turnCreds) {
-    servers.push({
-      urls: [
-        `turn:${config.coturnServer}:3478`,
-        `turn:${config.coturnServer}:3478?transport=tcp`,
-        `turn:${config.coturnServer}:5349`,
-        `turn:${config.coturnServer}:5349?transport=tcp`
-      ],
-      username: turnCreds.username,
-      credential: turnCreds.credential
-    });
+    servers.push(
+      {
+        urls: `turn:${config.coturnServer}:3478`,
+        username: turnCreds.username,
+        credential: turnCreds.credential
+      },
+      {
+        urls: `turn:${config.coturnServer}:3478?transport=tcp`,
+        username: turnCreds.username,
+        credential: turnCreds.credential
+      },
+      {
+        urls: `turn:${config.coturnServer}:5349`,
+        username: turnCreds.username,
+        credential: turnCreds.credential
+      },
+      {
+        urls: `turn:${config.coturnServer}:5349?transport=tcp`,
+        username: turnCreds.username,
+        credential: turnCreds.credential
+      }
+    );
   }
 
   return servers;
@@ -162,9 +240,17 @@ export class WebRTCManager {
     const iceServers = await getIceServers(this.userId, this.sessionId);
     const isMobile = isMobileDevice();
     
+    // Check if we're on localhost for testing
+    const isLocalhost = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname.startsWith('192.168.') ||
+      window.location.hostname.startsWith('10.') ||
+      window.location.hostname.startsWith('172.')
+    );
+    
     this.peerConnection = new RTCPeerConnection({
       iceServers,
-      iceCandidatePoolSize: isMobile ? 3 : 10, // Reduce for mobile
+      iceCandidatePoolSize: isMobile ? (isLocalhost ? 5 : 3) : 10, // More candidates for localhost testing
       bundlePolicy: 'max-bundle',
       rtcpMuxPolicy: 'require',
       iceTransportPolicy: 'all', // Allow both STUN and TURN

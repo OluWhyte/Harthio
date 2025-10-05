@@ -42,6 +42,17 @@ function getBrowserName(ua: string): string {
 }
 
 /**
+ * Check if IP is in the private 172.16.0.0/12 range (172.16.0.0 - 172.31.255.255)
+ */
+function isPrivateIP172(hostname: string): boolean {
+  const match = hostname.match(/^172\.(\d+)\./);
+  if (!match) return false;
+  
+  const secondOctet = parseInt(match[1], 10);
+  return secondOctet >= 16 && secondOctet <= 31;
+}
+
+/**
  * Check if getUserMedia is available and HTTPS is being used
  */
 export function checkMediaSupport(): { supported: boolean; error?: string } {
@@ -54,15 +65,21 @@ export function checkMediaSupport(): { supported: boolean; error?: string } {
   }
 
   // Check for HTTPS (required on mobile in production)
-  // Allow HTTP for localhost and local network IPs (192.168.x.x, 172.x.x.x, 10.x.x.x) for development
+  // Allow HTTP for localhost and local network IPs for development
   const deviceInfo = getDeviceInfo();
   const hostname = window.location.hostname;
+  const port = window.location.port;
+  
+  // Enhanced local network detection for mobile testing
   const isLocalNetwork = 
     hostname === 'localhost' || 
     hostname === '127.0.0.1' ||
     hostname.startsWith('192.168.') ||
-    hostname.startsWith('172.') ||
-    hostname.startsWith('10.');
+    isPrivateIP172(hostname) ||  // Check full 172.16.0.0/12 range
+    hostname.startsWith('10.') ||
+    hostname.endsWith('.local') ||
+    // Allow any IP with common dev ports
+    (port && ['3000', '3001', '8000', '8080', '5000'].includes(port));
   
   if (deviceInfo.isMobile && window.location.protocol !== 'https:' && !isLocalNetwork) {
     return {
@@ -87,17 +104,23 @@ export function getMediaConstraints(config: MediaConstraintsConfig = {}): MediaS
     autoGainControl: true,
   };
 
-  // Mobile-optimized constraints
+  // Mobile-optimized constraints with better localhost support
   if (deviceInfo.isMobile) {
+    // More conservative constraints for mobile testing
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname.startsWith('192.168.') ||
+                       window.location.hostname.startsWith('10.') ||
+                       window.location.hostname.startsWith('172.');
+    
     return {
       audio: {
         ...baseAudioConstraints,
-        sampleRate: 16000, // Lower sample rate for mobile
+        sampleRate: isLocalhost ? 22050 : 16000, // Slightly higher for localhost testing
       },
       video: {
-        width: { ideal: config.preferredWidth || 640, max: 1280 },
-        height: { ideal: config.preferredHeight || 480, max: 720 },
-        frameRate: { ideal: config.preferredFrameRate || 15, max: 30 },
+        width: { ideal: config.preferredWidth || (isLocalhost ? 480 : 320), max: 1280 },
+        height: { ideal: config.preferredHeight || (isLocalhost ? 360 : 240), max: 720 },
+        frameRate: { ideal: config.preferredFrameRate || (isLocalhost ? 20 : 15), max: 30 },
         facingMode: config.facingMode || 'user',
       }
     };
@@ -226,17 +249,25 @@ export function getMediaErrorMessage(error: any): string {
       return 'Browser configuration error. Please try refreshing the page or using a different browser.';
 
     case 'SecurityError':
-      const hostname = window.location.hostname;
-      const isLocalNetwork = 
-        hostname === 'localhost' || 
-        hostname === '127.0.0.1' ||
-        hostname.startsWith('192.168.') ||
-        hostname.startsWith('172.') ||
-        hostname.startsWith('10.');
+      const errorHostname = window.location.hostname;
+      const errorPort = window.location.port;
+      const isErrorLocalNetwork = 
+        errorHostname === 'localhost' || 
+        errorHostname === '127.0.0.1' ||
+        errorHostname.startsWith('192.168.') ||
+        isPrivateIP172(errorHostname) ||
+        errorHostname.startsWith('10.') ||
+        errorHostname.endsWith('.local') ||
+        (errorPort && ['3000', '3001', '8000', '8080', '5000'].includes(errorPort));
       
-      if (window.location.protocol !== 'https:' && !isLocalNetwork) {
+      if (window.location.protocol !== 'https:' && !isErrorLocalNetwork) {
         return 'Video calling requires a secure connection. Please access this site using https://.';
       }
+      
+      if (deviceInfo.isMobile && isErrorLocalNetwork) {
+        return 'Camera and microphone access blocked. On mobile, try: 1) Refresh the page 2) Check browser permissions 3) Ensure no other apps are using camera/mic 4) Try a different browser (Chrome/Safari work best)';
+      }
+      
       return 'Security error: Camera and microphone access is blocked. Please check your browser settings.';
 
     default:

@@ -1239,22 +1239,57 @@ export const messageService = {
     return data || [];
   },
 
-  // Send a message
+  // Send a message with security validation
   async sendMessage(
     messageData: Omit<MessageInsert, "id" | "created_at">
   ): Promise<Message> {
-    const { data, error } = await typedSupabase
-      .from("messages")
-      .insert(messageData as any)
-      .select()
-      .single();
+    try {
+      // Validate message data
+      if (!messageData.topic_id || !messageData.sender_id || !messageData.text?.trim()) {
+        throw new Error("Invalid message data");
+      }
 
-    if (error) {
-      console.error("Error sending message:", error);
-      throw new Error("Failed to send message");
+      // Check if user has permission to send messages in this topic
+      const { data: topic, error: topicError } = await typedSupabase
+        .from("topics")
+        .select("author_id, participants")
+        .eq("id", messageData.topic_id)
+        .single();
+
+      if (topicError) {
+        console.error("Error checking topic permissions:", topicError);
+        throw new Error("Session not found or access denied");
+      }
+
+      // Verify user is either author or approved participant
+      const isAuthor = topic.author_id === messageData.sender_id;
+      const isParticipant = topic.participants?.includes(messageData.sender_id) || false;
+
+      if (!isAuthor && !isParticipant) {
+        throw new Error("You don't have permission to send messages in this session");
+      }
+
+      // Send the message
+      const { data, error } = await typedSupabase
+        .from("messages")
+        .insert({
+          topic_id: messageData.topic_id,
+          sender_id: messageData.sender_id,
+          text: messageData.text.trim()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error sending message:", error);
+        throw new Error("Failed to send message");
+      }
+
+      return data as Message;
+    } catch (error) {
+      console.error("Message sending error:", error);
+      throw error;
     }
-
-    return data as Message;
   },
 
   // Subscribe to new messages for a topic
