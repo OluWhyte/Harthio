@@ -1,6 +1,9 @@
 "use client";
 
 import { Suspense } from 'react';
+
+// Force dynamic rendering to avoid build-time errors
+export const dynamic = 'force-dynamic';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
