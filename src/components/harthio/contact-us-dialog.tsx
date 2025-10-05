@@ -55,18 +55,40 @@ export function ContactUsDialog({ children }: { children: React.ReactNode }) {
     }
     
     try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        toast({
-            title: 'Message Sent!',
-            description: "Thanks for your feedback. We'll get back to you soon.",
+        // Send contact form data to API
+        const response = await fetch('/api/contact', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                userName: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
+                userEmail: user.email,
+                topic: data.topic,
+                message: data.message,
+            }),
         });
-        
-        form.reset();
-        setOpen(false);
+
+        const result = await response.json();
+
+        if (result.success) {
+            toast({
+                title: 'Message Sent! ✅',
+                description: result.message || "Thanks for your feedback. We'll get back to you soon.",
+            });
+            
+            form.reset();
+            setOpen(false);
+        } else {
+            throw new Error(result.error || 'Failed to send message');
+        }
     } catch (error) {
         console.error("Error submitting contact form:", error);
-        toast({ title: 'Error', description: 'There was a problem sending your message. Please try again.', variant: 'destructive' });
+        toast({ 
+            title: 'Error', 
+            description: error instanceof Error ? error.message : 'There was a problem sending your message. Please try again.', 
+            variant: 'destructive' 
+        });
     }
   };
 

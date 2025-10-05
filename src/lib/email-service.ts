@@ -38,6 +38,20 @@ export interface RequestCancelledEmailData {
   appUrl: string;
 }
 
+export interface ContactUsEmailData {
+  userName: string;
+  userEmail: string;
+  topic: string;
+  message: string;
+  appUrl: string;
+}
+
+export interface ContactUsAutoReplyData {
+  userName: string;
+  topic: string;
+  appUrl: string;
+}
+
 // Email templates
 export const emailTemplates = {
   // Template for when User A sends request to User B
@@ -425,6 +439,156 @@ This email was sent by Harthio - Platform for meaningful conversations
 Visit: ${data.appUrl}
     `,
   }),
+
+  // Template for contact us notification to admin (tosin@harthio.com)
+  contactUsNotification: (data: ContactUsEmailData): EmailTemplate => ({
+    subject: `New Contact Form Submission: ${data.topic}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Contact Form Submission</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; }
+            .content { padding: 30px 20px; }
+            .info-box { background: #f7fafc; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; border-radius: 4px; }
+            .message-box { background: #fff5f5; border: 1px solid #fed7d7; padding: 20px; margin: 20px 0; border-radius: 6px; }
+            .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 14px; color: #6c757d; }
+            .user-info { background: #e6fffa; border: 1px solid #81e6d9; padding: 15px; margin: 15px 0; border-radius: 6px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📧 New Contact Form Submission</h1>
+              <p>Someone reached out through the contact form</p>
+            </div>
+            <div class="content">
+              <div class="user-info">
+                <h3>👤 User Information</h3>
+                <p><strong>Name:</strong> ${data.userName}</p>
+                <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
+                <p><strong>Topic:</strong> ${data.topic === 'feedback' ? 'Send Feedback' : data.topic === 'feature' ? 'Suggest a Feature' : 'Report an Issue'}</p>
+              </div>
+              
+              <div class="message-box">
+                <h3>💬 Message</h3>
+                <p>${data.message.replace(/\n/g, '<br>')}</p>
+              </div>
+              
+              <div class="info-box">
+                <p><strong>Next Steps:</strong> Reply directly to <a href="mailto:${data.userEmail}">${data.userEmail}</a> to follow up on this ${data.topic}.</p>
+              </div>
+            </div>
+            <div class="footer">
+              <p>This notification was sent from Harthio Contact Form</p>
+              <p><a href="${data.appUrl}">Visit Harthio</a></p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+New Contact Form Submission: ${data.topic}
+
+User Information:
+- Name: ${data.userName}
+- Email: ${data.userEmail}
+- Topic: ${data.topic === 'feedback' ? 'Send Feedback' : data.topic === 'feature' ? 'Suggest a Feature' : 'Report an Issue'}
+
+Message:
+${data.message}
+
+Next Steps: Reply directly to ${data.userEmail} to follow up on this ${data.topic}.
+
+---
+This notification was sent from Harthio Contact Form
+Visit: ${data.appUrl}
+    `,
+  }),
+
+  // Template for auto-reply to user who submitted contact form
+  contactUsAutoReply: (data: ContactUsAutoReplyData): EmailTemplate => ({
+    subject: `We received your message - Harthio Support`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Message Received</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .header { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; padding: 30px 20px; text-align: center; }
+            .content { padding: 30px 20px; }
+            .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 10px 5px; }
+            .button:hover { background: #5a67d8; }
+            .info-box { background: #f0fff4; border-left: 4px solid #48bb78; padding: 15px; margin: 20px 0; border-radius: 4px; }
+            .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 14px; color: #6c757d; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>✅ Message Received!</h1>
+              <p>Thank you for reaching out</p>
+            </div>
+            <div class="content">
+              <h2>Hi ${data.userName},</h2>
+              <p>Thank you for contacting us regarding <strong>"${data.topic === 'feedback' ? 'Send Feedback' : data.topic === 'feature' ? 'Suggest a Feature' : 'Report an Issue'}"</strong>.</p>
+              
+              <div class="info-box">
+                <p><strong>✨ What happens next?</strong></p>
+                <p>Our customer support team has received your message and will review it carefully. We typically respond within 24-48 hours during business days.</p>
+              </div>
+              
+              <p>In the meantime, feel free to continue using Harthio and exploring meaningful conversations with others in our community.</p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${data.appUrl}/dashboard" class="button">Back to Dashboard</a>
+              </div>
+              
+              <p>If you have any urgent concerns, you can also reach out to us directly at <a href="mailto:tosin@harthio.com">tosin@harthio.com</a>.</p>
+              
+              <p>Best regards,<br>The Harthio Team</p>
+            </div>
+            <div class="footer">
+              <p>This email was sent by Harthio - Platform for meaningful conversations</p>
+              <p><a href="${data.appUrl}">Visit Harthio</a></p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+Message Received! - Thank you for reaching out
+
+Hi ${data.userName},
+
+Thank you for contacting us regarding "${data.topic === 'feedback' ? 'Send Feedback' : data.topic === 'feature' ? 'Suggest a Feature' : 'Report an Issue'}".
+
+What happens next?
+Our customer support team has received your message and will review it carefully. We typically respond within 24-48 hours during business days.
+
+In the meantime, feel free to continue using Harthio and exploring meaningful conversations with others in our community.
+
+Back to Dashboard: ${data.appUrl}/dashboard
+
+If you have any urgent concerns, you can also reach out to us directly at tosin@harthio.com.
+
+Best regards,
+The Harthio Team
+
+---
+This email was sent by Harthio - Platform for meaningful conversations
+Visit: ${data.appUrl}
+    `,
+  }),
 };
 
 // Email service class
@@ -531,6 +695,32 @@ export class EmailService {
     });
 
     return this.sendEmail(recipientEmail, template);
+  }
+
+  // Send contact us notification to admin (tosin@harthio.com)
+  async sendContactUsNotification(
+    data: ContactUsEmailData
+  ): Promise<boolean> {
+    const template = emailTemplates.contactUsNotification({
+      ...data,
+      appUrl: this.appUrl,
+    });
+
+    // Send to admin email
+    return this.sendEmail('tosin@harthio.com', template);
+  }
+
+  // Send auto-reply to user who submitted contact form
+  async sendContactUsAutoReply(
+    userEmail: string,
+    data: ContactUsAutoReplyData
+  ): Promise<boolean> {
+    const template = emailTemplates.contactUsAutoReply({
+      ...data,
+      appUrl: this.appUrl,
+    });
+
+    return this.sendEmail(userEmail, template);
   }
 }
 
