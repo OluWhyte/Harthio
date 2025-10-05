@@ -599,35 +599,68 @@ export class EmailService {
     this.appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://harthio.com";
   }
 
-  // Send email using Supabase Auth (requires setup in Supabase dashboard)
+  // Send email using Resend directly
   private async sendEmail(
     to: string,
     template: EmailTemplate
   ): Promise<boolean> {
     try {
-      // Note: This requires Supabase Auth email templates to be configured
-      // For now, we'll use a custom API route that you'll need to create
-      const response = await fetch("/api/send-email", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to,
+      // Check if we're in a server environment and have Resend configured
+      if (typeof window !== 'undefined') {
+        // Client-side: use API route
+        const response = await fetch("/api/send-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to,
+            subject: template.subject,
+            html: template.html,
+            text: template.text,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Email API responded with status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result.success;
+      } else {
+        // Server-side: use Resend directly
+        const { Resend } = await import('resend');
+        const resendApiKey = process.env.RESEND_API_KEY;
+        
+        if (!resendApiKey) {
+          console.log('📧 EMAIL FALLBACK (No Resend API key):', {
+            to,
+            subject: template.subject,
+            text: template.text.substring(0, 200) + '...'
+          });
+          return false;
+        }
+
+        const resend = new Resend(resendApiKey);
+        
+        const { data, error } = await resend.emails.send({
+          from: process.env.EMAIL_FROM_ADDRESS || 'Harthio <no-reply@harthio.com>',
+          to: [to],
           subject: template.subject,
           html: template.html,
           text: template.text,
-        }),
-      });
+        });
 
-      if (!response.ok) {
-        throw new Error(`Email API responded with status: ${response.status}`);
+        if (error) {
+          console.error('❌ Resend email error:', error);
+          return false;
+        }
+
+        console.log('✅ Email sent successfully via Resend:', data?.id);
+        return true;
       }
-
-      const result = await response.json();
-      return result.success;
     } catch (error) {
-      console.error("Failed to send email:", error);
+      console.error("❌ Failed to send email:", error);
       return false;
     }
   }
