@@ -39,7 +39,7 @@ type ContactFormValues = z.infer<typeof contactSchema>;
 export function ContactUsDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
@@ -62,7 +62,11 @@ export function ContactUsDialog({ children }: { children: React.ReactNode }) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                userName: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
+                userName: userProfile ? 
+                    `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 
+                    userProfile.display_name || 
+                    user.email?.split('@')[0] || 'User'
+                    : user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
                 userEmail: user.email,
                 topic: data.topic,
                 message: data.message,
