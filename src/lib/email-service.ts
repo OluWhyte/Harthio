@@ -451,14 +451,17 @@ Visit: ${data.appUrl}
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>New Contact Form Submission</title>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
-            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; }
+            body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background-color: hsl(240, 67%, 94%); }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: linear-gradient(135deg, hsl(340, 82%, 52%) 0%, hsl(180, 100%, 25%) 100%); color: white; padding: 30px 20px; text-align: center; }
             .content { padding: 30px 20px; }
-            .info-box { background: #f7fafc; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0; border-radius: 4px; }
-            .message-box { background: #fff5f5; border: 1px solid #fed7d7; padding: 20px; margin: 20px 0; border-radius: 6px; }
-            .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 14px; color: #6c757d; }
-            .user-info { background: #e6fffa; border: 1px solid #81e6d9; padding: 15px; margin: 15px 0; border-radius: 6px; }
+            .info-box { background: hsl(240, 67%, 97%); border-left: 4px solid hsl(340, 82%, 52%); padding: 15px; margin: 20px 0; border-radius: 8px; }
+            .message-box { background: hsl(180, 100%, 97%); border: 1px solid hsl(180, 100%, 85%); padding: 20px; margin: 20px 0; border-radius: 8px; }
+            .user-info { background: hsl(340, 82%, 97%); border: 1px solid hsl(340, 82%, 85%); padding: 15px; margin: 15px 0; border-radius: 8px; }
+            .footer { background: hsl(240, 67%, 97%); padding: 20px; text-align: center; font-size: 14px; color: hsl(240, 67%, 40%); }
+            .social-links { margin: 15px 0; }
+            .social-links a { color: hsl(340, 82%, 52%); text-decoration: none; margin: 0 10px; font-weight: 500; }
+            .social-links a:hover { text-decoration: underline; }
           </style>
         </head>
         <body>
@@ -471,7 +474,7 @@ Visit: ${data.appUrl}
               <div class="user-info">
                 <h3>👤 User Information</h3>
                 <p><strong>Name:</strong> ${data.userName}</p>
-                <p><strong>Email:</strong> <a href="mailto:${data.userEmail}">${data.userEmail}</a></p>
+                <p><strong>Email:</strong> <a href="mailto:${data.userEmail}" style="color: hsl(340, 82%, 52%);">${data.userEmail}</a></p>
                 <p><strong>Topic:</strong> ${data.topic === 'feedback' ? 'Send Feedback' : data.topic === 'feature' ? 'Suggest a Feature' : 'Report an Issue'}</p>
               </div>
               
@@ -481,12 +484,16 @@ Visit: ${data.appUrl}
               </div>
               
               <div class="info-box">
-                <p><strong>Next Steps:</strong> Reply directly to <a href="mailto:${data.userEmail}">${data.userEmail}</a> to follow up on this ${data.topic}.</p>
+                <p><strong>Next Steps:</strong> Reply directly to <a href="mailto:${data.userEmail}" style="color: hsl(340, 82%, 52%);">${data.userEmail}</a> to follow up on this ${data.topic}.</p>
               </div>
             </div>
             <div class="footer">
               <p>This notification was sent from Harthio Contact Form</p>
-              <p><a href="${data.appUrl}">Visit Harthio</a></p>
+              <p><a href="${data.appUrl}" style="color: hsl(340, 82%, 52%);">Visit Harthio</a></p>
+              <div class="social-links">
+                <a href="https://x.com/harthio_" target="_blank">Follow us on X @harthio_</a> • 
+                <a href="https://t.me/harthioapp" target="_blank">Join our Telegram</a>
+              </div>
             </div>
           </div>
         </body>
@@ -508,6 +515,9 @@ Next Steps: Reply directly to ${data.userEmail} to follow up on this ${data.topi
 ---
 This notification was sent from Harthio Contact Form
 Visit: ${data.appUrl}
+
+Follow us on X: https://x.com/harthio_
+Join our Telegram: https://t.me/harthioapp
     `,
   }),
 
@@ -522,14 +532,17 @@ Visit: ${data.appUrl}
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Message Received</title>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
-            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; padding: 30px 20px; text-align: center; }
+            body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background-color: hsl(240, 67%, 94%); }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+            .header { background: linear-gradient(135deg, hsl(180, 100%, 25%) 0%, hsl(340, 82%, 52%) 100%); color: white; padding: 30px 20px; text-align: center; }
             .content { padding: 30px 20px; }
-            .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 10px 5px; }
-            .button:hover { background: #5a67d8; }
-            .info-box { background: #f0fff4; border-left: 4px solid #48bb78; padding: 15px; margin: 20px 0; border-radius: 4px; }
-            .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 14px; color: #6c757d; }
+            .button { display: inline-block; background: hsl(340, 82%, 52%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 10px 5px; transition: all 0.2s; }
+            .button:hover { background: hsl(340, 82%, 45%); transform: translateY(-1px); }
+            .info-box { background: hsl(180, 100%, 97%); border-left: 4px solid hsl(180, 100%, 25%); padding: 15px; margin: 20px 0; border-radius: 8px; }
+            .footer { background: hsl(240, 67%, 97%); padding: 20px; text-align: center; font-size: 14px; color: hsl(240, 67%, 40%); }
+            .social-links { margin: 15px 0; }
+            .social-links a { color: hsl(340, 82%, 52%); text-decoration: none; margin: 0 10px; font-weight: 500; }
+            .social-links a:hover { text-decoration: underline; }
           </style>
         </head>
         <body>
@@ -553,13 +566,17 @@ Visit: ${data.appUrl}
                 <a href="${data.appUrl}/dashboard" class="button">Back to Dashboard</a>
               </div>
               
-              <p>If you have any urgent concerns, you can also reach out to us directly at <a href="mailto:tosin@harthio.com">tosin@harthio.com</a>.</p>
+              <p>If you have any urgent concerns, you can also reach out to us directly at <a href="mailto:tosin@harthio.com" style="color: hsl(340, 82%, 52%);">tosin@harthio.com</a>.</p>
               
-              <p>Best regards,<br>The Harthio Team</p>
+              <p>Best regards,<br><strong>The Harthio Team</strong></p>
             </div>
             <div class="footer">
               <p>This email was sent by Harthio - Platform for meaningful conversations</p>
-              <p><a href="${data.appUrl}">Visit Harthio</a></p>
+              <p><a href="${data.appUrl}" style="color: hsl(340, 82%, 52%);">Visit Harthio</a></p>
+              <div class="social-links">
+                <a href="https://x.com/harthio_" target="_blank">Follow us on X @harthio_</a> • 
+                <a href="https://t.me/harthioapp" target="_blank">Join our Telegram</a>
+              </div>
             </div>
           </div>
         </body>
@@ -587,6 +604,9 @@ The Harthio Team
 ---
 This email was sent by Harthio - Platform for meaningful conversations
 Visit: ${data.appUrl}
+
+Follow us on X: https://x.com/harthio_
+Join our Telegram: https://t.me/harthioapp
     `,
   }),
 };
