@@ -35,26 +35,55 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
-  // Headers for better mobile support
+  // Security and mobile support headers
   async headers() {
     return [
       {
         source: '/(.*)',
         headers: [
+          // Security headers
           {
             key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
+            value: 'DENY',
           },
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
           },
-          // Allow camera/microphone access from local network
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          // Allow camera/microphone access
           {
             key: 'Permissions-Policy',
             value: 'camera=*, microphone=*, display-capture=*',
+          },
+        ],
+      },
+      {
+        source: '/api/(.*)',
+        headers: [
+          // API-specific security headers
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
           },
         ],
       },

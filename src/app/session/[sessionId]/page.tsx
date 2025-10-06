@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import { useSessionValidation } from "@/hooks/use-session-validation";
 import { messageService, topicService, dbUtils } from "@/lib/supabase-services";
 import { WebRTCManager, type ConnectionState } from "@/lib/webrtc-manager";
 import { realtimeManager } from "@/lib/realtime-manager";
@@ -62,6 +63,7 @@ interface Message {
 export default function SessionPage() {
   const { sessionId } = useParams();
   const { user, userProfile, loading: authLoading } = useAuth();
+  const sessionValidation = useSessionValidation(sessionId as string);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -875,8 +877,8 @@ export default function SessionPage() {
     };
   }, [remoteStream]);
 
-  // Show loading while checking authentication
-  if (authLoading) {
+  // Show loading while checking authentication and session validation
+  if (authLoading || sessionValidation.isLoading) {
     return (
       <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -888,6 +890,30 @@ export default function SessionPage() {
   if (!user) {
     router.push('/login');
     return null;
+  }
+
+  // Handle session validation errors
+  if (sessionValidation.error) {
+    return (
+      <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">{sessionValidation.error}</p>
+          <Button onClick={() => router.push('/dashboard')}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Ensure session is valid before proceeding
+  if (!sessionValidation.isValid) {
+    return (
+      <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
   }
 
   // Show loading while loading session data

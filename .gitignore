@@ -98,3 +98,4 @@ test-*.js
 # Backup files
 *.bak
 *.backup
+.vercel

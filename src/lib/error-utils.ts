@@ -508,4 +508,25 @@ export function logError(context: string, error: unknown, additionalData?: Recor
     stack: error instanceof Error ? error.stack : undefined,
     ...additionalData
   });
+
+  // Also log to security monitoring if it's a security-related error
+  if (errorDetails.type === ErrorType.AUTHENTICATION || 
+      errorDetails.type === ErrorType.AUTHORIZATION ||
+      errorDetails.type === ErrorType.VALIDATION) {
+    
+    // Import security utils dynamically to avoid circular dependencies
+    import('./security-utils').then(({ logSecurityEvent }) => {
+      logSecurityEvent({
+        type: errorDetails.type === ErrorType.AUTHENTICATION ? 'auth_failure' :
+              errorDetails.type === ErrorType.AUTHORIZATION ? 'access_denied' : 'validation_error',
+        details: {
+          context,
+          error: errorDetails.message,
+          ...additionalData
+        }
+      });
+    }).catch(() => {
+      // Ignore import errors in case security-utils is not available
+    });
+  }
 }

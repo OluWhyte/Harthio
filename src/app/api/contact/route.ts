@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { emailService } from '@/lib/email-service';
 import { z } from 'zod';
+import { emailRateLimit } from '@/lib/rate-limit';
+import { sanitizeError, logSecurityEvent, getSecurityHeaders, sanitizeInput } from '@/lib/security-utils';
 
 // Validation schema for contact form
 const contactSchema = z.object({
@@ -13,6 +15,18 @@ const contactSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting
+  const rateLimitResult = emailRateLimit(request);
+  if (rateLimitResult) {
+    logSecurityEvent({
+      type: 'rate_limit',
+      ip: request.ip || 'unknown',
+      endpoint: '/api/contact',
+      details: { reason: 'Email rate limit exceeded' }
+    });
+    return rateLimitResult;
+  }
+
   try {
     const body = await request.json();
     
@@ -31,25 +45,30 @@ export async function POST(request: NextRequest) {
 
     const { userName, userEmail, topic, message } = validationResult.data;
 
+    // Sanitize inputs
+    const sanitizedUserName = sanitizeInput(userName, 100);
+    const sanitizedMessage = sanitizeInput(message, 500);
+
     console.log('📧 Processing contact form submission:', {
-      userName,
+      userName: sanitizedUserName,
       userEmail,
       topic,
-      messageLength: message.length
+      messageLength: sanitizedMessage.length,
+      ip: request.ip || 'unknown'
     });
 
     // Send notification to admin (tosin@harthio.com)
     const adminNotificationSent = await emailService.sendContactUsNotification({
-      userName,
+      userName: sanitizedUserName,
       userEmail,
       topic,
-      message,
+      message: sanitizedMessage,
       appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com'
     });
 
     // Send auto-reply to user
     const autoReplySent = await emailService.sendContactUsAutoReply(userEmail, {
-      userName,
+      userName: sanitizedUserName,
       topic,
       appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com'
     });
@@ -69,17 +88,34 @@ export async function POST(request: NextRequest) {
         adminNotification: adminNotificationSent,
         autoReply: autoReplySent
       }
+    }, {
+      headers: getSecurityHeaders()
     });
 
   } catch (error) {
+    const sanitized = sanitizeError(error);
+    
+    logSecurityEvent({
+      type: 'suspicious_activity',
+      ip: request.ip || 'unknown',
+      endpoint: '/api/contact',
+      details: { 
+        error: sanitized.message,
+        reason: 'Contact form processing failed'
+      }
+    });
+    
     console.error('❌ Contact form API error:', error);
     
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to process your message. Please try again.' 
+        error: sanitized.message
       },
-      { status: 500 }
+      { 
+        status: 500,
+        headers: getSecurityHeaders()
+      }
     );
   }
 }

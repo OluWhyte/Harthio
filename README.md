@@ -70,29 +70,48 @@ npm run dev
 
 6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## 📚 Documentation
+
+Complete documentation is available in the `docs/` folder:
+
+- **[Setup Instructions](docs/SETUP_INSTRUCTIONS.md)** - Complete project setup guide
+- **[Database Setup](docs/DATABASE_SETUP.md)** - Database configuration and schema
+- **[Email Setup](docs/EMAIL_SETUP.md)** - Email notification configuration  
+- **[Domain Setup](docs/DOMAIN_SETUP.md)** - Custom domain configuration
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Vercel deployment instructions
+- **[WebRTC Implementation](docs/WEBRTC_IMPLEMENTATION.md)** - Video calling setup
+- **[Mobile User Guide](docs/MOBILE_USER_GUIDE.md)** - Mobile usage instructions
+- **[Session System](docs/SESSION_SYSTEM.md)** - 3-state session management
+- **[Security Fixes](docs/SECURITY_FIXES.md)** - Security improvements
+
 ## 📁 Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── (dashboard)/       # Protected dashboard routes
-│   ├── auth/              # Authentication pages
-│   └── session/           # Video calling sessions
-├── components/            # React components
-│   ├── ui/               # shadcn/ui components
-│   ├── harthio/          # App-specific components
-│   └── common/           # Shared utility components
-├── lib/                  # Core utilities and services
-│   ├── services/         # Database and API services
-│   ├── real-time/        # WebRTC and signaling
-│   └── utils/            # Helper functions
-└── hooks/                # Custom React hooks
+├── docs/                  # 📚 Documentation and guides
+├── database/              # 🗄️ SQL scripts and database setup
+├── src/                   # 💻 Source code
+│   ├── app/              # Next.js App Router pages
+│   │   ├── (dashboard)/  # Protected dashboard routes
+│   │   ├── auth/         # Authentication pages
+│   │   └── session/      # Video calling sessions
+│   ├── components/       # React components
+│   │   ├── ui/          # shadcn/ui components
+│   │   ├── harthio/     # App-specific components
+│   │   └── common/      # Shared utility components
+│   ├── lib/             # Core utilities and services
+│   │   ├── services/    # Database and API services
+│   │   └── utils/       # Helper functions
+│   └── hooks/           # Custom React hooks
+└── config files         # ⚙️ Next.js, TypeScript, Tailwind config
 ```
 
 ## 🔧 Available Scripts
 
 ```bash
 npm run dev              # Start development server
+npm run dev:mobile       # Start dev server accessible from mobile devices
+npm run mobile:setup     # Show mobile testing setup instructions
+npm run mobile:start     # Setup and start mobile testing server
 npm run build           # Build for production
 npm run start           # Start production server
 npm run lint            # Run ESLint
@@ -101,11 +120,11 @@ npm run typecheck       # TypeScript type checking
 
 ## 🗄️ Database Setup
 
-The project uses Supabase with PostgreSQL. Database schema and setup scripts are included in the SQL files.
+The project uses Supabase with PostgreSQL. All database scripts are organized in the `database/` folder. See [Database Setup Guide](docs/DATABASE_SETUP.md) for complete instructions.
 
 ## 🌐 Deployment
 
-The application is designed to be deployed on Vercel with Supabase as the backend.
+The application is designed to be deployed on Vercel with Supabase as the backend. See [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) for detailed instructions.
 
 ## 🤝 Contributing
 
@@ -122,7 +141,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🔗 Links
 
 - **Live Demo**: [harthio.com](https://harthio.com)
-- **Documentation**: Coming soon
+- **Documentation**: [docs/](docs/)
 - **Support**: Create an issue in this repository
 
 ## 🙏 Acknowledgments
