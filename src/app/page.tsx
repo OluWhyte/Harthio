@@ -275,7 +275,7 @@ export default function LandingPage() {
               <Card className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <Image
-                    src="https://images.unsplash.com/photo-1616805765352-beedbad46b2a?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
+                    src="https://images.unsplash.com/photo-1759855698735-2b0fe3d25990?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                     width="50"
                     height="50"
                     alt="Marcus T."
@@ -288,7 +288,7 @@ export default function LandingPage() {
                 </div>
                 <p className="text-gray-600 italic">
                   "After my divorce, I found someone who truly understood my
-                  situation and put me through what to do and this fix my life."
+                  situation and put me through what to do and this fix my life as a black divorcee and single dad living in the UK."
                 </p>
               </Card>
 
@@ -360,14 +360,14 @@ export default function LandingPage() {
               <Card className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <Image
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80"
+                    src="https://images.unsplash.com/photo-1759852692971-a2abc6799cbd?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                     width="50"
                     height="50"
                     alt="Sarah M."
                     className="rounded-full"
                   />
                   <div>
-                    <p className="font-semibold">Sarah M.</p>
+                    <p className="font-semibold">Opeyemi Adebayo</p>
                     <p className="text-sm text-gray-500">
                       University Student, 21
                     </p>
@@ -384,15 +384,15 @@ export default function LandingPage() {
               <Card className="p-6">
                 <div className="flex items-center gap-4 mb-4">
                   <Image
-                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=388&auto=format&fit=crop&ixlib=rb-4.180"
+                    src="https://images.unsplash.com/photo-1616805765352-beedbad46b2a?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
                     width="50"
                     height="50"
                     alt="James R."
                     className="rounded-full"
                   />
                   <div>
-                    <p className="font-semibold">James R.</p>
-                    <p className="text-sm text-gray-500">Office Worker, 28</p>
+                    <p className="font-semibold">James Emeka</p>
+                    <p className="text-sm text-gray-500">Office Worker, 35</p>
                   </div>
                 </div>
                 <p className="text-gray-600 italic">
