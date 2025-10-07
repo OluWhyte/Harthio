@@ -288,6 +288,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.uid, userProfile?.id]); // Only depend on user ID and profile ID
 
   const logIn = async (email: string, password: string) => {
+    console.log("Attempting login for:", email);
+    console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log("Environment:", process.env.NODE_ENV);
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -295,6 +299,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error("Login error:", error);
+      console.error("Error details:", {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      });
 
       // Provide more specific error messages
       if (error.message.includes("Invalid login credentials")) {
@@ -309,10 +318,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(
           "Too many login attempts. Please wait a moment and try again."
         );
+      } else if (error.message.includes("fetch")) {
+        throw new Error(
+          "Network error. Please check your internet connection and try again."
+        );
       } else {
-        throw new Error("Login failed. Please try again.");
+        throw new Error(`Login failed: ${error.message}`);
       }
     }
+
+    console.log("Login successful for:", email);
 
     // Check if email is verified
     if (data.user && !data.user.email_confirmed_at) {
