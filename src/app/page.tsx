@@ -446,7 +446,7 @@ export default function LandingPage() {
               </p>
               <div className="flex space-x-4">
                 <Link
-                  href="https://twitter.com/harthio"
+                  href="https://twitter.com/harthio_"
                   className="text-gray-400 hover:text-white transition-colors"
                 >
                   <Twitter className="h-5 w-5" />
@@ -554,7 +554,7 @@ export default function LandingPage() {
                     href="mailto:hello@harthio.com"
                     className="hover:text-white transition-colors"
                   >
-                    hello@harthio.com
+                    seyi@harthio.com
                   </a>
                 </li>
                 <li>
@@ -587,7 +587,7 @@ export default function LandingPage() {
 
           <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center">
             <p className="text-xs text-gray-400">
-              &copy; 2024 Harthio Inc. All rights reserved.
+              &copy; 2025 Stria Technologies All rights reserved.
             </p>
             <p className="text-xs text-gray-400 mt-2 sm:mt-0">
               Made with ❤️ for meaningful connections
