@@ -31,7 +31,11 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    debug: process.env.NODE_ENV === 'development'
+    debug: process.env.NODE_ENV === 'development',
+    // Temporary workaround for Site URL issue
+    redirectTo: process.env.NODE_ENV === 'production' 
+      ? 'https://harthio.com/auth/callback' 
+      : undefined
   },
   realtime: {
     params: {
@@ -40,7 +44,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     headers: {
-      'X-Client-Info': 'harthio-web'
+      'X-Client-Info': 'harthio-web',
+      'X-Requested-With': 'XMLHttpRequest'
     }
   }
 })

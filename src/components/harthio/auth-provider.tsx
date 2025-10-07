@@ -290,53 +290,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logIn = async (email: string, password: string) => {
     console.log("Attempting login for:", email);
     console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log("App URL:", process.env.NEXT_PUBLIC_APP_URL);
     console.log("Environment:", process.env.NODE_ENV);
     
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      console.error("Login error:", error);
-      console.error("Error details:", {
-        message: error.message,
-        status: error.status,
-        name: error.name
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      // Provide more specific error messages
-      if (error.message.includes("Invalid login credentials")) {
-        throw new Error(
-          "Invalid email or password. Please check your credentials and try again."
-        );
-      } else if (error.message.includes("Email not confirmed")) {
+      if (error) {
+        console.error("Login error:", error);
+        console.error("Error details:", {
+          message: error.message,
+          status: error.status,
+          name: error.name,
+          __isAuthError: error.__isAuthError
+        });
+
+        // Provide more specific error messages
+        if (error.message.includes("Invalid login credentials")) {
+          throw new Error(
+            "Invalid email or password. Please check your credentials and try again."
+          );
+        } else if (error.message.includes("Email not confirmed")) {
+          throw new Error(
+            "Please check your email and click the verification link before logging in."
+          );
+        } else if (error.message.includes("Too many requests")) {
+          throw new Error(
+            "Too many login attempts. Please wait a moment and try again."
+          );
+        } else if (error.message.includes("fetch") || error.message.includes("Failed to fetch")) {
+          throw new Error(
+            "Network error. Please check your internet connection and try again."
+          );
+        } else if (error.message.includes("CORS")) {
+          throw new Error(
+            "Configuration error. Please try again in a few minutes."
+          );
+        } else {
+          throw new Error(`Login failed: ${error.message}`);
+        }
+      }
+
+      console.log("Login successful for:", email);
+      console.log("User data:", {
+        id: data.user?.id,
+        email: data.user?.email,
+        email_confirmed_at: data.user?.email_confirmed_at
+      });
+
+      // Check if email is verified
+      if (data.user && !data.user.email_confirmed_at) {
         throw new Error(
           "Please check your email and click the verification link before logging in."
         );
-      } else if (error.message.includes("Too many requests")) {
-        throw new Error(
-          "Too many login attempts. Please wait a moment and try again."
-        );
-      } else if (error.message.includes("fetch")) {
-        throw new Error(
-          "Network error. Please check your internet connection and try again."
-        );
+      }
+
+      router.push("/dashboard");
+    } catch (networkError) {
+      console.error("Network/Auth error:", networkError);
+      
+      if (networkError.message && !networkError.message.includes("Login failed:")) {
+        // This is already a formatted error from above
+        throw networkError;
       } else {
-        throw new Error(`Login failed: ${error.message}`);
+        // This is a network or unexpected error
+        throw new Error(
+          "Unable to connect to authentication service. Please check your internet connection and try again."
+        );
       }
     }
-
-    console.log("Login successful for:", email);
-
-    // Check if email is verified
-    if (data.user && !data.user.email_confirmed_at) {
-      throw new Error(
-        "Please check your email and click the verification link before logging in."
-      );
-    }
-
-    router.push("/dashboard");
   };
 
   const logOut = async () => {
