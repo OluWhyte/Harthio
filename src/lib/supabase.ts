@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from './database-types'
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database-types";
 
 // ============================================================================
 // SUPABASE CLIENT CONFIGURATION
@@ -8,16 +8,16 @@ import type { Database } from './database-types'
 // Provides full type safety for all database operations
 // Last updated: 2025-09-22
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 // Validate environment variables
 if (!supabaseUrl) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable");
 }
 
 if (!supabaseAnonKey) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable')
+  throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable");
 }
 
 // ============================================================================
@@ -30,34 +30,32 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
-    debug: process.env.NODE_ENV === 'development',
-    // Temporary workaround for Site URL issue
-    redirectTo: process.env.NODE_ENV === 'production' 
-      ? 'https://harthio.com/auth/callback' 
-      : undefined
+    flowType: "pkce",
+    debug: process.env.NODE_ENV === "development",
   },
   realtime: {
     params: {
-      eventsPerSecond: 10
-    }
+      eventsPerSecond: 10,
+    },
   },
   global: {
     headers: {
-      'X-Client-Info': 'harthio-web',
-      'X-Requested-With': 'XMLHttpRequest'
-    }
-  }
-})
+      "X-Client-Info": "harthio-web",
+      "X-Requested-With": "XMLHttpRequest",
+    },
+  },
+});
 
 // Create a properly typed client for use in services
-export const typedSupabase = supabase as ReturnType<typeof createClient<Database>>
+export const typedSupabase = supabase as ReturnType<
+  typeof createClient<Database>
+>;
 
 // Export typed client type for use in other files
-export type TypedSupabaseClient = typeof supabase
+export type TypedSupabaseClient = typeof supabase;
 
 // Export database type for convenience
-export type { Database } from './database-types'
+export type { Database } from "./database-types";
 
 // Re-export commonly used types
 export type {
@@ -71,5 +69,5 @@ export type {
   JoinRequest,
   RatingValue,
   ApiResponse,
-  SubscriptionCallback
-} from './database-types'
+  SubscriptionCallback,
+} from "./database-types";

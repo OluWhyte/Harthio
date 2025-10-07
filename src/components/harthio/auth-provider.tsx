@@ -292,7 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
     console.log("App URL:", process.env.NEXT_PUBLIC_APP_URL);
     console.log("Environment:", process.env.NODE_ENV);
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -305,7 +305,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           message: error.message,
           status: error.status,
           name: error.name,
-          __isAuthError: error.__isAuthError
         });
 
         // Provide more specific error messages
@@ -321,7 +320,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error(
             "Too many login attempts. Please wait a moment and try again."
           );
-        } else if (error.message.includes("fetch") || error.message.includes("Failed to fetch")) {
+        } else if (
+          error.message.includes("fetch") ||
+          error.message.includes("Failed to fetch")
+        ) {
           throw new Error(
             "Network error. Please check your internet connection and try again."
           );
@@ -338,7 +340,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("User data:", {
         id: data.user?.id,
         email: data.user?.email,
-        email_confirmed_at: data.user?.email_confirmed_at
+        email_confirmed_at: data.user?.email_confirmed_at,
       });
 
       // Check if email is verified
@@ -351,8 +353,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push("/dashboard");
     } catch (networkError) {
       console.error("Network/Auth error:", networkError);
-      
-      if (networkError.message && !networkError.message.includes("Login failed:")) {
+
+      if (
+        networkError instanceof Error &&
+        networkError.message &&
+        !networkError.message.includes("Login failed:")
+      ) {
         // This is already a formatted error from above
         throw networkError;
       } else {
