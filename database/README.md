@@ -1,64 +1,53 @@
-# Database Scripts
+# Database Setup
 
-This folder contains all SQL scripts for setting up and maintaining the Harthio database.
+This directory contains documentation for the Harthio database setup.
 
-## Setup Scripts (Run in Order)
+## Main Setup File
 
-1. **`schema.sql`** - Main database schema with all tables
-2. **`setup-requests.sql`** - Join requests system setup
-3. **`setup-notifications.sql`** - Notifications table setup
-4. **`setup-webrtc.sql`** - WebRTC signaling setup
-5. **`enable-realtime.sql`** - Enable real-time subscriptions
-
-## Performance Scripts
-
-- **`performance-indexes.sql`** - Database performance indexes
-- **`optimize-indexes.sql`** - Additional optimization indexes
-
-## Security Scripts
-
-- **`security-fixes.sql`** - Message security and RLS policies
-
-## Storage Scripts
-
-- **`setup-storage.sql`** - Supabase storage bucket setup
+**`../combined.sql`** - Complete database setup file containing all necessary scripts:
+- Main database schema with all tables
+- Join requests system setup  
+- Notifications table setup
+- WebRTC signaling setup
+- Performance indexes and optimizations
+- Security fixes and RLS policies
+- Real-time subscriptions setup
+- Storage bucket setup
 
 ## Usage
 
-### Development Setup
-Run these scripts in your Supabase SQL Editor in order:
+### Single File Setup (Recommended)
+Run the combined setup file in the Supabase SQL Editor:
+
+1. Open Supabase Dashboard → SQL Editor
+2. Copy the entire contents of `../combined.sql`
+3. Paste and execute in the SQL Editor
+4. Verify all sections complete successfully
 
 ```sql
--- 1. Main schema
-\i schema.sql
-
--- 2. Features
-\i setup-requests.sql
-\i setup-notifications.sql
-\i setup-webrtc.sql
-
--- 3. Performance
-\i performance-indexes.sql
-
--- 4. Security
-\i security-fixes.sql
-
--- 5. Enable real-time
-\i enable-realtime.sql
+-- All database setup in one file
+-- Copy contents from ../combined.sql and run
 ```
 
-### Production Setup
-Use the same order but verify each script completes successfully before running the next.
+## What's Included
 
-## File Descriptions
+The combined.sql file includes all essential components:
 
-| File | Purpose | Required |
-|------|---------|----------|
-| `schema.sql` | Core database tables | ✅ Yes |
-| `setup-requests.sql` | Join request system | ✅ Yes |
-| `setup-notifications.sql` | Notification system | ✅ Yes |
-| `setup-webrtc.sql` | Video calling support | ✅ Yes |
-| `performance-indexes.sql` | Query optimization | 🔧 Recommended |
-| `security-fixes.sql` | Security enhancements | 🔒 Important |
-| `enable-realtime.sql` | Real-time features | ✅ Yes |
-| `setup-storage.sql` | File storage | 📁 Optional |
+| Component | Purpose | Status |
+|-----------|---------|--------|
+| Core Schema | Database tables and relationships | ✅ Included |
+| Request System | Join request functionality | ✅ Included |
+| Notifications | Notification system | ✅ Included |
+| WebRTC Setup | Video calling support | ✅ Included |
+| Performance | Query optimization indexes | ✅ Included |
+| Security | RLS policies and security | ✅ Included |
+| Real-time | Real-time subscriptions | ✅ Included |
+| Storage | File storage buckets | ✅ Included |
+
+## Verification
+
+After running the combined.sql file, verify the setup by checking:
+- All tables are created
+- RLS policies are active
+- Real-time is enabled for required tables
+- Indexes are created for performance
