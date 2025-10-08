@@ -197,7 +197,7 @@ export default function AboutPage() {
 
               <Card className="text-center p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
                 <Image
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80"
+                  src="https://images.unsplash.com/photo-1739296408127-b6cc9c5c094b?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
                   width="100"
                   height="100"
                   alt="Ojo Olokun"
