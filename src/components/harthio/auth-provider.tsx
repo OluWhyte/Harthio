@@ -207,23 +207,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    // Get initial session with better error handling
+    // Get initial session
     const getInitialSession = async () => {
       try {
-        console.log("Getting initial session...");
         const {
           data: { session },
           error,
         } = await supabase.auth.getSession();
 
         if (error) {
-          console.error("Error getting initial session:", error);
           setLoading(false);
           return;
         }
 
         if (session?.user) {
-          console.log("Initial session found for user:", session.user.id);
           const supabaseUser = session.user;
           const user: User = {
             uid: supabaseUser.id,
@@ -235,11 +232,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             emailVerified: supabaseUser.email_confirmed_at !== null,
           };
           setUser(user);
-        } else {
-          console.log("No initial session found");
         }
       } catch (error) {
-        console.error("Error in getInitialSession:", error);
+        // Silent error handling for security
       } finally {
         setLoading(false);
       }
@@ -247,11 +242,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     getInitialSession();
 
-    // Listen for auth changes with better logging
+    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state change:", event, session?.user?.id || "no user");
 
       if (session?.user) {
         const supabaseUser = session.user;
@@ -288,11 +282,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.uid, userProfile?.id]); // Only depend on user ID and profile ID
 
   const logIn = async (email: string, password: string) => {
-    console.log("Attempting login for:", email);
-    console.log("Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log("App URL:", process.env.NEXT_PUBLIC_APP_URL);
-    console.log("Environment:", process.env.NODE_ENV);
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -300,12 +289,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        console.error("Login error:", error);
-        console.error("Error details:", {
-          message: error.message,
-          status: error.status,
-          name: error.name,
-        });
 
         // Provide more specific error messages
         if (error.message.includes("Invalid login credentials")) {
@@ -336,13 +319,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      console.log("Login successful for:", email);
-      console.log("User data:", {
-        id: data.user?.id,
-        email: data.user?.email,
-        email_confirmed_at: data.user?.email_confirmed_at,
-      });
-
       // Check if email is verified
       if (data.user && !data.user.email_confirmed_at) {
         throw new Error(
@@ -352,7 +328,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.push("/dashboard");
     } catch (networkError) {
-      console.error("Network/Auth error:", networkError);
 
       if (
         networkError instanceof Error &&

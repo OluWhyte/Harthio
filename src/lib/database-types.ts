@@ -291,6 +291,94 @@ export interface Database {
           created_at?: string; // Should not be updated
         };
       };
+      blog_posts: {
+        Row: {
+          id: string; // UUID, auto-generated
+          title: string; // NOT NULL
+          slug: string; // UNIQUE, NOT NULL
+          excerpt: string | null;
+          content: string; // NOT NULL
+          featured_image_url: string | null;
+          category: string; // DEFAULT 'Product Updates'
+          status: 'draft' | 'published' | 'archived'; // DEFAULT 'draft'
+          author_id: string | null; // UUID, references auth.users(id)
+          created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          updated_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          published_at: string | null; // TIMESTAMP WITH TIME ZONE
+          like_count?: number; // Computed field
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          title: string; // Required
+          slug: string; // Required, must be unique
+          excerpt?: string | null;
+          content: string; // Required
+          featured_image_url?: string | null;
+          category?: string; // Defaults to 'Product Updates'
+          status?: 'draft' | 'published' | 'archived'; // Defaults to 'draft'
+          author_id?: string | null;
+          created_at?: string; // Auto-generated if not provided
+          updated_at?: string; // Auto-generated if not provided
+          published_at?: string | null;
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          title?: string;
+          slug?: string;
+          excerpt?: string | null;
+          content?: string;
+          featured_image_url?: string | null;
+          category?: string;
+          status?: 'draft' | 'published' | 'archived';
+          author_id?: string | null;
+          created_at?: string; // Should not be updated
+          updated_at?: string; // Auto-updated by trigger
+          published_at?: string | null;
+        };
+      };
+      blog_likes: {
+        Row: {
+          id: string; // UUID, auto-generated
+          blog_post_id: string; // UUID, references blog_posts(id), NOT NULL
+          ip_address: string; // INET, NOT NULL
+          user_agent: string | null;
+          created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          blog_post_id: string; // Required
+          ip_address: string; // Required
+          user_agent?: string | null;
+          created_at?: string; // Auto-generated if not provided
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          blog_post_id?: string; // Should not be updated
+          ip_address?: string; // Should not be updated
+          user_agent?: string | null;
+          created_at?: string; // Should not be updated
+        };
+      };
+      admin_roles: {
+        Row: {
+          id: string; // UUID, auto-generated
+          user_id: string; // UUID, references auth.users(id), UNIQUE, NOT NULL
+          role: 'admin' | 'editor'; // DEFAULT 'admin'
+          created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          user_id: string; // Required, must be unique
+          role?: 'admin' | 'editor'; // Defaults to 'admin'
+          created_at?: string; // Auto-generated if not provided
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          user_id?: string; // Should not be updated
+          role?: 'admin' | 'editor';
+          created_at?: string; // Should not be updated
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -380,6 +468,18 @@ export type Signaling = Tables<"signaling">;
 export type SignalingInsert = TablesInsert<"signaling">;
 export type SignalingUpdate = TablesUpdate<"signaling">;
 
+export type BlogPost = Tables<"blog_posts">;
+export type BlogPostInsert = TablesInsert<"blog_posts">;
+export type BlogPostUpdate = TablesUpdate<"blog_posts">;
+
+export type BlogLike = Tables<"blog_likes">;
+export type BlogLikeInsert = TablesInsert<"blog_likes">;
+export type BlogLikeUpdate = TablesUpdate<"blog_likes">;
+
+export type AdminRole = Tables<"admin_roles">;
+export type AdminRoleInsert = TablesInsert<"admin_roles">;
+export type AdminRoleUpdate = TablesUpdate<"admin_roles">;
+
 // ============================================================================
 // EXTENDED TYPES WITH RELATIONS
 // ============================================================================
@@ -402,6 +502,15 @@ export type UserWithStats = User & {
   topic_count?: number;
   message_count?: number;
   rating_stats?: UserRatingStats;
+};
+
+export type BlogPostWithAuthor = BlogPost & {
+  author?: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+  like_count?: number;
 };
 
 // ============================================================================

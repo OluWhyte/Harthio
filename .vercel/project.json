@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_5II3VWR2XwssxkJr48ztnscvFe4Z",
+  "orgId": "team_2rKUJ2lyAmQsVNt7kW5n9PqU",
+  "projectName": "harthio",
+  "settings": {
+    "createdAt": 1759678960313,
+    "framework": "nextjs",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": "npm run build",
+    "outputDirectory": ".next",
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "22.x"
+  }
+}

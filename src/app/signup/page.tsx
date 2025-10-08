@@ -157,34 +157,39 @@ export default function SignupPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="px-4 lg:px-6 h-16 flex items-center">
+      <header className="px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center border-b bg-white/80 backdrop-blur-sm">
         <Link href="/" className="flex items-center justify-center" prefetch={false}>
           <Logo />
         </Link>
+        <nav className="ml-auto">
+          <Button variant="ghost" asChild className="text-sm px-2 sm:px-4">
+            <Link href="/login">Log In</Link>
+          </Button>
+        </nav>
       </header>
-      <main className="flex-1 flex items-center justify-center py-12">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Create an Account</CardTitle>
-            <CardDescription>
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 py-8 sm:py-12">
+        <Card className="w-full max-w-sm sm:max-w-md lg:max-w-lg">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl sm:text-2xl bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">Create an Account</CardTitle>
+            <CardDescription className="text-sm sm:text-base">
               Join Harthio to start connecting with others. A verification link will be sent to your email.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                 <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <FormField
                       control={form.control}
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
+                          <FormLabel className="flex items-center gap-2 text-sm sm:text-base">
+                            <User className="h-3 w-3 sm:h-4 sm:w-4" />
                             First Name
                           </FormLabel>
                           <FormControl>
-                            <Input placeholder="Jane" {...field} className="h-11" />
+                            <Input placeholder="Jane" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -195,12 +200,12 @@ export default function SignupPage() {
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
+                          <FormLabel className="flex items-center gap-2 text-sm sm:text-base">
+                            <User className="h-3 w-3 sm:h-4 sm:w-4" />
                             Last Name
                           </FormLabel>
                           <FormControl>
-                            <Input placeholder="Doe" {...field} className="h-11" />
+                            <Input placeholder="Doe" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -212,28 +217,28 @@ export default function SignupPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
+                      <FormLabel className="flex items-center gap-2 text-sm sm:text-base">
+                        <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
                         Email
                       </FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="jane.doe@example.com" {...field} className="h-11" />
+                        <Input type="email" placeholder="jane.doe@example.com" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <div className="space-y-2">
-                  <FormLabel className="flex items-center gap-2">
-                    <Cake className="h-4 w-4" />
+                  <FormLabel className="flex items-center gap-2 text-sm sm:text-base">
+                    <Cake className="h-3 w-3 sm:h-4 sm:w-4" />
                     Date of birth
                     {age && (
-                      <span className="text-sm text-muted-foreground font-normal">
+                      <span className="text-xs sm:text-sm text-muted-foreground font-normal">
                         ({age} years old)
                       </span>
                     )}
                   </FormLabel>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
                     <FormField
                       control={form.control}
                       name="dobMonth"
@@ -244,7 +249,7 @@ export default function SignupPage() {
                             value={field.value || ''}
                           >
                             <FormControl>
-                              <SelectTrigger className="h-11">
+                              <SelectTrigger className="h-10 sm:h-11 text-sm sm:text-base">
                                 <SelectValue placeholder="Month" />
                               </SelectTrigger>
                             </FormControl>
@@ -270,7 +275,7 @@ export default function SignupPage() {
                             value={field.value || ''}
                           >
                             <FormControl>
-                              <SelectTrigger className="h-11">
+                              <SelectTrigger className="h-10 sm:h-11 text-sm sm:text-base">
                                 <SelectValue placeholder="Day" />
                               </SelectTrigger>
                             </FormControl>
@@ -293,7 +298,7 @@ export default function SignupPage() {
                         <FormItem>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger className="h-11">
+                              <SelectTrigger className="h-10 sm:h-11 text-sm sm:text-base">
                                 <SelectValue placeholder="Year" />
                               </SelectTrigger>
                             </FormControl>
@@ -317,7 +322,7 @@ export default function SignupPage() {
                        form.formState.errors.dobYear?.message}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     You must be at least 13 years old to create an account
                   </p>
                 </div>
@@ -326,12 +331,12 @@ export default function SignupPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Lock className="h-4 w-4" />
+                      <FormLabel className="flex items-center gap-2 text-sm sm:text-base">
+                        <Lock className="h-3 w-3 sm:h-4 sm:w-4" />
                         Password
                       </FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="********" {...field} className="h-11" />
+                        <Input type="password" placeholder="********" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -342,25 +347,25 @@ export default function SignupPage() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Lock className="h-4 w-4" />
+                      <FormLabel className="flex items-center gap-2 text-sm sm:text-base">
+                        <Lock className="h-3 w-3 sm:h-4 sm:w-4" />
                         Confirm Password
                       </FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="********" {...field} className="h-11" />
+                        <Input type="password" placeholder="********" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-3" disabled={form.formState.isSubmitting}>
                   {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
                 </Button>
               </form>
             </Form>
-            <p className="mt-4 text-center text-sm text-muted-foreground">
+            <p className="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link href="/login" className="underline">
+              <Link href="/login" className="text-primary hover:text-primary/80 transition-colors font-medium">
                 Log In
               </Link>
             </p>

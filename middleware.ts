@@ -1,67 +1,75 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { detectSuspiciousActivity, logSecurityEvent } from '@/lib/security-utils';
+import { createClient } from '@supabase/supabase-js';
 
-export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+// Create Supabase client for middleware
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+export async function middleware(request: NextRequest) {
+  const hostname = request.headers.get('host') || '';
+  const url = request.nextUrl.clone();
   
-  // Security headers
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-XSS-Protection', '1; mode=block');
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  
-  // HSTS header for HTTPS
-  if (request.nextUrl.protocol === 'https:') {
-    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  }
-  
-  // Content Security Policy
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.supabase.co",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: https: blob:",
-    "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' wss: https: ws:",
-    "media-src 'self' blob:",
-    "frame-src 'none'",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'"
-  ].join('; ');
-  
-  response.headers.set('Content-Security-Policy', csp);
-  
-  // Detect suspicious activity
-  const requestInfo = {
-    ip: request.ip || request.headers.get('x-forwarded-for') || 'unknown',
-    userAgent: request.headers.get('user-agent') || '',
-    headers: Object.fromEntries(request.headers.entries())
-  };
-  
-  if (detectSuspiciousActivity(requestInfo)) {
-    logSecurityEvent({
-      type: 'suspicious_activity',
-      ip: requestInfo.ip,
-      userAgent: requestInfo.userAgent,
-      endpoint: request.nextUrl.pathname,
-      details: {
-        method: request.method,
-        url: request.nextUrl.toString(),
-        reason: 'Suspicious user agent or missing headers'
+  // Security: Protect admin routes
+  if (url.pathname.startsWith('/admin') && url.pathname !== '/admin/login') {
+    const token = request.cookies.get('sb-access-token')?.value || 
+                  request.cookies.get('supabase-auth-token')?.value;
+    
+    if (!token) {
+      url.pathname = '/admin/login';
+      url.searchParams.set('redirect', request.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+
+    // Verify admin role server-side
+    try {
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+      
+      if (error || !user) {
+        url.pathname = '/admin/login';
+        url.searchParams.set('redirect', request.nextUrl.pathname);
+        return NextResponse.redirect(url);
       }
-    });
+
+      // Check admin role
+      const { data: adminRole } = await supabase
+        .from('admin_roles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!adminRole) {
+        // Not an admin, redirect to main site
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    } catch (error) {
+      // Authentication failed, redirect to login
+      url.pathname = '/admin/login';
+      url.searchParams.set('redirect', request.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
   }
   
-  // Add security headers to API routes
-  if (request.nextUrl.pathname.startsWith('/api/')) {
-    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    response.headers.set('Pragma', 'no-cache');
+  // Handle admin subdomain
+  if (hostname.startsWith('admin.') || hostname.includes('admin.')) {
+    // If accessing root of admin subdomain, redirect to admin login
+    if (url.pathname === '/') {
+      url.pathname = '/admin/login';
+      return NextResponse.rewrite(url);
+    }
+    
+    // If accessing admin routes directly, allow them (after auth check above)
+    if (url.pathname.startsWith('/admin')) {
+      return NextResponse.next();
+    }
+    
+    // For any other path on admin subdomain, redirect to admin login
+    url.pathname = '/admin/login';
+    return NextResponse.rewrite(url);
   }
   
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {
@@ -73,6 +81,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
