@@ -138,183 +138,185 @@ export default function BlogPostPage() {
         <Link href="/" className="flex items-center justify-center" prefetch={false}>
           <Logo />
         </Link>
-        <nav className="ml-auto flex gap-4 items-center">
-          <Button variant="ghost" asChild>
+        <nav className="ml-auto flex gap-2 sm:gap-4 items-center">
+          <Button variant="ghost" asChild className="hidden sm:flex">
             <Link href="/blog" className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />
               Back to Blog
             </Link>
           </Button>
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" asChild className="sm:hidden p-2">
+            <Link href="/blog">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button variant="ghost" asChild className="text-sm px-2 sm:px-4">
             <Link href="/login">Log In</Link>
           </Button>
-          <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
-            <Link href="/signup">Join Free <ArrowRight className="ml-2 h-4 w-4" /></Link>
+          <Button asChild className="bg-primary hover:bg-primary/90 text-sm sm:text-base px-3 sm:px-4">
+            <Link href="/signup" className="flex items-center">
+              <span className="hidden xs:inline">Join Free</span>
+              <span className="xs:hidden">Join</span>
+              <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+            </Link>
           </Button>
         </nav>
       </header>
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="w-full py-8 sm:py-12 md:py-20 bg-gradient-to-br from-primary/5 via-accent/5 to-background">
-          <div className="container px-4 md:px-6">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-500 mb-6">
-                <span className="bg-primary/10 text-primary px-2 sm:px-3 py-1 rounded-full font-medium">
-                  {post.category}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">{formatDate(post.published_at || post.created_at)}</span>
-                  <span className="sm:hidden">{new Date(post.published_at || post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <User className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="truncate">{post.author?.full_name || 'Harthio Team'}</span>
-                </div>
+        <section className="w-full py-6 sm:py-8 md:py-12 lg:py-20 bg-gradient-to-br from-primary/5 via-accent/5 to-background">
+          <div className="container px-4 md:px-6 max-w-4xl mx-auto">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6">
+              <span className="bg-primary/10 text-primary px-2 sm:px-3 py-1 rounded-full font-medium text-xs sm:text-sm">
+                {post.category}
+              </span>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">{formatDate(post.published_at || post.created_at)}</span>
+                <span className="sm:hidden">{new Date(post.published_at || post.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}</span>
               </div>
-              
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
-                {post.title}
-              </h1>
-              
-              {post.excerpt && (
-                <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
-                  {post.excerpt}
-                </p>
-              )}
+              <div className="flex items-center gap-1">
+                <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="truncate max-w-[120px] sm:max-w-none">{post.author?.full_name || 'Harthio Team'}</span>
+              </div>
+            </div>
+            
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold mb-3 sm:mb-4 md:mb-6 leading-tight">
+              {post.title}
+            </h1>
+            
+            {post.excerpt && (
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-4 sm:mb-6 md:mb-8 leading-relaxed">
+                {post.excerpt}
+              </p>
+            )}
 
-              {/* Engagement Actions */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 sm:mb-8">
-                <button
-                  onClick={handleLike}
-                  className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-lg border hover:bg-gray-50 transition-colors"
-                >
-                  <Heart className={`h-4 w-4 sm:h-5 sm:w-5 ${hasLiked ? 'fill-primary text-primary' : 'text-gray-500'}`} />
-                  <span className="font-medium">{likeCount}</span>
-                  <span className="text-sm text-gray-500">likes</span>
-                </button>
-                
-                <button
-                  onClick={shareOnTwitter}
-                  className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-lg border hover:bg-gray-50 transition-colors"
-                >
-                  <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
-                  <span className="text-sm">Ask on X</span>
-                  <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-                </button>
-              </div>
+            {/* Engagement Actions */}
+            <div className="flex flex-col xs:flex-row gap-2 sm:gap-3 mb-4 sm:mb-6 md:mb-8">
+              <button
+                onClick={handleLike}
+                className="flex items-center justify-center xs:justify-start gap-2 px-3 sm:px-4 py-2 rounded-lg border hover:bg-gray-50 transition-colors text-sm sm:text-base"
+              >
+                <Heart className={`h-4 w-4 ${hasLiked ? 'fill-primary text-primary' : 'text-gray-500'}`} />
+                <span className="font-medium">{likeCount}</span>
+                <span className="text-xs sm:text-sm text-gray-500">likes</span>
+              </button>
+              
+              <button
+                onClick={shareOnTwitter}
+                className="flex items-center justify-center xs:justify-start gap-2 px-3 sm:px-4 py-2 rounded-lg border hover:bg-gray-50 transition-colors text-sm sm:text-base"
+              >
+                <MessageCircle className="h-4 w-4 text-gray-500" />
+                <span className="text-xs sm:text-sm">Ask on X</span>
+                <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+              </button>
             </div>
           </div>
         </section>
 
         {/* Featured Image */}
         {post.featured_image_url && (
-          <section className="w-full py-8">
-            <div className="container px-4 md:px-6">
-              <div className="max-w-4xl mx-auto">
-                <div className="relative h-64 md:h-96 rounded-2xl overflow-hidden shadow-lg">
-                  <Image
-                    src={post.featured_image_url}
-                    alt={post.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
+          <section className="w-full py-4 sm:py-6 md:py-8">
+            <div className="container px-4 md:px-6 max-w-4xl mx-auto">
+              <div className="relative h-48 sm:h-64 md:h-80 lg:h-96 rounded-lg sm:rounded-xl md:rounded-2xl overflow-hidden shadow-lg">
+                <Image
+                  src={post.featured_image_url}
+                  alt={post.title}
+                  fill
+                  className="object-cover"
+                  priority
+                />
               </div>
             </div>
           </section>
         )}
 
         {/* Content */}
-        <section className="w-full py-12">
-          <div className="container px-4 md:px-6">
-            <div className="max-w-4xl mx-auto">
-              <div className="prose prose-lg max-w-none">
-                {post.content.split('\n').map((paragraph, index) => (
-                  <p key={index} className="mb-6 text-gray-700 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            </div>
+        <section className="w-full py-6 sm:py-8 md:py-12">
+          <div className="container px-4 md:px-6 max-w-4xl mx-auto">
+            <article className="prose prose-sm sm:prose-base md:prose-lg lg:prose-xl max-w-none prose-gray prose-headings:font-bold prose-headings:text-gray-900 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:px-4 prose-blockquote:py-2 prose-blockquote:rounded-lg">
+              {post.content.split('\n').filter(paragraph => paragraph.trim()).map((paragraph, index) => (
+                <p key={index} className="mb-4 sm:mb-6 text-sm sm:text-base md:text-lg leading-relaxed text-gray-700">
+                  {paragraph}
+                </p>
+              ))}
+            </article>
           </div>
         </section>
 
         {/* Related Posts */}
         {relatedPosts.length > 0 && (
-          <section className="w-full py-16 bg-gray-50">
-            <div className="container px-4 md:px-6">
-              <div className="max-w-6xl mx-auto">
-                <h2 className="text-3xl font-bold mb-8">Related Updates</h2>
-                
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                  {relatedPosts.map((relatedPost) => (
-                    <Card key={relatedPost.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
-                      {relatedPost.featured_image_url && (
-                        <div className="relative h-40 sm:h-48">
-                          <Image
-                            src={relatedPost.featured_image_url}
-                            alt={relatedPost.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
+          <section className="w-full py-8 sm:py-12 md:py-16 bg-gray-50">
+            <div className="container px-4 md:px-6 max-w-6xl mx-auto">
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 sm:mb-8">Related Updates</h2>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
+                {relatedPosts.map((relatedPost) => (
+                  <Card key={relatedPost.id} className="overflow-hidden hover:shadow-lg transition-shadow group">
+                    {relatedPost.featured_image_url && (
+                      <div className="relative h-32 sm:h-40 md:h-48">
+                        <Image
+                          src={relatedPost.featured_image_url}
+                          alt={relatedPost.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    )}
+                    <CardContent className="p-3 sm:p-4 md:p-6">
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs text-gray-500 mb-2 sm:mb-3">
+                        <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">
+                          {relatedPost.category}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span className="hidden sm:inline text-xs">{formatDate(relatedPost.published_at || relatedPost.created_at)}</span>
+                          <span className="sm:hidden text-xs">{new Date(relatedPost.published_at || relatedPost.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                         </div>
+                      </div>
+                      <Link href={`/blog/${relatedPost.slug}`}>
+                        <h3 className="text-sm sm:text-base md:text-lg font-semibold mb-2 sm:mb-3 leading-tight group-hover:text-primary transition-colors cursor-pointer line-clamp-2">
+                          {relatedPost.title}
+                        </h3>
+                      </Link>
+                      {relatedPost.excerpt && (
+                        <p className="text-gray-600 text-xs sm:text-sm leading-relaxed line-clamp-2 sm:line-clamp-3">
+                          {relatedPost.excerpt}
+                        </p>
                       )}
-                      <CardContent className="p-4 sm:p-6">
-                        <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500 mb-3">
-                          <span className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium">
-                            {relatedPost.category}
-                          </span>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            <span className="hidden sm:inline">{formatDate(relatedPost.published_at || relatedPost.created_at)}</span>
-                            <span className="sm:hidden">{new Date(relatedPost.published_at || relatedPost.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                          </div>
-                        </div>
-                        <Link href={`/blog/${relatedPost.slug}`}>
-                          <h3 className="text-base sm:text-lg font-semibold mb-3 leading-tight group-hover:text-primary transition-colors cursor-pointer">
-                            {relatedPost.title}
-                          </h3>
-                        </Link>
-                        {relatedPost.excerpt && (
-                          <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
-                            {relatedPost.excerpt}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
             </div>
           </section>
         )}
 
         {/* CTA Section */}
-        <section className="w-full py-12 sm:py-16 bg-gradient-to-r from-primary via-accent to-primary/90 text-white">
-          <div className="container px-4 md:px-6 text-center">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">
+        <section className="w-full py-8 sm:py-12 md:py-16 bg-gradient-to-r from-primary via-accent to-primary/90 text-white">
+          <div className="container px-4 md:px-6 text-center max-w-4xl mx-auto">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
               Join the Conversation
             </h2>
-            <p className="text-lg sm:text-xl mb-8 max-w-2xl mx-auto opacity-90 px-4">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl mb-6 sm:mb-8 max-w-2xl mx-auto opacity-90 px-2 sm:px-4">
               Have questions about this update? Join Harthio and connect with our community.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md sm:max-w-none mx-auto">
-              <Button className="bg-white text-primary hover:bg-gray-100 px-6 py-3 w-full sm:w-auto" asChild>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-sm sm:max-w-none mx-auto">
+              <Button className="bg-white text-primary hover:bg-gray-100 px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto text-sm sm:text-base" asChild>
                 <Link href="/signup" className="flex items-center justify-center">
                   Join Harthio
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                 </Link>
               </Button>
               <Button 
                 variant="outline" 
-                className="border-white text-white hover:bg-white hover:text-primary px-6 py-3 w-full sm:w-auto"
+                className="border-white text-white hover:bg-white hover:text-primary px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto text-sm sm:text-base"
                 onClick={shareOnTwitter}
               >
                 <span className="flex items-center justify-center">
                   Ask on X
-                  <ExternalLink className="ml-2 h-4 w-4" />
+                  <ExternalLink className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
                 </span>
               </Button>
             </div>
@@ -323,14 +325,14 @@ export default function BlogPostPage() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
+      <footer className="bg-gray-900 text-white py-6 sm:py-8">
         <div className="container px-4 md:px-6">
-          <div className="flex flex-col sm:flex-row justify-between items-center">
-            <div className="flex items-center gap-4 mb-4 sm:mb-0">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-center sm:text-left">
               <Logo className="text-white" />
-              <p className="text-sm text-gray-400">&copy; 2025 Stria Technologies All rights reserved.</p>
+              <p className="text-xs sm:text-sm text-gray-400">&copy; 2025 Stria Technologies All rights reserved.</p>
             </div>
-            <nav className="flex gap-6 text-sm">
+            <nav className="flex gap-4 sm:gap-6 text-xs sm:text-sm">
               <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy</Link>
               <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms</Link>
               <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">Contact</Link>
