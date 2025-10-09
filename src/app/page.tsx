@@ -95,7 +95,7 @@ export default function LandingPage() {
               <div className="relative order-1 lg:order-2">
                 <div className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl">
                   <Image
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2088&q=80"
+                    src="https://images.unsplash.com/photo-1759593047536-5258c3c6a527?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
                     width="600"
                     height="400"
                     alt="Two people having a meaningful conversation over video call"
@@ -120,7 +120,7 @@ export default function LandingPage() {
                     situation and put me through what to do and this fix my
                     life."
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">~ Marcus T., 42</p>
+                  <p className="text-xs text-gray-400 mt-1">~ Deborah Williams </p>
                 </div>
               </div>
             </div>
