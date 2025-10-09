@@ -75,7 +75,7 @@ export default function LandingPage() {
                   </p>
                   <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
                     <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
-                    <span>Like Calendly meets your most empathetic friend</span>
+                    <span>Get connected to listeners for free emotional support.</span>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
@@ -116,11 +116,9 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <p className="text-xs sm:text-sm text-gray-600 leading-tight">
-                    "After my divorce, I found someone who truly understood my
-                    situation and put me through what to do and this fix my
-                    life."
+                    "If speaking kindly to plants can make them grow, imagine what speaking kindly to humans can
+                    can do."
                   </p>
-                  <p className="text-xs text-gray-400 mt-1">~ Deborah Williams </p>
                 </div>
               </div>
             </div>
