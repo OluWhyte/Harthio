@@ -7,6 +7,7 @@ import { Logo } from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BlogService } from '@/lib/services/blog-service';
+import { AdminService } from '@/lib/services/admin-service';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -77,21 +78,25 @@ export default function AdminDashboardContent() {
 
   const loadStats = async () => {
     try {
-      const posts = await BlogService.getAllPosts(100);
+      const [posts, userAnalytics, topicAnalytics] = await Promise.all([
+        BlogService.getAllPosts(100),
+        AdminService.getUserAnalytics(),
+        AdminService.getTopicAnalytics()
+      ]);
+
       const published = posts.filter(p => p.status === 'published');
       const drafts = posts.filter(p => p.status === 'draft');
       const totalLikes = posts.reduce((sum, post) => sum + (post.like_count || 0), 0);
 
-      // TODO: Replace with actual database queries when implementing these features
       setStats({
         totalPosts: posts.length,
         publishedPosts: published.length,
         draftPosts: drafts.length,
         totalLikes,
-        totalUsers: 0, // TODO: Query users table
-        activeUsers: 0, // TODO: Query active users (last 30 days)
-        totalSessions: 0, // TODO: Query topics/sessions table
-        activeSessions: 0 // TODO: Query active sessions
+        totalUsers: userAnalytics.total_users,
+        activeUsers: userAnalytics.active_users,
+        totalSessions: topicAnalytics.total_topics,
+        activeSessions: topicAnalytics.active_topics
       });
     } catch (error) {
       console.error('Error loading stats:', error);
