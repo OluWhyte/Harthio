@@ -160,20 +160,36 @@ export function detectSuspiciousActivity(req: {
     /curl/i,
     /wget/i,
     /python/i,
-    /php/i
+    /php/i,
+    /postman/i,
+    /insomnia/i,
+    /httpie/i,
+    /masscan/i,
+    /nmap/i,
+    /sqlmap/i,
+    /nikto/i,
+    /burp/i,
+    /zap/i
   ];
   
   const userAgent = req.userAgent || '';
   const isSuspiciousUA = suspiciousPatterns.some(pattern => pattern.test(userAgent));
   
-  // Check for missing common headers
+  // Check for missing common headers that legitimate browsers send
   const hasCommonHeaders = req.headers && (
     req.headers['accept'] || 
     req.headers['accept-language'] || 
     req.headers['accept-encoding']
   );
   
-  return isSuspiciousUA || !hasCommonHeaders;
+  // Check for suspicious IP patterns (basic check)
+  const ip = req.ip || '';
+  const isSuspiciousIP = ip.startsWith('10.') || ip.startsWith('172.') || ip.startsWith('192.168.');
+  
+  // Check for empty or very short user agent
+  const hasValidUA = userAgent.length > 10;
+  
+  return isSuspiciousUA || !hasCommonHeaders || !hasValidUA;
 }
 
 /**
@@ -251,6 +267,65 @@ export function getSecurityHeaders(): Record<string, string> {
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    'X-Robots-Tag': 'noindex, nofollow',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
   };
+}
+
+/**
+ * Validate API request structure and content
+ */
+export function validateApiRequest(req: {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: any;
+}): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  
+  // Check content type for POST/PUT requests
+  if (req.method && ['POST', 'PUT', 'PATCH'].includes(req.method)) {
+    const contentType = req.headers?.['content-type'];
+    if (!contentType || !contentType.includes('application/json')) {
+      errors.push('Invalid or missing Content-Type header');
+    }
+  }
+  
+  // Check for required security headers
+  const requiredHeaders = ['user-agent', 'accept'];
+  requiredHeaders.forEach(header => {
+    if (!req.headers?.[header]) {
+      errors.push(`Missing required header: ${header}`);
+    }
+  });
+  
+  // Validate body size (prevent large payloads)
+  if (req.body && typeof req.body === 'string' && req.body.length > 1024 * 1024) {
+    errors.push('Request body too large');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Create a secure API response wrapper
+ */
+export function createSecureResponse(
+  data: any, 
+  status: number = 200, 
+  additionalHeaders: Record<string, string> = {}
+) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...getSecurityHeaders(),
+      ...additionalHeaders
+    }
+  });
 }
