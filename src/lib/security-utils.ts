@@ -126,6 +126,20 @@ export function logSecurityEvent(event: SecurityEvent) {
   if (event.type === 'suspicious_activity' || event.type === 'auth_failure') {
     // TODO: Store in database or send to security service
   }
+
+  // Send to security monitor if available
+  if (typeof window === 'undefined') { // Server-side only
+    try {
+      // Dynamic import to avoid circular dependencies
+      import('./security-monitor').then(({ securityMonitor }) => {
+        securityMonitor.recordEvent(event);
+      }).catch(() => {
+        // Ignore import errors to prevent circular dependency issues
+      });
+    } catch (error) {
+      // Ignore errors to prevent breaking the application
+    }
+  }
 }
 
 /**

@@ -1,140 +1,176 @@
 /**
- * Security configuration and constants
+ * Security Configuration
+ * Centralized configuration for security monitoring and alerting
  */
 
-export const SECURITY_CONFIG = {
-  // Rate limiting configurations
-  RATE_LIMITS: {
-    AUTH: {
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      maxRequests: 5,
-      message: 'Too many authentication attempts. Please try again in 15 minutes.'
-    },
-    EMAIL: {
-      windowMs: 60 * 60 * 1000, // 1 hour
-      maxRequests: 3,
-      message: 'Too many emails sent. Please try again in an hour.'
-    },
-    API: {
-      windowMs: 60 * 1000, // 1 minute
-      maxRequests: 30,
-      message: 'Too many API requests. Please slow down.'
-    },
-    MESSAGE: {
-      windowMs: 60 * 1000, // 1 minute
-      maxRequests: 20,
-      message: 'Too many messages. Please slow down.'
-    }
-  },
-
-  // Input validation limits
-  INPUT_LIMITS: {
-    TOPIC_TITLE: { min: 3, max: 100 },
-    TOPIC_DESCRIPTION: { min: 10, max: 500 },
-    MESSAGE: { min: 1, max: 1000 },
-    DISPLAY_NAME: { min: 2, max: 50 },
-    EMAIL: { max: 254 },
-    JOIN_REQUEST_MESSAGE: { max: 200 }
-  },
-
-  // Session configuration
-  SESSION: {
-    MAX_DURATION_HOURS: 4,
-    EARLY_JOIN_MINUTES: 15,
-    MAX_FUTURE_DAYS: 30
-  },
-
-  // Security headers
-  HEADERS: {
-    CSP: {
-      'default-src': "'self'",
-      'script-src': "'self' 'unsafe-inline' 'unsafe-eval' https://js.supabase.co",
-      'style-src': "'self' 'unsafe-inline' https://fonts.googleapis.com",
-      'img-src': "'self' data: https: blob:",
-      'font-src': "'self' https://fonts.gstatic.com",
-      'connect-src': "'self' wss: https: ws:",
-      'media-src': "'self' blob:",
-      'frame-src': "'none'",
-      'object-src': "'none'",
-      'base-uri': "'self'",
-      'form-action': "'self'"
-    },
-    SECURITY: {
-      'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
-      'X-XSS-Protection': '1; mode=block',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
-    }
-  },
-
-  // Suspicious activity patterns
-  SUSPICIOUS_PATTERNS: {
-    USER_AGENTS: [
-      /bot/i,
-      /crawler/i,
-      /spider/i,
-      /scraper/i,
-      /curl/i,
-      /wget/i,
-      /python/i,
-      /php/i
-    ],
-    SQL_INJECTION: [
-      /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION)\b)/i,
-      /(\b(OR|AND)\s+\d+\s*=\s*\d+)/i,
-      /(--|\/\*|\*\/)/,
-      /(\b(SCRIPT|JAVASCRIPT|VBSCRIPT|ONLOAD|ONERROR)\b)/i
-    ],
-    XSS: [
-      /<script/i,
-      /javascript:/i,
-      /on\w+=/i,
-      /<iframe/i,
-      /<object/i,
-      /<embed/i
-    ]
-  },
-
-  // Error messages (production-safe)
-  ERROR_MESSAGES: {
-    GENERIC: 'An error occurred. Please try again.',
-    AUTH_REQUIRED: 'Authentication required. Please log in.',
-    ACCESS_DENIED: 'Access denied. You don\'t have permission to perform this action.',
-    NOT_FOUND: 'The requested resource was not found.',
-    RATE_LIMITED: 'Too many requests. Please try again later.',
-    VALIDATION_FAILED: 'Invalid input provided. Please check your data.',
-    SESSION_EXPIRED: 'Your session has expired. Please refresh the page.',
-    NETWORK_ERROR: 'Network error. Please check your connection and try again.'
-  }
-} as const;
-
-// Environment-specific configurations
-export const getSecurityConfig = () => {
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  return {
-    ...SECURITY_CONFIG,
-    
-    // Adjust rate limits for development
-    RATE_LIMITS: isDevelopment ? {
-      ...SECURITY_CONFIG.RATE_LIMITS,
-      AUTH: { ...SECURITY_CONFIG.RATE_LIMITS.AUTH, maxRequests: 50 },
-      EMAIL: { ...SECURITY_CONFIG.RATE_LIMITS.EMAIL, maxRequests: 10 },
-      API: { ...SECURITY_CONFIG.RATE_LIMITS.API, maxRequests: 100 }
-    } : SECURITY_CONFIG.RATE_LIMITS,
-
-    // Enable/disable features based on environment
-    FEATURES: {
-      DETAILED_ERRORS: isDevelopment,
-      SECURITY_LOGGING: isProduction,
-      RATE_LIMITING: true,
-      SUSPICIOUS_ACTIVITY_DETECTION: isProduction,
-      CSP_ENFORCEMENT: isProduction
-    }
+export interface SecurityConfig {
+  monitoring: {
+    enabled: boolean;
+    alertThresholds: {
+      auth_failure: { count: number; window: number };
+      rate_limit: { count: number; window: number };
+      suspicious_activity: { count: number; window: number };
+      validation_error: { count: number; window: number };
+    };
+    retentionPeriod: number; // in milliseconds
+    maxEvents: number;
+    maxAlerts: number;
   };
+  scanning: {
+    enabled: boolean;
+    autoScanInterval: number; // in milliseconds
+    riskThresholds: {
+      low: number;
+      medium: number;
+      high: number;
+      critical: number;
+    };
+  };
+  logging: {
+    enabled: boolean;
+    level: 'debug' | 'info' | 'warn' | 'error';
+    maxLogs: number;
+    retentionPeriod: number;
+    sensitiveFields: string[];
+    sensitiveHeaders: string[];
+  };
+  notifications: {
+    email: {
+      enabled: boolean;
+      recipients: string[];
+      severityThreshold: 'low' | 'medium' | 'high' | 'critical';
+    };
+    webhook: {
+      enabled: boolean;
+      url?: string;
+      headers?: Record<string, string>;
+    };
+    slack: {
+      enabled: boolean;
+      webhookUrl?: string;
+      channel?: string;
+    };
+  };
+  rateLimiting: {
+    enabled: boolean;
+    windows: {
+      strict: { requests: number; window: number };
+      moderate: { requests: number; window: number };
+      lenient: { requests: number; window: number };
+    };
+  };
+}
+
+// Default security configuration
+export const defaultSecurityConfig: SecurityConfig = {
+  monitoring: {
+    enabled: true,
+    alertThresholds: {
+      auth_failure: { count: 5, window: 15 * 60 * 1000 }, // 5 failures in 15 minutes
+      rate_limit: { count: 10, window: 5 * 60 * 1000 }, // 10 rate limits in 5 minutes
+      suspicious_activity: { count: 3, window: 10 * 60 * 1000 }, // 3 suspicious activities in 10 minutes
+      validation_error: { count: 20, window: 5 * 60 * 1000 }, // 20 validation errors in 5 minutes
+    },
+    retentionPeriod: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxEvents: 1000,
+    maxAlerts: 100,
+  },
+  scanning: {
+    enabled: true,
+    autoScanInterval: 6 * 60 * 60 * 1000, // 6 hours
+    riskThresholds: {
+      low: 25,
+      medium: 50,
+      high: 75,
+      critical: 90,
+    },
+  },
+  logging: {
+    enabled: true,
+    level: process.env.NODE_ENV === 'production' ? 'warn' : 'debug',
+    maxLogs: 10000,
+    retentionPeriod: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sensitiveFields: [
+      'password',
+      'token',
+      'secret',
+      'key',
+      'auth',
+      'credential',
+      'private',
+      'confidential'
+    ],
+    sensitiveHeaders: [
+      'authorization',
+      'cookie',
+      'x-api-key',
+      'x-auth-token',
+      'x-access-token',
+      'x-refresh-token'
+    ],
+  },
+  notifications: {
+    email: {
+      enabled: process.env.NODE_ENV === 'production',
+      recipients: process.env.SECURITY_ALERT_EMAIL ? [process.env.SECURITY_ALERT_EMAIL] : [],
+      severityThreshold: 'high',
+    },
+    webhook: {
+      enabled: !!process.env.SECURITY_WEBHOOK_URL,
+      url: process.env.SECURITY_WEBHOOK_URL,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Harthio-Security-Monitor/1.0'
+      },
+    },
+    slack: {
+      enabled: !!process.env.SLACK_WEBHOOK_URL,
+      webhookUrl: process.env.SLACK_WEBHOOK_URL,
+      channel: process.env.SLACK_SECURITY_CHANNEL || '#security-alerts',
+    },
+  },
+  rateLimiting: {
+    enabled: true,
+    windows: {
+      strict: { requests: 5, window: 15 * 60 * 1000 }, // 5 requests per 15 minutes
+      moderate: { requests: 10, window: 60 * 1000 }, // 10 requests per minute
+      lenient: { requests: 30, window: 60 * 1000 }, // 30 requests per minute
+    },
+  },
 };
 
-export type SecurityConfig = ReturnType<typeof getSecurityConfig>;
+// Environment-specific overrides
+export function getSecurityConfig(): SecurityConfig {
+  const config = { ...defaultSecurityConfig };
+
+  // Production overrides
+  if (process.env.NODE_ENV === 'production') {
+    config.monitoring.enabled = true;
+    config.scanning.enabled = true;
+    config.logging.level = 'warn';
+    config.notifications.email.enabled = true;
+  }
+
+  // Development overrides
+  if (process.env.NODE_ENV === 'development') {
+    config.monitoring.alertThresholds.auth_failure.count = 10; // More lenient in dev
+    config.scanning.autoScanInterval = 24 * 60 * 60 * 1000; // Once per day in dev
+    config.logging.level = 'debug';
+    config.notifications.email.enabled = false;
+  }
+
+  // Test overrides
+  if (process.env.NODE_ENV === 'test') {
+    config.monitoring.enabled = false;
+    config.scanning.enabled = false;
+    config.logging.enabled = false;
+    config.notifications.email.enabled = false;
+    config.notifications.webhook.enabled = false;
+    config.notifications.slack.enabled = false;
+  }
+
+  return config;
+}
+
+// Export the active configuration
+export const securityConfig = getSecurityConfig();
