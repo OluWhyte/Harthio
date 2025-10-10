@@ -9,9 +9,8 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase";
-import { useDeviceTracking } from "@/hooks/use-device-tracking";
+// import { useDeviceTracking } from "@/hooks/use-device-tracking";
 
 // User object structure compatible with existing code
 export interface User {
@@ -19,6 +18,14 @@ export interface User {
   email: string | null;
   displayName: string | null;
   emailVerified: boolean;
+}
+
+export interface SignUpData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  dob: Date;
 }
 
 export type UserProfile = Database["public"]["Tables"]["users"]["Row"] & {
@@ -37,14 +44,14 @@ export type AuthContextType = {
   loading: boolean;
   logIn: (email: string, pass: string) => Promise<void>;
   logOut: () => Promise<void>;
-  signUp: (data: any) => Promise<void>;
+  signUp: (data: SignUpData) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
   createUserProfile: (
     userId: string,
     email: string,
     displayName: string | null
-  ) => Promise<any>;
+  ) => Promise<unknown>;
   refreshUserProfile: () => Promise<void>;
   isInOngoingSession: boolean;
   setIsInOngoingSession: (value: boolean) => void;
@@ -61,12 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isInOngoingSession, setIsInOngoingSession] = useState(false);
   const router = useRouter();
 
-  // Initialize device tracking for authenticated users
-  const deviceTracking = useDeviceTracking({
-    userId: user?.uid,
-    enabled: !!user,
-    activityInterval: 60000 // Update activity every minute
-  });
+  // Device tracking disabled to prevent excessive logging
+  // const deviceTracking = useDeviceTracking({
+  //   userId: user?.uid,
+  //   enabled: !!user,
+  //   activityInterval: 60000 // Update activity every minute
+  // });
 
   const refreshUserProfile = useCallback(async () => {
     if (!user) return;
@@ -92,18 +99,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error.code === "42501" || error.code === "PGRST116") {
           console.warn("User profile not found, attempting to create it...");
           try {
-            const { data: newProfile, error: createError } = await supabase
+            const insertResult = await (
+              supabase as unknown as {
+                from: (table: string) => {
+                  insert: (data: Record<string, unknown>) => {
+                    select: () => {
+                      single: () => Promise<{
+                        data:
+                          | Database["public"]["Tables"]["users"]["Row"]
+                          | null;
+                        error: { code?: string; message?: string } | null;
+                      }>;
+                    };
+                  };
+                };
+              }
+            )
               .from("users")
               .insert({
                 id: user.uid,
-                email: user.email,
+                email: user.email || "",
                 display_name: user.displayName,
                 first_name: user.displayName?.split(" ")[0] || null,
                 last_name:
                   user.displayName?.split(" ").slice(1).join(" ") || null,
-              } as any)
+              })
               .select()
               .single();
+
+            const { data: newProfile, error: createError } = insertResult;
 
             if (createError) {
               console.error("Error creating user profile:", createError);
@@ -112,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             if (newProfile) {
               setUserProfile({
-                ...(newProfile as any),
+                ...(newProfile as Database["public"]["Tables"]["users"]["Row"]),
                 ratings: {
                   politeness: { average: 0, count: 0 },
                   relevance: { average: 0, count: 0 },
@@ -120,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   communication: { average: 0, count: 0 },
                   professionalism: { average: 0, count: 0 },
                 },
-              });
+              } as UserProfile);
               return;
             }
           } catch (createError) {
@@ -139,8 +163,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           )
           .eq("user_id", user.uid);
 
+        interface RatingData {
+          politeness: number;
+          relevance: number;
+          problem_solved: number;
+          communication: number;
+          professionalism: number;
+        }
+
         const ratingsData = ratings?.reduce(
-          (acc, rating: any) => {
+          (acc, rating: RatingData) => {
             acc.politeness.sum += rating.politeness;
             acc.relevance.sum += rating.relevance;
             acc.problemSolved.sum += rating.problem_solved;
@@ -205,9 +237,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
 
         setUserProfile({
-          ...(profile as any),
+          ...(profile as Database["public"]["Tables"]["users"]["Row"]),
           ratings: formattedRatings,
-        });
+        } as UserProfile);
       }
     } catch (error) {
       console.error("Error refreshing user profile:", error);
@@ -220,10 +252,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const {
           data: { session },
-          error,
+          error: sessionError,
         } = await supabase.auth.getSession();
 
-        if (error) {
+        if (sessionError) {
+          setUser(null);
+          setUserProfile(null);
           setLoading(false);
           return;
         }
@@ -240,9 +274,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             emailVerified: supabaseUser.email_confirmed_at !== null,
           };
           setUser(user);
+        } else {
+          setUser(null);
+          setUserProfile(null);
         }
-      } catch (error) {
+      } catch {
         // Silent error handling for security
+        setUser(null);
+        setUserProfile(null);
       } finally {
         setLoading(false);
       }
@@ -254,7 +293,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-
       if (session?.user) {
         const supabaseUser = session.user;
         const user: User = {
@@ -287,7 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (!user) {
       setUserProfile(null);
     }
-  }, [user?.uid, userProfile?.id]); // Only depend on user ID and profile ID
+  }, [refreshUserProfile, user, userProfile]); // Only depend on user and profile
 
   const logIn = async (email: string, password: string) => {
     try {
@@ -297,7 +335,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-
         // Provide more specific error messages
         if (error.message.includes("Invalid login credentials")) {
           throw new Error(
@@ -334,9 +371,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      router.push("/dashboard");
+      // Don't redirect here - let the calling component handle navigation
+      // The auth state change will be picked up by useEffect in components
     } catch (networkError) {
-
       if (
         networkError instanceof Error &&
         networkError.message &&
@@ -361,13 +398,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   };
 
-  const signUp = async (data: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    dob: Date;
-  }) => {
+  const signUp = async (data: SignUpData) => {
     const displayName = `${data.firstName} ${data.lastName}`.trim();
 
     const { data: signupData, error } = await supabase.auth.signUp({
@@ -409,7 +440,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Verify user profile was created
         if (signupData.user) {
-          const { data: profile, error: profileError } = await supabase
+          const { error: profileError } = await supabase
             .from("users")
             .select("*")
             .eq("id", signupData.user.id)
@@ -493,7 +524,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return existingProfile;
       }
 
-      const { data: profile, error } = await supabase
+      const insertResult = await (
+        supabase as unknown as {
+          from: (table: string) => {
+            insert: (data: Record<string, unknown>) => {
+              select: () => {
+                single: () => Promise<{
+                  data: Database["public"]["Tables"]["users"]["Row"] | null;
+                  error: { code?: string; message?: string } | null;
+                }>;
+              };
+            };
+          };
+        }
+      )
         .from("users")
         .insert({
           id: userId,
@@ -501,9 +545,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           display_name: displayName,
           first_name: displayName?.split(" ")[0] || null,
           last_name: displayName?.split(" ").slice(1).join(" ") || null,
-        } as any)
+        })
         .select()
         .single();
+
+      const { data: profile, error } = insertResult;
+      console.log("Profile created:", profile);
 
       if (error) {
         console.error("Error creating user profile:", error);

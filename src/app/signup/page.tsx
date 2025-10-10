@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/common/logo';
@@ -336,7 +337,7 @@ export default function SignupPage() {
                         Password
                       </FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="********" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
+                        <PasswordInput placeholder="********" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -352,7 +353,7 @@ export default function SignupPage() {
                         Confirm Password
                       </FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="********" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
+                        <PasswordInput placeholder="********" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -1,7 +1,7 @@
 // ============================================================================
-// DEVICE TRACKING SERVICE
+// DEVICE TRACKING SERVICE - DISABLED
 // ============================================================================
-// Captures device information, geolocation, and user footprint data
+// Device tracking has been disabled to prevent excessive logging and privacy concerns
 
 import type { DeviceInfo, LocationInfo } from '@/lib/database-types';
 
@@ -124,33 +124,12 @@ export class DeviceTrackingService {
   }
 
   // ============================================================================
-  // GEOLOCATION SERVICES
+  // GEOLOCATION SERVICES - DISABLED
   // ============================================================================
 
   static async getLocationInfo(): Promise<LocationInfo | null> {
-    try {
-      // First try to get precise location with user permission
-      const position = await this.getCurrentPosition();
-      if (position) {
-        // Use reverse geocoding to get location details
-        const locationDetails = await this.reverseGeocode(position.latitude, position.longitude);
-        return {
-          ...locationDetails,
-          latitude: position.latitude,
-          longitude: position.longitude
-        };
-      }
-    } catch (error) {
-      console.warn('Precise location not available:', error);
-    }
-
-    // Fallback to IP-based geolocation
-    try {
-      return await this.getIPBasedLocation();
-    } catch (error) {
-      console.warn('IP-based location failed:', error);
-      return null;
-    }
+    // Location tracking disabled to prevent privacy concerns and excessive API calls
+    return null;
   }
 
   private static getCurrentPosition(): Promise<{ latitude: number; longitude: number } | null> {
@@ -228,108 +207,31 @@ export class DeviceTrackingService {
   }
 
   // ============================================================================
-  // SESSION TRACKING
+  // SESSION TRACKING - DISABLED
   // ============================================================================
 
   static async trackUserSession(userId: string): Promise<string | null> {
-    try {
-      const deviceInfo = this.getDeviceInfo();
-      const locationInfo = await this.getLocationInfo();
-      
-      // Get IP address
-      const ipResponse = await fetch('/api/ip');
-      const { ip } = await ipResponse.json();
-      
-      // Create session tracking data
-      const sessionData = {
-        user_id: userId,
-        ip_address: ip,
-        user_agent: navigator.userAgent,
-        device_info: deviceInfo,
-        location_info: locationInfo
-      };
-      
-      // Send to tracking API
-      const response = await fetch('/api/device-tracking/session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(sessionData)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to track session');
-      }
-      
-      const result = await response.json();
-      return result.session_id;
-    } catch (error) {
-      console.error('Session tracking failed:', error);
-      return null;
-    }
+    // Session tracking disabled to prevent excessive logging
+    return null;
   }
 
   static async updateSessionActivity(sessionId: string): Promise<void> {
-    try {
-      await fetch('/api/device-tracking/activity', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ session_id: sessionId })
-      });
-    } catch (error) {
-      console.error('Failed to update session activity:', error);
-    }
+    // Activity tracking disabled
+    return;
   }
 
   static async endSession(sessionId: string): Promise<void> {
-    try {
-      await fetch('/api/device-tracking/end-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ session_id: sessionId })
-      });
-    } catch (error) {
-      console.error('Failed to end session:', error);
-    }
+    // Session ending disabled
+    return;
   }
 
   // ============================================================================
-  // FINGERPRINTING (Privacy-Conscious)
+  // FINGERPRINTING - DISABLED
   // ============================================================================
 
   static generateDeviceFingerprint(): string {
-    const deviceInfo = this.getDeviceInfo();
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    // Create a simple canvas fingerprint
-    if (ctx) {
-      ctx.textBaseline = 'top';
-      ctx.font = '14px Arial';
-      ctx.fillText('Harthio Device Fingerprint', 2, 2);
-    }
-    
-    const canvasFingerprint = canvas.toDataURL();
-    
-    // Combine various browser features for fingerprinting
-    const fingerprint = [
-      deviceInfo.browser + deviceInfo.browser_version,
-      deviceInfo.os + deviceInfo.os_version,
-      deviceInfo.screen_resolution,
-      deviceInfo.timezone,
-      deviceInfo.language,
-      navigator.hardwareConcurrency || 0,
-      navigator.maxTouchPoints || 0,
-      canvasFingerprint.slice(-50) // Last 50 chars of canvas fingerprint
-    ].join('|');
-    
-    // Create a hash of the fingerprint
-    return this.simpleHash(fingerprint);
+    // Device fingerprinting disabled to prevent excessive logging and privacy concerns
+    return 'disabled';
   }
 
   private static simpleHash(str: string): string {
@@ -343,30 +245,16 @@ export class DeviceTrackingService {
   }
 
   // ============================================================================
-  // ANALYTICS HELPERS
+  // ANALYTICS HELPERS - DISABLED
   // ============================================================================
 
   static isReturningUser(deviceFingerprint: string): Promise<boolean> {
-    return fetch('/api/device-tracking/check-returning', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ fingerprint: deviceFingerprint })
-    })
-    .then(res => res.json())
-    .then(data => data.is_returning)
-    .catch(() => false);
+    // Analytics disabled
+    return Promise.resolve(false);
   }
 
-  static async getUserFootprint(userId: string): Promise<any> {
-    try {
-      const response = await fetch(`/api/device-tracking/footprint/${userId}`);
-      if (!response.ok) throw new Error('Failed to fetch footprint');
-      return await response.json();
-    } catch (error) {
-      console.error('Failed to get user footprint:', error);
-      return null;
-    }
+  static async getUserFootprint(userId: string): Promise<null> {
+    // User footprint tracking disabled
+    return null;
   }
 }

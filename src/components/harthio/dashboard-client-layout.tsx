@@ -43,21 +43,24 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isSheetOpen, setSheetOpen] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!loading && !user) {
+    // Only redirect if loading is complete and we definitely don't have a user
+    if (!loading && !user && !hasRedirected) {
       console.log('No user found in dashboard layout, redirecting to login...');
+      setHasRedirected(true);
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, hasRedirected]);
   
   useEffect(() => {
     setSheetOpen(false);
   }, [pathname]);
 
-
-  if (loading) {
+  // Show loading while auth is being determined or during redirect
+  if (loading || (!user && !hasRedirected)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
@@ -68,7 +71,8 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user) {
+  // Show redirect message only after we've initiated the redirect
+  if (!user && hasRedirected) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
@@ -80,14 +84,27 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   }
   
   if (!userProfile) {
-    return (
-         <div className="flex flex-col items-center justify-center min-h-screen bg-background">
-            <div className="text-center max-w-md">
-              <p className="mb-4 text-muted-foreground">Could not load user profile. Please try logging out and back in.</p>
-              <Button onClick={logOut}>Log Out</Button>
-            </div>
+    // Show loading spinner while profile is being fetched
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Loading your profile...</p>
+          </div>
         </div>
-    )
+      );
+    }
+    
+    // Only show error after loading is complete and still no profile
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background">
+        <div className="text-center max-w-md">
+          <p className="mb-4 text-muted-foreground">Could not load user profile. Please try logging out and back in.</p>
+          <Button onClick={logOut}>Log Out</Button>
+        </div>
+      </div>
+    );
   }
   
   const handleComingSoonClick = (label: string) => {

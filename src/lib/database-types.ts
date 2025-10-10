@@ -25,6 +25,48 @@ export interface TopicJoinRequest {
 // Rating constraints (1-5 scale)
 export type RatingValue = 1 | 2 | 3 | 4 | 5;
 
+// WebRTC signaling message data types
+export interface SignalingMessageData {
+  type:
+    | "offer"
+    | "answer"
+    | "ice-candidate"
+    | "join"
+    | "leave"
+    | "user-joined"
+    | "user-left";
+  sdp?: string;
+  candidate?: RTCIceCandidateInit;
+  userId?: string;
+  userName?: string;
+  [key: string]: unknown;
+}
+
+// Device and location info types (used in database schema)
+export interface DeviceInfo {
+  browser: string;
+  browser_version: string;
+  os: string;
+  os_version: string;
+  device_type: "desktop" | "mobile" | "tablet";
+  device_vendor?: string;
+  device_model?: string;
+  screen_resolution?: string;
+  timezone?: string;
+  language?: string;
+}
+
+export interface LocationInfo {
+  country: string;
+  country_code: string;
+  region?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+  isp?: string;
+}
+
 // ============================================================================
 // DATABASE SCHEMA TYPES
 // ============================================================================
@@ -181,7 +223,12 @@ export interface Database {
           user_id: string; // UUID, references users(id), NOT NULL
           title: string; // NOT NULL
           message: string; // NOT NULL
-          type: 'session_cancelled' | 'session_approved' | 'session_reminder' | 'session_declined' | 'general'; // NOT NULL
+          type:
+            | "session_cancelled"
+            | "session_approved"
+            | "session_reminder"
+            | "session_declined"
+            | "general"; // NOT NULL
           read: boolean; // DEFAULT FALSE
           created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
         };
@@ -190,7 +237,12 @@ export interface Database {
           user_id: string; // Required
           title: string; // Required
           message: string; // Required
-          type: 'session_cancelled' | 'session_approved' | 'session_reminder' | 'session_declined' | 'general'; // Required
+          type:
+            | "session_cancelled"
+            | "session_approved"
+            | "session_reminder"
+            | "session_declined"
+            | "general"; // Required
           read?: boolean; // Defaults to false
           created_at?: string; // Auto-generated if not provided
         };
@@ -199,7 +251,12 @@ export interface Database {
           user_id?: string; // Should not be updated
           title?: string;
           message?: string;
-          type?: 'session_cancelled' | 'session_approved' | 'session_reminder' | 'session_declined' | 'general';
+          type?:
+            | "session_cancelled"
+            | "session_approved"
+            | "session_reminder"
+            | "session_declined"
+            | "general";
           read?: boolean;
           created_at?: string; // Should not be updated
         };
@@ -211,7 +268,7 @@ export interface Database {
           requester_id: string; // UUID, references users(id), NOT NULL
           requester_name: string; // NOT NULL
           message: string; // DEFAULT ''
-          status: 'pending' | 'approved' | 'rejected'; // DEFAULT 'pending'
+          status: "pending" | "approved" | "rejected"; // DEFAULT 'pending'
           created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
           updated_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
         };
@@ -221,7 +278,7 @@ export interface Database {
           requester_id: string; // Required
           requester_name: string; // Required
           message?: string; // Defaults to ''
-          status?: 'pending' | 'approved' | 'rejected'; // Defaults to 'pending'
+          status?: "pending" | "approved" | "rejected"; // Defaults to 'pending'
           created_at?: string; // Auto-generated if not provided
           updated_at?: string; // Auto-generated if not provided
         };
@@ -231,7 +288,7 @@ export interface Database {
           requester_id?: string; // Should not be updated
           requester_name?: string;
           message?: string;
-          status?: 'pending' | 'approved' | 'rejected';
+          status?: "pending" | "approved" | "rejected";
           created_at?: string; // Should not be updated
           updated_at?: string; // Auto-updated by trigger
         };
@@ -241,7 +298,7 @@ export interface Database {
           id: string; // UUID, auto-generated
           session_id: string; // UUID, references topics(id), NOT NULL
           user_id: string; // UUID, references users(id), NOT NULL
-          status: 'active' | 'left'; // NOT NULL
+          status: "active" | "left"; // NOT NULL
           joined_at: string; // TIMESTAMP WITH TIME ZONE, NOT NULL
           last_seen: string; // TIMESTAMP WITH TIME ZONE, NOT NULL
         };
@@ -249,7 +306,7 @@ export interface Database {
           id?: string; // Auto-generated if not provided
           session_id: string; // Required
           user_id: string; // Required
-          status?: 'active' | 'left'; // Defaults to 'active'
+          status?: "active" | "left"; // Defaults to 'active'
           joined_at?: string; // Auto-generated if not provided
           last_seen?: string; // Auto-generated if not provided
         };
@@ -257,7 +314,7 @@ export interface Database {
           id?: string; // Cannot be updated
           session_id?: string; // Should not be updated
           user_id?: string; // Should not be updated
-          status?: 'active' | 'left';
+          status?: "active" | "left";
           joined_at?: string;
           last_seen?: string;
         };
@@ -269,7 +326,7 @@ export interface Database {
           sender_id: string; // UUID, references users(id), NOT NULL
           recipient_id: string; // UUID, references users(id), NOT NULL
           message_type: string; // NOT NULL
-          message_data: any; // JSONB, NOT NULL
+          message_data: SignalingMessageData; // JSONB, NOT NULL
           created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
         };
         Insert: {
@@ -278,7 +335,7 @@ export interface Database {
           sender_id: string; // Required
           recipient_id: string; // Required
           message_type: string; // Required
-          message_data: any; // Required
+          message_data: SignalingMessageData; // Required
           created_at?: string; // Auto-generated if not provided
         };
         Update: {
@@ -287,7 +344,7 @@ export interface Database {
           sender_id?: string; // Should not be updated
           recipient_id?: string; // Should not be updated
           message_type?: string;
-          message_data?: any;
+          message_data?: SignalingMessageData;
           created_at?: string; // Should not be updated
         };
       };
@@ -300,7 +357,7 @@ export interface Database {
           content: string; // NOT NULL
           featured_image_url: string | null;
           category: string; // DEFAULT 'Product Updates'
-          status: 'draft' | 'published' | 'archived'; // DEFAULT 'draft'
+          status: "draft" | "published" | "archived"; // DEFAULT 'draft'
           author_id: string | null; // UUID, references auth.users(id)
           created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
           updated_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
@@ -315,7 +372,7 @@ export interface Database {
           content: string; // Required
           featured_image_url?: string | null;
           category?: string; // Defaults to 'Product Updates'
-          status?: 'draft' | 'published' | 'archived'; // Defaults to 'draft'
+          status?: "draft" | "published" | "archived"; // Defaults to 'draft'
           author_id?: string | null;
           created_at?: string; // Auto-generated if not provided
           updated_at?: string; // Auto-generated if not provided
@@ -329,7 +386,7 @@ export interface Database {
           content?: string;
           featured_image_url?: string | null;
           category?: string;
-          status?: 'draft' | 'published' | 'archived';
+          status?: "draft" | "published" | "archived";
           author_id?: string | null;
           created_at?: string; // Should not be updated
           updated_at?: string; // Auto-updated by trigger
@@ -363,19 +420,19 @@ export interface Database {
         Row: {
           id: string; // UUID, auto-generated
           user_id: string; // UUID, references auth.users(id), UNIQUE, NOT NULL
-          role: 'admin' | 'editor'; // DEFAULT 'admin'
+          role: "admin" | "editor"; // DEFAULT 'admin'
           created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
         };
         Insert: {
           id?: string; // Auto-generated if not provided
           user_id: string; // Required, must be unique
-          role?: 'admin' | 'editor'; // Defaults to 'admin'
+          role?: "admin" | "editor"; // Defaults to 'admin'
           created_at?: string; // Auto-generated if not provided
         };
         Update: {
           id?: string; // Cannot be updated
           user_id?: string; // Should not be updated
-          role?: 'admin' | 'editor';
+          role?: "admin" | "editor";
           created_at?: string; // Should not be updated
         };
       };
@@ -386,8 +443,8 @@ export interface Database {
           session_token: string; // NOT NULL, UNIQUE
           ip_address: string; // INET, NOT NULL
           user_agent: string | null;
-          device_info: any; // JSONB, NOT NULL
-          location_info: any | null; // JSONB
+          device_info: DeviceInfo; // JSONB, NOT NULL
+          location_info: LocationInfo | null; // JSONB
           device_fingerprint: string | null;
           created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
           last_active: string; // TIMESTAMP WITH TIME ZONE, auto-generated
@@ -401,8 +458,8 @@ export interface Database {
           session_token: string; // Required, must be unique
           ip_address: string; // Required
           user_agent?: string | null;
-          device_info: any; // Required
-          location_info?: any | null;
+          device_info: DeviceInfo; // Required
+          location_info?: LocationInfo | null;
           device_fingerprint?: string | null;
           created_at?: string; // Auto-generated if not provided
           last_active?: string; // Auto-generated if not provided
@@ -415,8 +472,8 @@ export interface Database {
           session_token?: string; // Should not be updated
           ip_address?: string; // Should not be updated
           user_agent?: string | null;
-          device_info?: any;
-          location_info?: any | null;
+          device_info?: DeviceInfo;
+          location_info?: LocationInfo | null;
           device_fingerprint?: string | null;
           created_at?: string; // Should not be updated
           last_active?: string; // Auto-updated
@@ -428,7 +485,7 @@ export interface Database {
         Row: {
           id: string; // UUID, auto-generated
           fingerprint_hash: string; // NOT NULL, UNIQUE
-          device_info: any; // JSONB, NOT NULL
+          device_info: DeviceInfo; // JSONB, NOT NULL
           first_seen: string; // TIMESTAMP WITH TIME ZONE, auto-generated
           last_seen: string; // TIMESTAMP WITH TIME ZONE, auto-generated
           total_sessions: number; // DEFAULT 1
@@ -439,7 +496,7 @@ export interface Database {
         Insert: {
           id?: string; // Auto-generated if not provided
           fingerprint_hash: string; // Required, must be unique
-          device_info: any; // Required
+          device_info: DeviceInfo; // Required
           first_seen?: string; // Auto-generated if not provided
           last_seen?: string; // Auto-generated if not provided
           total_sessions?: number; // Defaults to 1
@@ -450,7 +507,7 @@ export interface Database {
         Update: {
           id?: string; // Cannot be updated
           fingerprint_hash?: string; // Should not be updated
-          device_info?: any;
+          device_info?: DeviceInfo;
           first_seen?: string; // Should not be updated
           last_seen?: string; // Auto-updated
           total_sessions?: number;
@@ -476,9 +533,9 @@ export interface Database {
           total_session_time: number | null;
           sessions_last_7_days: number;
           sessions_last_30_days: number;
-          most_used_device: any | null;
-          most_common_location: any | null;
-          engagement_level: 'High' | 'Medium' | 'Low';
+          most_used_device: DeviceInfo | null;
+          most_common_location: LocationInfo | null;
+          engagement_level: "High" | "Medium" | "Low";
         };
       };
       device_analytics: {
@@ -527,8 +584,8 @@ export interface Database {
           p_user_id: string;
           p_ip_address: string;
           p_user_agent: string | null;
-          p_device_info: any;
-          p_location_info: any | null;
+          p_device_info: DeviceInfo;
+          p_location_info: LocationInfo | null;
           p_device_fingerprint: string | null;
         };
         Returns: string;
@@ -661,17 +718,17 @@ export type TopicWithDetails = Topic & {
 // SESSION STATUS TYPES
 // ============================================================================
 
-export type SessionStatus = 
-  | 'created'           // Just created, no requests yet
-  | 'has_requests'      // Has pending join requests
-  | 'approved'          // Has approved participants, waiting for start time
-  | 'upcoming'          // Approved and start time is near (within 30 minutes)
-  | 'waiting'           // Session time started but no one joined yet
-  | 'active'            // Session is active with participants
-  | 'ended_complete'    // Session ended at scheduled time with participants
-  | 'ended_early'       // Session ended before scheduled time
-  | 'ended_no_show'     // Session ended with no participants showing up
-  | 'cancelled';        // Session was cancelled
+export type SessionStatus =
+  | "created" // Just created, no requests yet
+  | "has_requests" // Has pending join requests
+  | "approved" // Has approved participants, waiting for start time
+  | "upcoming" // Approved and start time is near (within 30 minutes)
+  | "waiting" // Session time started but no one joined yet
+  | "active" // Session is active with participants
+  | "ended_complete" // Session ended at scheduled time with participants
+  | "ended_early" // Session ended before scheduled time
+  | "ended_no_show" // Session ended with no participants showing up
+  | "cancelled"; // Session was cancelled
 
 export interface SessionStatusInfo {
   status: SessionStatus;
@@ -769,7 +826,7 @@ export interface ValidationResult {
 
 export interface SubscriptionCallback<T> {
   (payload: {
-    eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+    eventType: "INSERT" | "UPDATE" | "DELETE";
     new: T | null;
     old: T | null;
   }): void;
@@ -829,30 +886,6 @@ export interface UserSessionData {
   is_active: boolean;
 }
 
-export interface DeviceInfo {
-  browser: string;
-  browser_version: string;
-  os: string;
-  os_version: string;
-  device_type: 'desktop' | 'mobile' | 'tablet';
-  device_vendor?: string;
-  device_model?: string;
-  screen_resolution?: string;
-  timezone?: string;
-  language?: string;
-}
-
-export interface LocationInfo {
-  country: string;
-  country_code: string;
-  region?: string;
-  city?: string;
-  latitude?: number;
-  longitude?: number;
-  timezone?: string;
-  isp?: string;
-}
-
 export interface UserFootprint {
   user_id: string;
   total_sessions: number;
@@ -897,10 +930,10 @@ export interface UserFilters {
   max_rating?: number;
   has_avatar?: boolean;
   country?: string;
-  device_type?: 'desktop' | 'mobile' | 'tablet';
+  device_type?: "desktop" | "mobile" | "tablet";
   date_from?: string;
   date_to?: string;
-  engagement_level?: 'High' | 'Medium' | 'Low';
+  engagement_level?: "High" | "Medium" | "Low";
   phone_verified?: boolean;
   min_topics?: number;
   min_messages?: number;
@@ -931,7 +964,7 @@ export interface ValidationSchema<T> {
 export interface DatabaseError {
   code: string;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
   hint?: string;
 }
 

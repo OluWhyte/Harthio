@@ -16,132 +16,32 @@ interface DeviceTrackingState {
 
 export function useDeviceTracking({
   userId,
-  enabled = true,
+  enabled = false, // Disabled by default to prevent excessive logging
   activityInterval = 60000 // 1 minute
 }: UseDeviceTrackingOptions = {}) {
   const [state, setState] = useState<DeviceTrackingState>({
     sessionId: null,
     deviceFingerprint: null,
     isTracking: false,
-    error: null
+    error: 'Device tracking disabled'
   });
 
-  const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const sessionIdRef = useRef<string | null>(null);
+  // Device tracking is disabled - no effects or intervals will run
+  // This prevents excessive logging and API calls
 
-  // Start tracking when user is available and tracking is enabled
-  useEffect(() => {
-    if (!enabled || !userId) return;
-
-    const startTracking = async () => {
-      try {
-        setState(prev => ({ ...prev, isTracking: true, error: null }));
-        
-        const sessionId = await DeviceTrackingService.trackUserSession(userId);
-        const deviceFingerprint = DeviceTrackingService.generateDeviceFingerprint();
-        
-        if (sessionId) {
-          sessionIdRef.current = sessionId;
-          setState(prev => ({
-            ...prev,
-            sessionId,
-            deviceFingerprint,
-            isTracking: true
-          }));
-
-          // Start activity tracking interval
-          activityIntervalRef.current = setInterval(() => {
-            if (sessionIdRef.current) {
-              DeviceTrackingService.updateSessionActivity(sessionIdRef.current);
-            }
-          }, activityInterval);
-        } else {
-          setState(prev => ({
-            ...prev,
-            error: 'Failed to start session tracking',
-            isTracking: false
-          }));
-        }
-      } catch (error) {
-        console.error('Device tracking error:', error);
-        setState(prev => ({
-          ...prev,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          isTracking: false
-        }));
-      }
-    };
-
-    startTracking();
-
-    // Cleanup function
-    return () => {
-      if (activityIntervalRef.current) {
-        clearInterval(activityIntervalRef.current);
-        activityIntervalRef.current = null;
-      }
-      
-      if (sessionIdRef.current) {
-        DeviceTrackingService.endSession(sessionIdRef.current);
-        sessionIdRef.current = null;
-      }
-    };
-  }, [userId, enabled, activityInterval]);
-
-  // Handle page visibility changes
-  useEffect(() => {
-    if (!enabled || !sessionIdRef.current) return;
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && sessionIdRef.current) {
-        // Update activity when page becomes visible
-        DeviceTrackingService.updateSessionActivity(sessionIdRef.current);
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [enabled]);
-
-  // Handle beforeunload to end session
-  useEffect(() => {
-    if (!enabled) return;
-
-    const handleBeforeUnload = () => {
-      if (sessionIdRef.current) {
-        // Use sendBeacon for reliable session ending
-        const data = JSON.stringify({ session_id: sessionIdRef.current });
-        navigator.sendBeacon('/api/device-tracking/end-session', data);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [enabled]);
-
-  // Manual session update
+  // All tracking functions disabled
   const updateActivity = () => {
-    if (sessionIdRef.current) {
-      DeviceTrackingService.updateSessionActivity(sessionIdRef.current);
-    }
+    // Disabled
   };
 
-  // Get user footprint
   const getUserFootprint = async () => {
-    if (!userId) return null;
-    return await DeviceTrackingService.getUserFootprint(userId);
+    // Disabled
+    return null;
   };
 
-  // Check if returning user
   const checkReturningUser = async () => {
-    if (!state.deviceFingerprint) return false;
-    return await DeviceTrackingService.isReturningUser(state.deviceFingerprint);
+    // Disabled
+    return false;
   };
 
   return {

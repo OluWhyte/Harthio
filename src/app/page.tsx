@@ -83,7 +83,7 @@ export default function LandingPage() {
                     <strong>Finally, someone who speaks your language.</strong>{" "}
                     Schedule judgment-free conversations about business stress,
                     life changes, or passion projects—with perfect matches
-                    who've walked your path, not random strangers.
+                    who&apos;ve walked your path, not random strangers.
                   </p>
                   <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
                     <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
@@ -133,8 +133,8 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <p className="text-xs sm:text-sm text-gray-600 leading-tight">
-                    "If speaking kindly to plants can make them grow, imagine
-                    what speaking kindly to humans can can do."
+                    &quot;If speaking kindly to plants can make them grow,
+                    imagine what speaking kindly to humans can can do.&quot;
                   </p>
                 </div>
               </div>
@@ -151,7 +151,7 @@ export default function LandingPage() {
               </h2>
               <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto px-4">
                 We understand the pain of feeling isolated in your struggles.
-                Here's how we create genuine connections.
+                Here&apos;s how we create genuine connections.
               </p>
             </div>
 
@@ -165,10 +165,10 @@ export default function LandingPage() {
                     Perfect Matches, Not Randoms
                   </h3>
                   <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-                    "I need advice but don't know who to ask"
+                    &quot;I need advice but don&apos;t know who to ask&quot;
                   </p>
                   <p className="text-xs sm:text-sm font-medium text-primary">
-                    → Get matched with vetted mentors who've been there
+                    → Get matched with vetted mentors who&apos;ve been there
                   </p>
                 </CardContent>
               </Card>
@@ -182,7 +182,7 @@ export default function LandingPage() {
                     Scheduled, Intentional Talks
                   </h3>
                   <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-                    "Tired of flaky Zoom strangers"
+                    &quot;Tired of flaky Zoom strangers&quot;
                   </p>
                   <p className="text-xs sm:text-sm font-medium text-accent">
                     → Scheduled, intention-based calls that actually happen
@@ -199,7 +199,7 @@ export default function LandingPage() {
                     Safe Space to Be Vulnerable
                   </h3>
                   <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-                    "Can't afford therapy but need to vent"
+                    &quot;Can&apos;t afford therapy but need to vent&quot;
                   </p>
                   <p className="text-xs sm:text-sm font-medium text-primary">
                     → Free listener volunteers who truly care
@@ -231,8 +231,8 @@ export default function LandingPage() {
                   Create or Find a Session
                 </h3>
                 <p className="text-sm sm:text-base text-gray-600 px-2">
-                  Schedule your own conversation about what's on your mind, or
-                  browse existing sessions to find someone facing similar
+                  Schedule your own conversation about what&apos;s on your mind,
+                  or browse existing sessions to find someone facing similar
                   challenges.
                 </p>
               </div>
@@ -313,9 +313,10 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                  "After my divorce, I found someone who truly understood my
-                  situation and put me through what to do and this fix my life
-                  as a black divorcee and single dad living in the UK."
+                  &quot;After my divorce, I found someone who truly understood
+                  my situation and put me through what to do and this fix my
+                  life as a black divorcee and single dad living in the
+                  UK.&quot;
                 </p>
               </Card>
 
@@ -338,10 +339,10 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                  "Building a startup felt impossibly lonely. I scheduled a
+                  &quot;Building a startup felt impossibly lonely. I scheduled a
                   session about founder burnout and connected with someone who
                   had built and sold two companies. That conversation saved my
-                  sanity."
+                  sanity.&quot;
                 </p>
               </Card>
 
@@ -364,10 +365,10 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                  "Balancing motherhood and my career felt overwhelming. I
+                  &quot;Balancing motherhood and my career felt overwhelming. I
                   connected with another working mom who shared practical
                   strategies that transformed how I manage both. I finally feel
-                  like I can breathe again."
+                  like I can breathe again.&quot;
                 </p>
               </Card>
 
@@ -390,9 +391,10 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                  "Switching careers at 35 felt impossible. I posted about my
-                  fears and connected with someone who had made the same
-                  transition. They showed me it wasn't crazy—it was possible."
+                  &quot;Switching careers at 35 felt impossible. I posted about
+                  my fears and connected with someone who had made the same
+                  transition. They showed me it wasn&apos;t crazy—it was
+                  possible.&quot;
                 </p>
               </Card>
 
@@ -415,10 +417,10 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                  "College stress was eating me alive. I found someone who had
-                  just graduated and understood the pressure of finals, job
-                  hunting, and student loans. They helped me see that I wasn't
-                  alone in feeling overwhelmed."
+                  &quot;College stress was eating me alive. I found someone who
+                  had just graduated and understood the pressure of finals, job
+                  hunting, and student loans. They helped me see that I
+                  wasn&apos;t alone in feeling overwhelmed.&quot;
                 </p>
               </Card>
 
@@ -441,11 +443,11 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                  "Despite having several social media accounts, I still felt
-                  lonely. Sometimes you just need someone to listen without
+                  &quot;Despite having several social media accounts, I still
+                  felt lonely. Sometimes you just need someone to listen without
                   judgment. I was having a rough week and found someone who let
                   me vent about work stress. No advice needed—just someone who
-                  truly heard me."
+                  truly heard me.&quot;
                 </p>
               </Card>
             </div>
@@ -456,7 +458,7 @@ export default function LandingPage() {
         <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-r from-primary via-accent to-primary text-white">
           <div className="container px-4 sm:px-6 md:px-8 text-center">
             <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 leading-tight">
-              There's Always Someone Who Gets It
+              There&apos;s Always Someone Who Gets It
             </h2>
             <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 max-w-2xl mx-auto opacity-90 px-4">
               Your perfect conversation partner is waiting. Start your first
