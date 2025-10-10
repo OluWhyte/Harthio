@@ -1,22 +1,36 @@
-# Harthio Documentation
+# Documentation Directory
 
-Welcome to the Harthio documentation. This folder contains all the guides and documentation for the project.
+This directory contains project documentation organized by category.
 
-## Setup Guides
-- [Setup Instructions](./SETUP_INSTRUCTIONS.md) - Complete setup guide for the project
-- [Database Setup](./DATABASE_SETUP.md) - Database configuration and setup
-- [Email Setup](./EMAIL_SETUP.md) - Email notification configuration
-- [Domain Setup](./DOMAIN_SETUP.md) - Custom domain configuration
-- [Deployment Guide](./DEPLOYMENT_GUIDE.md) - Vercel deployment instructions
+## Structure
 
-## Technical Documentation
-- [Project Blueprint](./blueprint.md) - Overall project architecture
-- [Database Schema](./database-schema.sql) - Complete database schema
-- [WebRTC Implementation](./WEBRTC_IMPLEMENTATION.md) - Video calling setup
+### `/deployment/` (Not in Git)
+- Deployment guides and procedures
+- Environment setup instructions
+- Server configuration guides
+- Contains: `BLOG_DEPLOYMENT.md`, `BLOG_SETUP.md`, `VERCEL_SUBDOMAIN_SETUP.md`
 
-## User Guides
-- [Mobile User Guide](./MOBILE_USER_GUIDE.md) - Guide for mobile users
+### `/guides/` (Not in Git)
+- Internal development guides
+- Administrative procedures
+- Troubleshooting documentation
+- Contains: Admin guides, CSS fixes, domain setup guides
 
-## Development
-- [Session System](./SESSION_SYSTEM.md) - 3-state session system implementation
-- [Security Fixes](./SECURITY_FIXES.md) - Security improvements and fixes
+### Root Documentation (In Git)
+- Public documentation
+- API documentation
+- User guides
+- General project information
+
+## Security Notes
+
+- `/deployment/` and `/guides/` directories are excluded from version control
+- These may contain sensitive server information or internal procedures
+- Keep internal documentation separate from public docs
+- Review before sharing any documentation externally
+
+## Usage
+
+1. **Public docs**: Keep in root `/docs/` for version control
+2. **Internal guides**: Store in `/guides/` (local only)
+3. **Deployment docs**: Store in `/deployment/` (local only)

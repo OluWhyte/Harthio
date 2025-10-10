@@ -3,13 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Logo } from '@/components/common/logo';
+import { ResponsiveAdminHeader } from '@/components/admin/responsive-admin-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowLeft, 
   Users, 
   Search, 
   Filter, 
@@ -26,6 +25,7 @@ import {
   Phone
 } from 'lucide-react';
 import { AdminService } from '@/lib/services/admin-service';
+import { FilterComponent } from '@/components/admin/filters';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import type { UserWithStats } from '@/lib/database-types';
@@ -34,6 +34,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState<UserWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<any>({});
   const [isAdmin, setIsAdmin] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
@@ -84,7 +85,15 @@ export default function UserManagementPage() {
 
   const loadUsers = async () => {
     try {
-      const userData = await AdminService.getAllUsers(100);
+      const combinedFilters = { ...filters };
+      if (searchQuery.trim()) {
+        combinedFilters.search_query = searchQuery.trim();
+      }
+      
+      const userData = Object.keys(combinedFilters).length > 0 
+        ? await AdminService.getFilteredUsers(combinedFilters, 100)
+        : await AdminService.getAllUsers(100);
+      
       setUsers(userData);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -97,19 +106,28 @@ export default function UserManagementPage() {
   };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      await loadUsers();
-      return;
-    }
+    await loadUsers();
+  };
 
+  const handleFiltersChange = async (newFilters: any) => {
+    setFilters(newFilters);
+    // Auto-apply filters
     try {
-      const searchResults = await AdminService.searchUsers(searchQuery);
-      setUsers(searchResults);
+      const combinedFilters = { ...newFilters };
+      if (searchQuery.trim()) {
+        combinedFilters.search_query = searchQuery.trim();
+      }
+      
+      const userData = Object.keys(combinedFilters).length > 0 
+        ? await AdminService.getFilteredUsers(combinedFilters, 100)
+        : await AdminService.getAllUsers(100);
+      
+      setUsers(userData);
     } catch (error) {
-      console.error('Error searching users:', error);
+      console.error('Error applying filters:', error);
       toast({
         title: 'Error',
-        description: 'Failed to search users.',
+        description: 'Failed to apply filters.',
         variant: 'destructive'
       });
     }
@@ -167,44 +185,47 @@ export default function UserManagementPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Logo />
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/admin">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Dashboard
-                  </Link>
+      <ResponsiveAdminHeader
+        title="User Management"
+        actions={[]}
+      />
+
+      {/* Search and Filter Bar */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+              <Input
+                placeholder="Search by name, email, or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full sm:w-80"
+              />
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleSearch} className="flex-1 sm:flex-none">
+                  <Search className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Search</span>
                 </Button>
-                <span className="text-gray-400">/</span>
-                <h1 className="text-xl font-semibold text-gray-900">User Management</h1>
+                {searchQuery && (
+                  <Button variant="ghost" onClick={() => { setSearchQuery(''); loadUsers(); }} className="flex-1 sm:flex-none">
+                    Clear
+                  </Button>
+                )}
               </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Search users..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-64"
-                />
-                <Button variant="outline" onClick={handleSearch}>
-                  <Search className="h-4 w-4" />
-                </Button>
-              </div>
+              <FilterComponent 
+                type="users" 
+                onFiltersChange={handleFiltersChange}
+                className="shrink-0"
+              />
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -285,11 +306,11 @@ export default function UserManagementPage() {
             ) : (
               <div className="space-y-4">
                 {users.map((user) => (
-                  <div key={user.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div key={user.id} className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1">
                         {/* Avatar */}
-                        <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-semibold">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-semibold text-sm sm:text-base">
                           {user.avatar_url ? (
                             <img src={user.avatar_url} alt={getDisplayName(user)} className="w-12 h-12 rounded-full object-cover" />
                           ) : (

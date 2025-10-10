@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Logo } from '@/components/common/logo';
+import { ResponsiveAdminHeader } from '@/components/admin/responsive-admin-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BlogService } from '@/lib/services/blog-service';
@@ -18,8 +18,15 @@ import {
   Plus,
   Eye,
   Edit,
-  TrendingUp
+  TrendingUp,
+  MessageSquare,
+  Activity,
+  Download,
+  Calendar,
+  Star,
+  AlertTriangle
 } from 'lucide-react';
+import { AnalyticsCharts } from '@/components/admin/analytics-charts';
 
 export default function AdminDashboardContent() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -34,6 +41,13 @@ export default function AdminDashboardContent() {
     totalSessions: 0,
     activeSessions: 0
   });
+  const [chartData, setChartData] = useState({
+    userGrowth: [],
+    sessionActivity: [],
+    engagementMetrics: [],
+    topicCategories: []
+  });
+  const [exporting, setExporting] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -78,10 +92,22 @@ export default function AdminDashboardContent() {
 
   const loadStats = async () => {
     try {
-      const [posts, userAnalytics, topicAnalytics] = await Promise.all([
+      const [
+        posts, 
+        userAnalytics, 
+        topicAnalytics, 
+        userGrowthData, 
+        sessionActivityData, 
+        engagementData, 
+        categoriesData
+      ] = await Promise.all([
         BlogService.getAllPosts(100),
         AdminService.getUserAnalytics(),
-        AdminService.getTopicAnalytics()
+        AdminService.getTopicAnalytics(),
+        AdminService.getUserGrowthData(30),
+        AdminService.getSessionActivityData(30),
+        AdminService.getEngagementMetricsData(),
+        AdminService.getTopicCategoriesData()
       ]);
 
       const published = posts.filter(p => p.status === 'published');
@@ -98,8 +124,43 @@ export default function AdminDashboardContent() {
         totalSessions: topicAnalytics.total_topics,
         activeSessions: topicAnalytics.active_topics
       });
+
+      setChartData({
+        userGrowth: userGrowthData,
+        sessionActivity: sessionActivityData,
+        engagementMetrics: engagementData,
+        topicCategories: categoriesData
+      });
     } catch (error) {
       console.error('Error loading stats:', error);
+    }
+  };
+
+  const handleExport = async (type: 'users' | 'analytics', format: 'csv' | 'json') => {
+    setExporting(true);
+    try {
+      let exportData;
+      if (type === 'users') {
+        exportData = await AdminService.exportUserData(format);
+      } else {
+        exportData = await AdminService.exportAnalyticsReport(format);
+      }
+      
+      AdminService.downloadFile(exportData.content, exportData.filename, exportData.mimeType);
+      
+      toast({
+        title: 'Export Successful',
+        description: `${type} data exported as ${format.toUpperCase()}`
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to export data. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -124,160 +185,153 @@ export default function AdminDashboardContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Logo />
-              <div className="hidden sm:block">
-                <h1 className="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" asChild>
-                <Link href="/" target="_blank">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Site
-                </Link>
-              </Button>
-              <div className="text-sm text-gray-600">
-                Welcome, {user?.email}
-              </div>
-            </div>
+      <ResponsiveAdminHeader
+        title="Admin Dashboard"
+        actions={[
+          {
+            label: 'View Site',
+            icon: <Eye className="h-4 w-4" />,
+            onClick: () => window.open('/', '_blank'),
+            variant: 'outline'
+          }
+        ]}
+      />
+      
+      {/* Welcome Message - Mobile Friendly */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-right">
+            Welcome, <span className="font-medium">{user?.email}</span>
           </div>
         </div>
-      </header>
+      </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6 mb-8">
-          <Card>
+        {/* Header with Export Actions */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Platform Analytics</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">Comprehensive overview of platform performance and user engagement</p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => handleExport('analytics', 'csv')}
+              disabled={exporting}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Analytics
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => handleExport('users', 'csv')}
+              disabled={exporting}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Users
+            </Button>
+          </div>
+        </div>
+
+        {/* Key Metrics - Prioritized */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Users</p>
                   <p className="text-3xl font-bold text-blue-600">{stats.totalUsers}</p>
+                  <p className="text-xs text-gray-500 mt-1">Platform registrations</p>
                 </div>
-                <Users className="h-8 w-8 text-blue-600" />
+                <Users className="h-10 w-10 text-blue-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-green-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Active Users</p>
                   <p className="text-3xl font-bold text-green-600">{stats.activeUsers}</p>
+                  <p className="text-xs text-gray-500 mt-1">With scheduled sessions</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-green-600" />
+                <Activity className="h-10 w-10 text-green-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-purple-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Sessions</p>
                   <p className="text-3xl font-bold text-purple-600">{stats.totalSessions}</p>
+                  <p className="text-xs text-gray-500 mt-1">All conversations</p>
                 </div>
-                <Settings className="h-8 w-8 text-purple-600" />
+                <MessageSquare className="h-10 w-10 text-purple-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-orange-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Blog Posts</p>
-                  <p className="text-3xl font-bold text-primary">{stats.totalPosts}</p>
+                  <p className="text-sm font-medium text-gray-600">Active Sessions</p>
+                  <p className="text-3xl font-bold text-orange-600">{stats.activeSessions}</p>
+                  <p className="text-xs text-gray-500 mt-1">Currently ongoing</p>
                 </div>
-                <FileText className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Published</p>
-                  <p className="text-3xl font-bold text-green-600">{stats.publishedPosts}</p>
-                </div>
-                <Eye className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Blog Likes</p>
-                  <p className="text-3xl font-bold text-red-600">{stats.totalLikes}</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-red-600" />
+                <Calendar className="h-10 w-10 text-orange-600" />
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Admin Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-          {/* Blog Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Blog Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-gray-600">
-                Create, edit, and manage your blog posts. Share product updates, feature announcements, and community highlights.
-              </p>
-              <div className="flex flex-col gap-3">
-                <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
-                  <Link href="/admin/blog/new">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Post
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/admin/blog">
-                    <FileText className="h-4 w-4 mr-2" />
-                    All Blog Posts ({stats.totalPosts})
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Advanced Analytics Charts */}
+        <AnalyticsCharts 
+          userGrowth={chartData.userGrowth}
+          sessionActivity={chartData.sessionActivity}
+          engagementMetrics={chartData.engagementMetrics}
+          topicCategories={chartData.topicCategories}
+        />
 
-          {/* User Management */}
-          <Card>
+        {/* Primary Admin Sections - Prioritized by Importance */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8">
+          {/* User Management - Highest Priority */}
+          <Card className="border-2 border-blue-200 bg-blue-50/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+                <Users className="h-5 w-5 text-blue-600" />
                 User Management
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-600">
-                Manage user accounts, view user activity, handle reports, and manage admin privileges.
+                Comprehensive user oversight, engagement tracking, and community management tools.
               </p>
+              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                <div className="bg-white p-3 rounded-lg border">
+                  <p className="font-medium text-blue-600">Active Rate</p>
+                  <p className="text-xl font-bold">
+                    {stats.totalUsers > 0 ? Math.round((stats.activeUsers / stats.totalUsers) * 100) : 0}%
+                  </p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border">
+                  <p className="font-medium text-green-600">Engagement</p>
+                  <p className="text-xl font-bold">High</p>
+                </div>
+              </div>
               <div className="flex flex-col gap-3">
-                <Button variant="outline" asChild>
+                <Button asChild className="bg-blue-600 hover:bg-blue-700">
                   <Link href="/admin/users">
                     <Users className="h-4 w-4 mr-2" />
-                    All Users
+                    Manage Users ({stats.totalUsers})
                   </Link>
                 </Button>
                 <Button variant="outline" asChild>
                   <Link href="/admin/users/reports">
-                    <Settings className="h-4 w-4 mr-2" />
+                    <AlertTriangle className="h-4 w-4 mr-2" />
                     User Reports
                   </Link>
                 </Button>
@@ -285,38 +339,150 @@ export default function AdminDashboardContent() {
             </CardContent>
           </Card>
 
-          {/* Analytics & Insights */}
-          <Card>
+          {/* Session Management - High Priority */}
+          <Card className="border-2 border-purple-200 bg-purple-50/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Analytics & Insights
+                <MessageSquare className="h-5 w-5 text-purple-600" />
+                Session Management
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-600">
-                Track platform engagement, monitor performance, and understand your community better.
+                Monitor active conversations, manage session reports, and ensure platform safety.
               </p>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="font-medium">Avg. Likes per Post</p>
-                  <p className="text-2xl font-bold text-primary">
-                    {stats.totalPosts > 0 ? Math.round(stats.totalLikes / stats.totalPosts) : 0}
-                  </p>
+              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                <div className="bg-white p-3 rounded-lg border">
+                  <p className="font-medium text-purple-600">Active Now</p>
+                  <p className="text-xl font-bold">{stats.activeSessions}</p>
                 </div>
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="font-medium">Publish Rate</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {stats.totalPosts > 0 ? Math.round((stats.publishedPosts / stats.totalPosts) * 100) : 0}%
-                  </p>
+                <div className="bg-white p-3 rounded-lg border">
+                  <p className="font-medium text-orange-600">Total</p>
+                  <p className="text-xl font-bold">{stats.totalSessions}</p>
                 </div>
               </div>
-              <Button variant="outline" asChild className="w-full">
-                <Link href="/admin/analytics">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  View Analytics
-                </Link>
-              </Button>
+              <div className="flex flex-col gap-3">
+                <Button asChild className="bg-purple-600 hover:bg-purple-700">
+                  <Link href="/admin/sessions">
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    Monitor Sessions
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/admin/sessions/reports">
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Session Reports
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Advanced Analytics - High Priority */}
+          <Card className="border-2 border-green-200 bg-green-50/30">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-green-600" />
+                Advanced Analytics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-600">
+                Deep insights into platform performance, user behavior, and growth trends.
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                <div className="bg-white p-3 rounded-lg border">
+                  <p className="font-medium text-green-600">Growth Rate</p>
+                  <p className="text-xl font-bold">+12%</p>
+                </div>
+                <div className="bg-white p-3 rounded-lg border">
+                  <p className="font-medium text-blue-600">Retention</p>
+                  <p className="text-xl font-bold">85%</p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button asChild className="bg-green-600 hover:bg-green-700">
+                  <Link href="/admin/analytics">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    View Full Analytics
+                  </Link>
+                </Button>
+                <Button variant="outline" onClick={() => handleExport('analytics', 'csv')}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Reports
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Secondary Admin Sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+          {/* Platform Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Platform Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-600">
+                Configure platform settings, manage categories, and control system features.
+              </p>
+              <div className="flex flex-col gap-3">
+                <Button variant="outline" asChild>
+                  <Link href="/admin/settings">
+                    <Settings className="h-4 w-4 mr-2" />
+                    General Settings
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/admin/settings/categories">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Manage Categories
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Content Management - Lower Priority */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Content Management
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-600">
+                Manage blog posts, announcements, and platform content.
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="font-medium">Published</p>
+                  <p className="text-xl font-bold text-green-600">{stats.publishedPosts}</p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="font-medium">Total Likes</p>
+                  <p className="text-xl font-bold text-red-600">{stats.totalLikes}</p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Button variant="outline" asChild>
+                  <Link href="/admin/blog">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Manage Blog ({stats.totalPosts})
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/admin/blog/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Post
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

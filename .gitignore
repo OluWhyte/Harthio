@@ -98,4 +98,34 @@ test-*.js
 # Backup files
 *.bak
 *.backup
+
+# Vercel
 .vercel
+
+# SSL Certificates (never commit these)
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+.certs/
+
+# Database setup and debug files (sensitive)
+database/setup/
+database/debug/
+scripts/debug/
+
+# Deployment and setup guides (internal use only)
+docs/deployment/
+docs/guides/
+
+# Debug and development files
+debug-*.sql
+*-debug.*
+quick-*.sql
+fix-*.sql
+
+# Temporary development files
+*-temp.*
+*-backup.*
+*-old.*

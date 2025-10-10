@@ -1,53 +1,35 @@
-# Database Setup
+# Database Directory
 
-This directory contains documentation for the Harthio database setup.
+This directory contains database-related files organized by purpose.
 
-## Main Setup File
+## Structure
 
-**`../combined.sql`** - Complete database setup file containing all necessary scripts:
-- Main database schema with all tables
-- Join requests system setup  
-- Notifications table setup
-- WebRTC signaling setup
-- Performance indexes and optimizations
-- Security fixes and RLS policies
-- Real-time subscriptions setup
-- Storage bucket setup
+### `/migrations/`
+- Production database schema files
+- Migration scripts for database updates
+- Files: `blog-schema.sql`, `combined.sql`, `device-tracking-schema.sql`
+
+### `/setup/` (Not in Git)
+- Initial setup scripts for new environments
+- Admin user creation scripts
+- Contains sensitive configuration
+- Files: `setup-admin.sql`
+
+### `/debug/` (Not in Git)
+- Debug and troubleshooting SQL scripts
+- Quick fixes and patches
+- Development-only scripts
+- Files: `debug-admin.sql`, `fix-admin-rls.sql`, `quick-admin-fix.sql`
+
+## Security Notes
+
+- `/setup/` and `/debug/` directories are excluded from version control
+- These may contain sensitive information like admin emails or debug data
+- Always review scripts before running in production
+- Keep local copies for development use only
 
 ## Usage
 
-### Single File Setup (Recommended)
-Run the combined setup file in the Supabase SQL Editor:
-
-1. Open Supabase Dashboard → SQL Editor
-2. Copy the entire contents of `../combined.sql`
-3. Paste and execute in the SQL Editor
-4. Verify all sections complete successfully
-
-```sql
--- All database setup in one file
--- Copy contents from ../combined.sql and run
-```
-
-## What's Included
-
-The combined.sql file includes all essential components:
-
-| Component | Purpose | Status |
-|-----------|---------|--------|
-| Core Schema | Database tables and relationships | ✅ Included |
-| Request System | Join request functionality | ✅ Included |
-| Notifications | Notification system | ✅ Included |
-| WebRTC Setup | Video calling support | ✅ Included |
-| Performance | Query optimization indexes | ✅ Included |
-| Security | RLS policies and security | ✅ Included |
-| Real-time | Real-time subscriptions | ✅ Included |
-| Storage | File storage buckets | ✅ Included |
-
-## Verification
-
-After running the combined.sql file, verify the setup by checking:
-- All tables are created
-- RLS policies are active
-- Real-time is enabled for required tables
-- Indexes are created for performance
+1. **For new deployments**: Use files in `/migrations/` for schema setup
+2. **For admin setup**: Use scripts in `/setup/` (create locally)
+3. **For debugging**: Use scripts in `/debug/` (development only)

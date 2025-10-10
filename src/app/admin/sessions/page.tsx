@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Logo } from '@/components/common/logo';
+import { ResponsiveAdminHeader } from '@/components/admin/responsive-admin-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowLeft, 
   Settings, 
   Eye, 
   Shield, 
@@ -23,13 +22,15 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { AdminService } from '@/lib/services/admin-service';
+import { FilterComponent } from '@/components/admin/filters';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
-import type { TopicWithDetails } from '@/lib/database-types';
+import type { TopicWithDetails, SessionStatus } from '@/lib/database-types';
 
 export default function SessionManagementPage() {
   const [sessions, setSessions] = useState<TopicWithDetails[]>([]);
   const [activeSessions, setActiveSessions] = useState<TopicWithDetails[]>([]);
+  const [filters, setFilters] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -82,7 +83,9 @@ export default function SessionManagementPage() {
   const loadSessions = async () => {
     try {
       const [allSessions, activeSessionsData] = await Promise.all([
-        AdminService.getAllTopics(50),
+        Object.keys(filters).length > 0 
+          ? AdminService.getFilteredTopics(filters, 50)
+          : AdminService.getAllTopics(50),
         AdminService.getActiveTopics()
       ]);
       
@@ -93,6 +96,29 @@ export default function SessionManagementPage() {
       toast({
         title: 'Error',
         description: 'Failed to load sessions.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleFiltersChange = async (newFilters: any) => {
+    setFilters(newFilters);
+    // Auto-apply filters
+    try {
+      const [allSessions, activeSessionsData] = await Promise.all([
+        Object.keys(newFilters).length > 0 
+          ? AdminService.getFilteredTopics(newFilters, 50)
+          : AdminService.getAllTopics(50),
+        AdminService.getActiveTopics()
+      ]);
+      
+      setSessions(allSessions);
+      setActiveSessions(activeSessionsData);
+    } catch (error) {
+      console.error('Error applying filters:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to apply filters.',
         variant: 'destructive'
       });
     }
@@ -109,13 +135,50 @@ export default function SessionManagementPage() {
   };
 
   const getSessionStatus = (session: TopicWithDetails) => {
+    if (session.session_status) {
+      return AdminService.getSessionStatusInfo(session.session_status);
+    }
+    
+    // Fallback to basic status calculation
     const now = new Date();
     const startTime = new Date(session.start_time);
     const endTime = new Date(session.end_time);
 
-    if (now < startTime) return { status: 'upcoming', color: 'bg-blue-100 text-blue-800' };
-    if (now >= startTime && now <= endTime) return { status: 'active', color: 'bg-green-100 text-green-800' };
-    return { status: 'ended', color: 'bg-gray-100 text-gray-800' };
+    if (now < startTime) return { status: 'upcoming', color: 'bg-blue-100 text-blue-800', description: 'Upcoming', priority: 4 };
+    if (now >= startTime && now <= endTime) return { status: 'active', color: 'bg-green-100 text-green-800', description: 'Active', priority: 6 };
+    return { status: 'ended', color: 'bg-gray-100 text-gray-800', description: 'Ended', priority: 7 };
+  };
+
+  const getSessionDetails = (session: TopicWithDetails) => {
+    const details = [];
+    
+    // Join requests info
+    if (session.join_requests && session.join_requests.length > 0) {
+      const pending = session.join_requests.filter(r => r.status === 'pending').length;
+      const approved = session.join_requests.filter(r => r.status === 'approved').length;
+      const rejected = session.join_requests.filter(r => r.status === 'rejected').length;
+      
+      if (pending > 0) details.push(`${pending} pending requests`);
+      if (approved > 0) details.push(`${approved} approved`);
+      if (rejected > 0) details.push(`${rejected} rejected`);
+    }
+    
+    // Presence info
+    if (session.session_presence && session.session_presence.length > 0) {
+      const active = session.session_presence.filter(p => p.status === 'active').length;
+      const left = session.session_presence.filter(p => p.status === 'left').length;
+      
+      if (active > 0) details.push(`${active} currently active`);
+      if (left > 0) details.push(`${left} left session`);
+    }
+    
+    // Duration info
+    if (session.actual_duration && session.actual_duration > 0) {
+      const scheduled = AdminService.getScheduledDuration(session);
+      details.push(`Ran for ${session.actual_duration}/${scheduled} minutes`);
+    }
+    
+    return details;
   };
 
   const getDuration = (startTime: string, endTime: string) => {
@@ -159,35 +222,20 @@ export default function SessionManagementPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Logo />
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/admin">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Dashboard
-                  </Link>
-                </Button>
-                <span className="text-gray-400">/</span>
-                <h1 className="text-xl font-semibold text-gray-900">Session Management</h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" onClick={loadSessions}>
-                Refresh
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <ResponsiveAdminHeader
+        title="Session Management"
+        actions={[
+          {
+            label: 'Refresh',
+            onClick: loadSessions,
+            variant: 'outline'
+          }
+        ]}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -260,11 +308,16 @@ export default function SessionManagementPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <Badge className={sessionStatus.color}>
-                              {sessionStatus.status}
+                              {sessionStatus.description || sessionStatus.status}
                             </Badge>
                             <span className="text-sm text-gray-500">
                               {getDuration(session.start_time, session.end_time)}
                             </span>
+                            {session.session_presence && session.session_presence.filter(p => p.status === 'active').length > 0 && (
+                              <Badge variant="outline" className="text-green-600 border-green-300">
+                                {session.session_presence.filter(p => p.status === 'active').length} Active
+                              </Badge>
+                            )}
                           </div>
                           
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">{session.title}</h3>
@@ -288,6 +341,19 @@ export default function SessionManagementPage() {
                               {session.message_count || 0} messages
                             </div>
                           </div>
+
+                          {/* Active Session Details */}
+                          {getSessionDetails(session).length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-green-200">
+                              <div className="flex flex-wrap gap-2">
+                                {getSessionDetails(session).map((detail, index) => (
+                                  <span key={index} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                    {detail}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex items-center gap-2">
@@ -339,11 +405,21 @@ export default function SessionManagementPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <Badge className={sessionStatus.color}>
-                              {sessionStatus.status}
+                              {sessionStatus.description || sessionStatus.status}
                             </Badge>
                             <span className="text-sm text-gray-500">
                               {getDuration(session.start_time, session.end_time)}
                             </span>
+                            {session.ended_early && (
+                              <Badge variant="outline" className="text-amber-600 border-amber-300">
+                                Ended Early
+                              </Badge>
+                            )}
+                            {session.no_show && (
+                              <Badge variant="outline" className="text-red-600 border-red-300">
+                                No Show
+                              </Badge>
+                            )}
                           </div>
                           
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">{session.title}</h3>
@@ -367,6 +443,48 @@ export default function SessionManagementPage() {
                               {session.message_count || 0} messages
                             </div>
                           </div>
+
+                          {/* Enhanced Session Details */}
+                          {getSessionDetails(session).length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <div className="flex flex-wrap gap-2">
+                                {getSessionDetails(session).map((detail, index) => (
+                                  <span key={index} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
+                                    {detail}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Join Requests Details */}
+                          {session.join_requests && session.join_requests.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <h4 className="text-sm font-medium text-gray-700 mb-2">Join Requests:</h4>
+                              <div className="space-y-1">
+                                {session.join_requests.slice(0, 3).map((request) => (
+                                  <div key={request.id} className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-600">{request.requester_name}</span>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={
+                                        request.status === 'approved' ? 'text-green-600 border-green-300' :
+                                        request.status === 'rejected' ? 'text-red-600 border-red-300' :
+                                        'text-yellow-600 border-yellow-300'
+                                      }
+                                    >
+                                      {request.status}
+                                    </Badge>
+                                  </div>
+                                ))}
+                                {session.join_requests.length > 3 && (
+                                  <div className="text-xs text-gray-500">
+                                    +{session.join_requests.length - 3} more requests
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="flex items-center gap-2">

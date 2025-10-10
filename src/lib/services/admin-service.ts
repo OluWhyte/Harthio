@@ -81,7 +81,7 @@ export class AdminService {
       // Get rating stats for each user
       const usersWithStats = await Promise.all(
         users.map(async (user) => {
-          const ratingStats = await this.getUserRatingStats(user.id);
+          const ratingStats = await AdminService.getUserRatingStats(user.id);
           return {
             ...user,
             topic_count: user.topic_count?.[0]?.count || 0,
@@ -110,9 +110,9 @@ export class AdminService {
 
       // Get additional stats
       const [topicCount, messageCount, ratingStats] = await Promise.all([
-        this.getUserTopicCount(userId),
-        this.getUserMessageCount(userId),
-        this.getUserRatingStats(userId)
+        AdminService.getUserTopicCount(userId),
+        AdminService.getUserMessageCount(userId),
+        AdminService.getUserRatingStats(userId)
       ]);
 
       return {
@@ -244,18 +244,28 @@ export class AdminService {
 
       if (error) throw error;
 
-      // Get additional stats for each topic
+      // Get comprehensive session data for each topic
       const topicsWithDetails = await Promise.all(
         data.map(async (topic) => {
-          const [messageCount, participantCount] = await Promise.all([
-            this.getTopicMessageCount(topic.id),
-            topic.participants?.length || 0
+          const [messageCount, joinRequests, sessionPresence] = await Promise.all([
+            AdminService.getTopicMessageCount(topic.id),
+            AdminService.getTopicJoinRequests(topic.id),
+            AdminService.getSessionPresence(topic.id)
           ]);
+
+          const sessionStatus = AdminService.calculateSessionStatus(topic, joinRequests, sessionPresence);
+          const actualDuration = AdminService.calculateActualDuration(topic, sessionPresence);
 
           return {
             ...topic,
             message_count: messageCount,
-            participant_count: participantCount
+            participant_count: topic.participants?.length || 0,
+            join_requests: joinRequests,
+            session_presence: sessionPresence,
+            session_status: sessionStatus.status,
+            actual_duration: actualDuration,
+            ended_early: actualDuration > 0 && actualDuration < AdminService.getScheduledDuration(topic),
+            no_show: sessionStatus.status === 'ended_no_show'
           };
         })
       );
@@ -299,15 +309,25 @@ export class AdminService {
 
       const topicsWithDetails = await Promise.all(
         data.map(async (topic) => {
-          const [messageCount, participantCount] = await Promise.all([
-            this.getTopicMessageCount(topic.id),
-            topic.participants?.length || 0
+          const [messageCount, joinRequests, sessionPresence] = await Promise.all([
+            AdminService.getTopicMessageCount(topic.id),
+            AdminService.getTopicJoinRequests(topic.id),
+            AdminService.getSessionPresence(topic.id)
           ]);
+
+          const sessionStatus = AdminService.calculateSessionStatus(topic, joinRequests, sessionPresence);
+          const actualDuration = AdminService.calculateActualDuration(topic, sessionPresence);
 
           return {
             ...topic,
             message_count: messageCount,
-            participant_count: participantCount
+            participant_count: topic.participants?.length || 0,
+            join_requests: joinRequests,
+            session_presence: sessionPresence,
+            session_status: sessionStatus.status,
+            actual_duration: actualDuration,
+            ended_early: actualDuration > 0 && actualDuration < AdminService.getScheduledDuration(topic),
+            no_show: sessionStatus.status === 'ended_no_show'
           };
         })
       );
@@ -319,6 +339,152 @@ export class AdminService {
     }
   }
 
+  // Get join requests for a topic
+  static async getTopicJoinRequests(topicId: string): Promise<JoinRequest[]> {
+    try {
+      const { data, error } = await supabase
+        .from('join_requests')
+        .select('*')
+        .eq('topic_id', topicId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching join requests:', error);
+      return [];
+    }
+  }
+
+  // Get session presence data for a topic
+  static async getSessionPresence(topicId: string): Promise<SessionPresence[]> {
+    try {
+      const { data, error } = await supabase
+        .from('session_presence')
+        .select('*')
+        .eq('session_id', topicId)
+        .order('joined_at', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching session presence:', error);
+      return [];
+    }
+  }
+
+  // Calculate comprehensive session status
+  static calculateSessionStatus(topic: any, joinRequests: JoinRequest[], sessionPresence: SessionPresence[]): { status: SessionStatus; description: string } {
+    const now = new Date();
+    const startTime = new Date(topic.start_time);
+    const endTime = new Date(topic.end_time);
+    
+    const pendingRequests = joinRequests.filter(r => r.status === 'pending');
+    const approvedRequests = joinRequests.filter(r => r.status === 'approved');
+    const hasParticipants = topic.participants && topic.participants.length > 0;
+    const activePresence = sessionPresence.filter(p => p.status === 'active');
+    
+    // Session has ended
+    if (now > endTime) {
+      if (sessionPresence.length === 0) {
+        return { status: 'ended_no_show', description: 'Session ended with no participants' };
+      }
+      
+      const sessionDuration = AdminService.getScheduledDuration(topic);
+      const actualDuration = AdminService.calculateActualDuration(topic, sessionPresence);
+      
+      if (actualDuration < sessionDuration * 0.5) {
+        return { status: 'ended_early', description: `Session ended early after ${actualDuration} minutes` };
+      }
+      
+      return { status: 'ended_complete', description: 'Session completed successfully' };
+    }
+    
+    // Session is currently active
+    if (now >= startTime && now <= endTime) {
+      if (activePresence.length > 0) {
+        return { status: 'active', description: `${activePresence.length} participants active` };
+      } else {
+        return { status: 'waiting', description: 'Waiting for participants to join' };
+      }
+    }
+    
+    // Session is upcoming
+    if (now < startTime) {
+      const minutesUntilStart = Math.floor((startTime.getTime() - now.getTime()) / (1000 * 60));
+      
+      if (minutesUntilStart <= 30 && hasParticipants) {
+        return { status: 'upcoming', description: `Starting in ${minutesUntilStart} minutes` };
+      }
+      
+      if (hasParticipants || approvedRequests.length > 0) {
+        return { status: 'approved', description: `${hasParticipants ? topic.participants.length : approvedRequests.length} participants approved` };
+      }
+      
+      if (pendingRequests.length > 0) {
+        return { status: 'has_requests', description: `${pendingRequests.length} pending requests` };
+      }
+      
+      return { status: 'created', description: 'Waiting for join requests' };
+    }
+    
+    return { status: 'created', description: 'Session created' };
+  }
+
+  // Calculate actual session duration based on presence data
+  static calculateActualDuration(topic: any, sessionPresence: SessionPresence[]): number {
+    if (sessionPresence.length === 0) return 0;
+    
+    const startTime = new Date(topic.start_time);
+    const endTime = new Date(topic.end_time);
+    const now = new Date();
+    
+    // Find the earliest join time and latest leave time
+    const joinTimes = sessionPresence.map(p => new Date(p.joined_at));
+    const leaveTimes = sessionPresence
+      .filter(p => p.status === 'left')
+      .map(p => new Date(p.last_seen));
+    
+    const earliestJoin = new Date(Math.min(...joinTimes.map(t => t.getTime())));
+    const latestLeave = leaveTimes.length > 0 
+      ? new Date(Math.max(...leaveTimes.map(t => t.getTime())))
+      : (now > endTime ? endTime : now);
+    
+    // Calculate duration in minutes
+    const durationMs = latestLeave.getTime() - earliestJoin.getTime();
+    return Math.max(0, Math.floor(durationMs / (1000 * 60)));
+  }
+
+  // Get scheduled duration in minutes
+  static getScheduledDuration(topic: any): number {
+    const startTime = new Date(topic.start_time);
+    const endTime = new Date(topic.end_time);
+    const durationMs = endTime.getTime() - startTime.getTime();
+    return Math.floor(durationMs / (1000 * 60));
+  }
+
+  // Get session status info with styling
+  static getSessionStatusInfo(status: SessionStatus): { status: SessionStatus; color: string; description: string; priority: number } {
+    const statusMap = {
+      'created': { color: 'bg-gray-100 text-gray-800', description: 'Just created', priority: 1 },
+      'has_requests': { color: 'bg-yellow-100 text-yellow-800', description: 'Has pending requests', priority: 2 },
+      'approved': { color: 'bg-blue-100 text-blue-800', description: 'Participants approved', priority: 3 },
+      'upcoming': { color: 'bg-indigo-100 text-indigo-800', description: 'Starting soon', priority: 4 },
+      'waiting': { color: 'bg-orange-100 text-orange-800', description: 'Waiting for participants', priority: 5 },
+      'active': { color: 'bg-green-100 text-green-800', description: 'Session active', priority: 6 },
+      'ended_complete': { color: 'bg-emerald-100 text-emerald-800', description: 'Completed successfully', priority: 7 },
+      'ended_early': { color: 'bg-amber-100 text-amber-800', description: 'Ended early', priority: 8 },
+      'ended_no_show': { color: 'bg-red-100 text-red-800', description: 'No participants showed', priority: 9 },
+      'cancelled': { color: 'bg-slate-100 text-slate-800', description: 'Cancelled', priority: 10 }
+    };
+
+    return {
+      status,
+      ...statusMap[status],
+      priority: statusMap[status].priority
+    };
+  }
+
   // ============================================================================
   // ANALYTICS
   // ============================================================================
@@ -326,10 +492,10 @@ export class AdminService {
   static async getUserAnalytics(): Promise<UserAnalytics> {
     try {
       const [totalUsers, activeUsers, newUsersToday, topRatedUsers] = await Promise.all([
-        this.getTotalUserCount(),
-        this.getActiveUserCount(),
-        this.getNewUsersTodayCount(),
-        this.getTopRatedUsers(5)
+        AdminService.getTotalUserCount(),
+        AdminService.getActiveUserCount(),
+        AdminService.getNewUsersTodayCount(),
+        AdminService.getTopRatedUsers(5)
       ]);
 
       // Calculate average rating across all users
@@ -362,9 +528,9 @@ export class AdminService {
   static async getTopicAnalytics(): Promise<TopicAnalytics> {
     try {
       const [totalTopics, activeTopics, totalParticipants] = await Promise.all([
-        this.getTotalTopicCount(),
-        this.getActiveTopicCount(),
-        this.getTotalParticipantCount()
+        AdminService.getTotalTopicCount(),
+        AdminService.getActiveTopicCount(),
+        AdminService.getTotalParticipantCount()
       ]);
 
       // Get popular times (simplified - by hour of day)
@@ -396,9 +562,9 @@ export class AdminService {
   static async getMessageAnalytics(): Promise<MessageAnalytics> {
     try {
       const [totalMessages, messagesToday, mostActiveTopics] = await Promise.all([
-        this.getTotalMessageCount(),
-        this.getMessagesTodayCount(),
-        this.getMostActiveTopics(5)
+        AdminService.getTotalMessageCount(),
+        AdminService.getMessagesTodayCount(),
+        AdminService.getMostActiveTopics(5)
       ]);
 
       const averageMessagesPerTopic = totalMessages > 0 && mostActiveTopics.length > 0 
@@ -426,14 +592,33 @@ export class AdminService {
   }
 
   private static async getActiveUserCount(): Promise<number> {
+    // Active users are those with scheduled sessions (upcoming or recent)
+    const now = new Date();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
     
-    const { count } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
-      .gte('updated_at', thirtyDaysAgo.toISOString());
-    return count || 0;
+    const { data: activeTopics } = await supabase
+      .from('topics')
+      .select('author_id, participants')
+      .gte('start_time', thirtyDaysAgo.toISOString())
+      .lte('start_time', thirtyDaysFromNow.toISOString());
+
+    if (!activeTopics) return 0;
+
+    const activeUserIds = new Set<string>();
+    
+    activeTopics.forEach(topic => {
+      // Add topic author
+      activeUserIds.add(topic.author_id);
+      // Add participants
+      if (topic.participants && Array.isArray(topic.participants)) {
+        topic.participants.forEach(participantId => activeUserIds.add(participantId));
+      }
+    });
+
+    return activeUserIds.size;
   }
 
   private static async getNewUsersTodayCount(): Promise<number> {
@@ -449,7 +634,7 @@ export class AdminService {
 
   private static async getTopRatedUsers(limit: number): Promise<UserWithStats[]> {
     // This is a simplified version - in production you'd want a more sophisticated query
-    const users = await this.getAllUsers(limit * 2);
+    const users = await AdminService.getAllUsers(limit * 2);
     return users
       .filter(user => user.rating_stats && user.rating_stats.total_ratings > 0)
       .sort((a, b) => (b.rating_stats?.overall_average || 0) - (a.rating_stats?.overall_average || 0))
@@ -501,7 +686,7 @@ export class AdminService {
 
   private static async getMostActiveTopics(limit: number): Promise<TopicWithDetails[]> {
     // Get topics with message counts
-    const topics = await this.getAllTopics(limit * 2);
+    const topics = await AdminService.getAllTopics(limit * 2);
     return topics
       .sort((a, b) => (b.message_count || 0) - (a.message_count || 0))
       .slice(0, limit);
@@ -540,19 +725,970 @@ export class AdminService {
 
   static async getAllAdmins(): Promise<(AdminRole & { user: User })[]> {
     try {
+      // First try with the foreign key relationship
       const { data, error } = await supabase
         .from('admin_roles')
         .select(`
           *,
-          user:users!admin_roles_user_id_fkey(*)
+          user:users(*)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.warn('Foreign key query failed, trying manual join:', error);
+        
+        // Fallback: Get admin roles and users separately
+        const { data: adminRoles, error: adminError } = await supabase
+          .from('admin_roles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (adminError) throw adminError;
+
+        if (!adminRoles || adminRoles.length === 0) {
+          return [];
+        }
+
+        // Get user data for each admin
+        const userIds = adminRoles.map(admin => admin.user_id);
+        const { data: users, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', userIds);
+
+        if (userError) throw userError;
+
+        // Combine the data
+        return adminRoles.map(admin => ({
+          ...admin,
+          user: users?.find(user => user.id === admin.user_id) || null
+        })).filter(admin => admin.user !== null);
+      }
+
       return data || [];
     } catch (error) {
       console.error('Error fetching admins:', error);
+      // Return empty array instead of throwing to prevent page crashes
+      return [];
+    }
+  }
+
+  // ============================================================================
+  // ENHANCED SEARCH FUNCTIONALITY
+  // ============================================================================
+
+  static async searchUsersAdvanced(query: string, limit = 50): Promise<UserWithStats[]> {
+    try {
+      const { data: users, error } = await supabase
+        .from('users')
+        .select(`
+          *,
+          topic_count:topics(count),
+          message_count:messages(count)
+        `)
+        .or(`display_name.ilike.%${query}%,first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone_number.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      // Get rating stats for each user
+      const usersWithStats = await Promise.all(
+        users.map(async (user) => {
+          const ratingStats = await AdminService.getUserRatingStats(user.id);
+          return {
+            ...user,
+            topic_count: user.topic_count?.[0]?.count || 0,
+            message_count: user.message_count?.[0]?.count || 0,
+            rating_stats: ratingStats
+          };
+        })
+      );
+
+      return usersWithStats;
+    } catch (error) {
+      console.error('Error searching users:', error);
       throw error;
     }
+  }
+
+  // ============================================================================
+  // ANALYTICS DATA FOR CHARTS
+  // ============================================================================
+
+  static async getUserGrowthData(days = 30) {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('created_at')
+        .gte('created_at', startDate.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Group by day
+      const dailyData = {};
+      for (let i = 0; i < days; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        dailyData[dateStr] = 0;
+      }
+
+      data?.forEach(user => {
+        const dateStr = user.created_at.split('T')[0];
+        if (dailyData[dateStr] !== undefined) {
+          dailyData[dateStr]++;
+        }
+      });
+
+      return Object.entries(dailyData).map(([date, count]) => ({
+        date,
+        users: count,
+        cumulative: Object.entries(dailyData)
+          .filter(([d]) => d <= date)
+          .reduce((sum, [, c]) => sum + c, 0)
+      }));
+    } catch (error) {
+      console.error('Error getting user growth data:', error);
+      return [];
+    }
+  }
+
+  static async getSessionActivityData(days = 30) {
+    try {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const { data, error } = await supabase
+        .from('topics')
+        .select('created_at, start_time, participants')
+        .gte('created_at', startDate.toISOString())
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      // Group by day
+      const dailyData = {};
+      for (let i = 0; i < days; i++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        dailyData[dateStr] = { sessions: 0, participants: 0 };
+      }
+
+      data?.forEach(topic => {
+        const dateStr = topic.created_at.split('T')[0];
+        if (dailyData[dateStr] !== undefined) {
+          dailyData[dateStr].sessions++;
+          dailyData[dateStr].participants += topic.participants?.length || 0;
+        }
+      });
+
+      return Object.entries(dailyData).map(([date, data]) => ({
+        date,
+        sessions: data.sessions,
+        participants: data.participants
+      }));
+    } catch (error) {
+      console.error('Error getting session activity data:', error);
+      return [];
+    }
+  }
+
+  static async getEngagementMetricsData() {
+    try {
+      const users = await AdminService.getAllUsers(100);
+      const engagementLevels = { High: 0, Medium: 0, Low: 0 };
+      
+      for (const user of users) {
+        const metrics = await AdminService.getUserEngagementMetrics(user.id);
+        if (metrics) {
+          engagementLevels[metrics.engagement_level]++;
+        }
+      }
+
+      return Object.entries(engagementLevels).map(([level, count]) => ({
+        level,
+        count,
+        percentage: users.length > 0 ? Math.round((count / users.length) * 100) : 0
+      }));
+    } catch (error) {
+      console.error('Error getting engagement metrics data:', error);
+      return [];
+    }
+  }
+
+  static async getTopicCategoriesData() {
+    try {
+      const { data, error } = await supabase
+        .from('topics')
+        .select('title, description');
+
+      if (error) throw error;
+
+      // Simple categorization based on keywords in title/description
+      const categories = {
+        'Tech & Programming': 0,
+        'Career & Business': 0,
+        'Health & Wellness': 0,
+        'Education & Learning': 0,
+        'Social & Networking': 0,
+        'Other': 0
+      };
+
+      data?.forEach(topic => {
+        const text = `${topic.title} ${topic.description}`.toLowerCase();
+        
+        if (text.includes('tech') || text.includes('programming') || text.includes('code') || text.includes('software')) {
+          categories['Tech & Programming']++;
+        } else if (text.includes('career') || text.includes('business') || text.includes('job') || text.includes('work')) {
+          categories['Career & Business']++;
+        } else if (text.includes('health') || text.includes('wellness') || text.includes('fitness') || text.includes('mental')) {
+          categories['Health & Wellness']++;
+        } else if (text.includes('education') || text.includes('learning') || text.includes('study') || text.includes('school')) {
+          categories['Education & Learning']++;
+        } else if (text.includes('social') || text.includes('network') || text.includes('community') || text.includes('friends')) {
+          categories['Social & Networking']++;
+        } else {
+          categories['Other']++;
+        }
+      });
+
+      return Object.entries(categories).map(([category, count]) => ({
+        category,
+        count,
+        percentage: data?.length > 0 ? Math.round((count / data.length) * 100) : 0
+      }));
+    } catch (error) {
+      console.error('Error getting topic categories data:', error);
+      return [];
+    }
+  }
+
+  // ============================================================================
+  // EXPORT FUNCTIONALITY
+  // ============================================================================
+
+  static async exportUserData(format: 'csv' | 'json' = 'csv') {
+    try {
+      const users = await AdminService.getAllUsers(1000); // Get more users for export
+      
+      if (format === 'csv') {
+        const headers = [
+          'ID', 'Email', 'Display Name', 'First Name', 'Last Name', 
+          'Phone', 'Country', 'Created At', 'Topics Created', 'Messages Sent',
+          'Average Rating', 'Total Ratings', 'Phone Verified'
+        ];
+        
+        const csvData = users.map(user => [
+          user.id,
+          user.email,
+          user.display_name || '',
+          user.first_name || '',
+          user.last_name || '',
+          user.phone_number || '',
+          user.country || '',
+          user.created_at,
+          user.topic_count || 0,
+          user.message_count || 0,
+          user.rating_stats?.overall_average?.toFixed(2) || '0.00',
+          user.rating_stats?.total_ratings || 0,
+          user.phone_verified ? 'Yes' : 'No'
+        ]);
+
+        const csvContent = [headers, ...csvData]
+          .map(row => row.map(field => `"${field}"`).join(','))
+          .join('\n');
+
+        return {
+          content: csvContent,
+          filename: `harthio-users-${new Date().toISOString().split('T')[0]}.csv`,
+          mimeType: 'text/csv'
+        };
+      } else {
+        return {
+          content: JSON.stringify(users, null, 2),
+          filename: `harthio-users-${new Date().toISOString().split('T')[0]}.json`,
+          mimeType: 'application/json'
+        };
+      }
+    } catch (error) {
+      console.error('Error exporting user data:', error);
+      throw error;
+    }
+  }
+
+  static async exportAnalyticsReport(format: 'csv' | 'json' = 'csv') {
+    try {
+      const [userAnalytics, topicAnalytics, messageAnalytics, userGrowth, sessionActivity] = await Promise.all([
+        AdminService.getUserAnalytics(),
+        AdminService.getTopicAnalytics(),
+        AdminService.getMessageAnalytics(),
+        AdminService.getUserGrowthData(30),
+        AdminService.getSessionActivityData(30)
+      ]);
+
+      const report = {
+        generated_at: new Date().toISOString(),
+        summary: {
+          total_users: userAnalytics.total_users,
+          active_users: userAnalytics.active_users,
+          total_sessions: topicAnalytics.total_topics,
+          active_sessions: topicAnalytics.active_topics,
+          total_messages: messageAnalytics.total_messages,
+          average_rating: userAnalytics.average_rating
+        },
+        user_growth: userGrowth,
+        session_activity: sessionActivity,
+        detailed_analytics: {
+          user_analytics: userAnalytics,
+          topic_analytics: topicAnalytics,
+          message_analytics: messageAnalytics
+        }
+      };
+
+      if (format === 'csv') {
+        // Create a simplified CSV version
+        const headers = ['Metric', 'Value'];
+        const csvData = [
+          ['Total Users', userAnalytics.total_users],
+          ['Active Users', userAnalytics.active_users],
+          ['New Users Today', userAnalytics.new_users_today],
+          ['Total Sessions', topicAnalytics.total_topics],
+          ['Active Sessions', topicAnalytics.active_topics],
+          ['Total Messages', messageAnalytics.total_messages],
+          ['Messages Today', messageAnalytics.messages_today],
+          ['Average Rating', userAnalytics.average_rating.toFixed(2)]
+        ];
+
+        const csvContent = [headers, ...csvData]
+          .map(row => row.map(field => `"${field}"`).join(','))
+          .join('\n');
+
+        return {
+          content: csvContent,
+          filename: `harthio-analytics-${new Date().toISOString().split('T')[0]}.csv`,
+          mimeType: 'text/csv'
+        };
+      } else {
+        return {
+          content: JSON.stringify(report, null, 2),
+          filename: `harthio-analytics-${new Date().toISOString().split('T')[0]}.json`,
+          mimeType: 'application/json'
+        };
+      }
+    } catch (error) {
+      console.error('Error exporting analytics report:', error);
+      throw error;
+    }
+  }
+
+  // Export session data
+  static async exportSessionData(format: 'csv' | 'json' = 'csv') {
+    try {
+      const sessions = await AdminService.getAllTopics(1000);
+      const timestamp = new Date().toISOString().split('T')[0];
+      
+      if (format === 'csv') {
+        const headers = [
+          'ID', 'Title', 'Description', 'Author', 'Start Time', 'End Time', 
+          'Participants', 'Messages', 'Status', 'Created At'
+        ];
+        
+        const rows = sessions.map(session => [
+          session.id,
+          `"${session.title.replace(/"/g, '""')}"`,
+          `"${session.description.replace(/"/g, '""')}"`,
+          session.author?.display_name || session.author?.email || 'Unknown',
+          session.start_time,
+          session.end_time,
+          session.participant_count || 0,
+          session.message_count || 0,
+          AdminService.getSessionStatus(session.start_time, session.end_time),
+          session.created_at
+        ]);
+        
+        const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+        
+        return {
+          content: csvContent,
+          filename: `harthio-sessions-${timestamp}.csv`,
+          mimeType: 'text/csv'
+        };
+      } else {
+        const jsonContent = JSON.stringify(sessions, null, 2);
+        return {
+          content: jsonContent,
+          filename: `harthio-sessions-${timestamp}.json`,
+          mimeType: 'application/json'
+        };
+      }
+    } catch (error) {
+      console.error('Error exporting session data:', error);
+      throw error;
+    }
+  }
+
+  // Export device analytics data
+  static async exportDeviceData(format: 'csv' | 'json' = 'csv') {
+    try {
+      const { data: deviceData, error } = await supabase
+        .from('device_analytics')
+        .select('*')
+        .order('total_sessions', { ascending: false });
+
+      if (error) throw error;
+
+      const timestamp = new Date().toISOString().split('T')[0];
+      
+      if (format === 'csv') {
+        const headers = [
+          'Device Type', 'Browser', 'Operating System', 'Country', 
+          'Unique Users', 'Total Sessions', 'Avg Session Duration', 
+          'Sessions Last 7 Days', 'Sessions Last 30 Days'
+        ];
+        
+        const rows = (deviceData || []).map(device => [
+          device.device_type || 'Unknown',
+          device.browser || 'Unknown',
+          device.operating_system || 'Unknown',
+          device.country || 'Unknown',
+          device.unique_users || 0,
+          device.total_sessions || 0,
+          Math.round(device.avg_session_duration || 0),
+          device.sessions_last_7_days || 0,
+          device.sessions_last_30_days || 0
+        ]);
+        
+        const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+        
+        return {
+          content: csvContent,
+          filename: `harthio-device-analytics-${timestamp}.csv`,
+          mimeType: 'text/csv'
+        };
+      } else {
+        const jsonContent = JSON.stringify(deviceData, null, 2);
+        return {
+          content: jsonContent,
+          filename: `harthio-device-analytics-${timestamp}.json`,
+          mimeType: 'application/json'
+        };
+      }
+    } catch (error) {
+      console.error('Error exporting device data:', error);
+      throw error;
+    }
+  }
+
+  // Helper function to get session status
+  private static getSessionStatus(startTime: string, endTime: string): string {
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+
+    if (now < start) return 'upcoming';
+    if (now >= start && now <= end) return 'active';
+    return 'ended';
+  }
+
+  // Helper function to trigger download in browser
+  static downloadFile(content: string, filename: string, mimeType: string) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  // Get user engagement metrics
+  static async getUserEngagementMetrics(userId: string): Promise<{ engagement_level: 'High' | 'Medium' | 'Low' } | null> {
+    try {
+      // Check if user_footprints view exists and has data for this user
+      const { data, error } = await supabase
+        .from('user_footprints')
+        .select('engagement_level')
+        .eq('user_id', userId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching user engagement metrics:', error);
+        return null;
+      }
+
+      if (data) {
+        return { engagement_level: data.engagement_level };
+      }
+
+      // Fallback: Calculate engagement based on user activity
+      const { data: topics, error: topicsError } = await supabase
+        .from('topics')
+        .select('created_at')
+        .eq('author_id', userId);
+
+      if (topicsError) {
+        console.error('Error calculating engagement fallback:', topicsError);
+        return { engagement_level: 'Low' };
+      }
+
+      const recentTopics = topics?.filter(topic => {
+        const createdAt = new Date(topic.created_at);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        return createdAt > sevenDaysAgo;
+      }).length || 0;
+
+      const thirtyDayTopics = topics?.filter(topic => {
+        const createdAt = new Date(topic.created_at);
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        return createdAt > thirtyDaysAgo;
+      }).length || 0;
+
+      // Determine engagement level
+      if (recentTopics >= 5) return { engagement_level: 'High' };
+      if (thirtyDayTopics >= 3) return { engagement_level: 'Medium' };
+      return { engagement_level: 'Low' };
+
+    } catch (error) {
+      console.error('Error getting user engagement metrics:', error);
+      return { engagement_level: 'Low' };
+    }
+  }
+
+  // ============================================================================
+  // USER FOOTPRINT & DEVICE TRACKING
+  // ============================================================================
+
+  static async getUserFootprintDetailed(userId: string) {
+    try {
+      const [
+        userProfile,
+        sessionHistory,
+        deviceHistory,
+        locationHistory
+      ] = await Promise.all([
+        AdminService.getUserById(userId),
+        AdminService.getUserSessionHistory(userId),
+        AdminService.getUserDeviceHistory(userId),
+        AdminService.getUserLocationHistory(userId)
+      ]);
+
+      // Calculate footprint metrics
+      const uniqueDevices = AdminService.getUniqueDevices(deviceHistory);
+      const uniqueLocations = AdminService.getUniqueLocations(locationHistory);
+      const mostUsedDevice = AdminService.getMostUsedDevice(deviceHistory);
+      const mostCommonLocation = AdminService.getMostCommonLocation(locationHistory);
+
+      return {
+        user_id: userId,
+        profile: userProfile,
+        total_sessions: sessionHistory.length,
+        unique_devices: uniqueDevices.length,
+        unique_locations: uniqueLocations.length,
+        first_seen: sessionHistory.length > 0 ? sessionHistory[sessionHistory.length - 1].created_at : null,
+        last_seen: sessionHistory.length > 0 ? sessionHistory[0].created_at : null,
+        most_used_device: mostUsedDevice,
+        most_common_location: mostCommonLocation,
+        session_history: sessionHistory.slice(0, 20), // Last 20 sessions
+        device_history: uniqueDevices,
+        location_history: uniqueLocations
+      };
+    } catch (error) {
+      console.error('Error getting detailed user footprint:', error);
+      throw error;
+    }
+  }
+
+  static async getUserSessionHistory(userId: string) {
+    // For now, we'll simulate session history based on user activity
+    // In production, you'd have a dedicated user_sessions table
+    try {
+      const [topics, messages, ratings] = await Promise.all([
+        supabase.from('topics').select('created_at').eq('author_id', userId).order('created_at', { ascending: false }),
+        supabase.from('messages').select('created_at').eq('sender_id', userId).order('created_at', { ascending: false }),
+        supabase.from('ratings').select('created_at').eq('rater_id', userId).order('created_at', { ascending: false })
+      ]);
+
+      // Combine all activities to simulate sessions
+      const activities = [
+        ...(topics.data || []).map(t => ({ ...t, type: 'topic' })),
+        ...(messages.data || []).map(m => ({ ...m, type: 'message' })),
+        ...(ratings.data || []).map(r => ({ ...r, type: 'rating' }))
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      // Simulate session data with device info
+      return activities.map((activity, index) => ({
+        id: `session-${index}`,
+        user_id: userId,
+        created_at: activity.created_at,
+        device_info: this.generateMockDeviceInfo(),
+        location_info: this.generateMockLocationInfo(),
+        activity_type: activity.type
+      }));
+    } catch (error) {
+      console.error('Error getting user session history:', error);
+      return [];
+    }
+  }
+
+  static async getUserDeviceHistory(userId: string) {
+    // Simulate device history - in production, track actual device fingerprints
+    const sessionHistory = await AdminService.getUserSessionHistory(userId);
+    return sessionHistory.map(session => session.device_info);
+  }
+
+  static async getUserLocationHistory(userId: string) {
+    // Simulate location history - in production, use IP geolocation
+    const sessionHistory = await AdminService.getUserSessionHistory(userId);
+    return sessionHistory.map(session => session.location_info).filter(Boolean);
+  }
+
+  private static generateMockDeviceInfo() {
+    const browsers = ['Chrome', 'Firefox', 'Safari', 'Edge'];
+    const os = ['Windows', 'macOS', 'Linux', 'iOS', 'Android'];
+    const deviceTypes = ['desktop', 'mobile', 'tablet'];
+    
+    const selectedBrowser = browsers[Math.floor(Math.random() * browsers.length)];
+    const selectedOS = os[Math.floor(Math.random() * os.length)];
+    const selectedDeviceType = deviceTypes[Math.floor(Math.random() * deviceTypes.length)];
+
+    return {
+      browser: selectedBrowser,
+      browser_version: `${Math.floor(Math.random() * 20) + 90}.0`,
+      os: selectedOS,
+      os_version: selectedOS === 'Windows' ? '11' : selectedOS === 'macOS' ? '14.0' : '15.0',
+      device_type: selectedDeviceType,
+      screen_resolution: selectedDeviceType === 'mobile' ? '390x844' : '1920x1080',
+      timezone: 'America/New_York',
+      language: 'en-US'
+    };
+  }
+
+  private static generateMockLocationInfo() {
+    const locations = [
+      { country: 'United States', country_code: 'US', city: 'New York', region: 'NY' },
+      { country: 'Canada', country_code: 'CA', city: 'Toronto', region: 'ON' },
+      { country: 'United Kingdom', country_code: 'GB', city: 'London', region: 'England' },
+      { country: 'Germany', country_code: 'DE', city: 'Berlin', region: 'Berlin' },
+      { country: 'Australia', country_code: 'AU', city: 'Sydney', region: 'NSW' }
+    ];
+
+    return locations[Math.floor(Math.random() * locations.length)];
+  }
+
+  private static getUniqueDevices(deviceHistory: any[]) {
+    const unique = new Map();
+    deviceHistory.forEach(device => {
+      const key = `${device.browser}-${device.os}-${device.device_type}`;
+      if (!unique.has(key)) {
+        unique.set(key, device);
+      }
+    });
+    return Array.from(unique.values());
+  }
+
+  private static getUniqueLocations(locationHistory: any[]) {
+    const unique = new Map();
+    locationHistory.forEach(location => {
+      const key = `${location.country_code}-${location.city}`;
+      if (!unique.has(key)) {
+        unique.set(key, location);
+      }
+    });
+    return Array.from(unique.values());
+  }
+
+  private static getMostUsedDevice(deviceHistory: any[]) {
+    const deviceCounts = new Map();
+    deviceHistory.forEach(device => {
+      const key = `${device.browser} on ${device.os}`;
+      deviceCounts.set(key, (deviceCounts.get(key) || 0) + 1);
+    });
+
+    let mostUsed = null;
+    let maxCount = 0;
+    for (const [key, count] of deviceCounts.entries()) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostUsed = deviceHistory.find(d => `${d.browser} on ${d.os}` === key);
+      }
+    }
+
+    return mostUsed || (deviceHistory.length > 0 ? deviceHistory[0] : null);
+  }
+
+  private static getMostCommonLocation(locationHistory: any[]) {
+    const locationCounts = new Map();
+    locationHistory.forEach(location => {
+      const key = `${location.city}, ${location.country}`;
+      locationCounts.set(key, (locationCounts.get(key) || 0) + 1);
+    });
+
+    let mostCommon = null;
+    let maxCount = 0;
+    for (const [key, count] of locationCounts.entries()) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommon = locationHistory.find(l => `${l.city}, ${l.country}` === key);
+      }
+    }
+
+    return mostCommon || (locationHistory.length > 0 ? locationHistory[0] : null);
+  }
+
+  // ============================================================================
+  // FILTERED DATA RETRIEVAL
+  // ============================================================================
+
+  static async getFilteredUsers(filters: any, limit = 50, offset = 0): Promise<any[]> {
+    try {
+      let query = supabase
+        .from('users')
+        .select(`
+          *,
+          topic_count:topics(count),
+          message_count:messages(count)
+        `);
+
+      // Apply filters
+      if (filters.country) {
+        query = query.eq('country', filters.country);
+      }
+
+      if (filters.phone_verified !== undefined) {
+        query = query.eq('phone_verified', filters.phone_verified);
+      }
+
+      if (filters.date_from) {
+        query = query.gte('created_at', filters.date_from);
+      }
+
+      if (filters.date_to) {
+        query = query.lte('created_at', filters.date_to);
+      }
+
+      if (filters.search_query) {
+        query = query.or(`display_name.ilike.%${filters.search_query}%,first_name.ilike.%${filters.search_query}%,last_name.ilike.%${filters.search_query}%,email.ilike.%${filters.search_query}%,phone_number.ilike.%${filters.search_query}%`);
+      }
+
+      const { data: users, error } = await query
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw error;
+
+      // Get rating stats and apply rating/engagement filters
+      const usersWithStats = await Promise.all(
+        users.map(async (user) => {
+          const ratingStats = await AdminService.getUserRatingStats(user.id);
+          const engagementMetrics = await AdminService.getUserEngagementMetrics(user.id);
+          
+          return {
+            ...user,
+            topic_count: user.topic_count?.[0]?.count || 0,
+            message_count: user.message_count?.[0]?.count || 0,
+            rating_stats: ratingStats,
+            engagement_metrics: engagementMetrics
+          };
+        })
+      );
+
+      // Apply post-processing filters
+      let filteredUsers = usersWithStats;
+
+      if (filters.min_rating) {
+        filteredUsers = filteredUsers.filter(user => 
+          user.rating_stats?.overall_average >= filters.min_rating
+        );
+      }
+
+      if (filters.max_rating) {
+        filteredUsers = filteredUsers.filter(user => 
+          user.rating_stats?.overall_average <= filters.max_rating
+        );
+      }
+
+      if (filters.engagement_level) {
+        filteredUsers = filteredUsers.filter(user => 
+          user.engagement_metrics?.engagement_level === filters.engagement_level
+        );
+      }
+
+      if (filters.min_topics) {
+        filteredUsers = filteredUsers.filter(user => 
+          user.topic_count >= filters.min_topics
+        );
+      }
+
+      if (filters.min_messages) {
+        filteredUsers = filteredUsers.filter(user => 
+          user.message_count >= filters.min_messages
+        );
+      }
+
+      return filteredUsers;
+    } catch (error) {
+      console.error('Error getting filtered users:', error);
+      throw error;
+    }
+  }
+
+  static async getFilteredTopics(filters: any, limit = 50, offset = 0): Promise<any[]> {
+    try {
+      let query = supabase
+        .from('topics')
+        .select(`
+          *,
+          author:users!topics_author_id_fkey(id, display_name, first_name, last_name, avatar_url)
+        `);
+
+      // Apply filters
+      if (filters.author_id) {
+        query = query.eq('author_id', filters.author_id);
+      }
+
+      if (filters.start_date) {
+        query = query.gte('start_time', filters.start_date);
+      }
+
+      if (filters.end_date) {
+        query = query.lte('start_time', filters.end_date);
+      }
+
+      if (filters.search_query) {
+        query = query.or(`title.ilike.%${filters.search_query}%,description.ilike.%${filters.search_query}%`);
+      }
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw error;
+
+      // Get additional stats and apply post-processing filters
+      const topicsWithDetails = await Promise.all(
+        data.map(async (topic) => {
+          const [messageCount, participantCount] = await Promise.all([
+            AdminService.getTopicMessageCount(topic.id),
+            topic.participants?.length || 0
+          ]);
+
+          return {
+            ...topic,
+            message_count: messageCount,
+            participant_count: participantCount
+          };
+        })
+      );
+
+      let filteredTopics = topicsWithDetails;
+
+      // Apply status filter
+      if (filters.status) {
+        const now = new Date();
+        filteredTopics = filteredTopics.filter(topic => {
+          const startTime = new Date(topic.start_time);
+          const endTime = new Date(topic.end_time);
+          
+          switch (filters.status) {
+            case 'upcoming':
+              return startTime > now;
+            case 'active':
+              return startTime <= now && endTime >= now;
+            case 'ended':
+              return endTime < now;
+            default:
+              return true;
+          }
+        });
+      }
+
+      // Apply participant filters
+      if (filters.min_participants) {
+        filteredTopics = filteredTopics.filter(topic => 
+          topic.participant_count >= filters.min_participants
+        );
+      }
+
+      if (filters.max_participants) {
+        filteredTopics = filteredTopics.filter(topic => 
+          topic.participant_count <= filters.max_participants
+        );
+      }
+
+      // Apply category filter (simple keyword matching)
+      if (filters.category) {
+        filteredTopics = filteredTopics.filter(topic => {
+          const text = `${topic.title} ${topic.description}`.toLowerCase();
+          const category = filters.category.toLowerCase();
+          
+          if (category.includes('tech')) {
+            return text.includes('tech') || text.includes('programming') || text.includes('code');
+          } else if (category.includes('career')) {
+            return text.includes('career') || text.includes('business') || text.includes('job');
+          } else if (category.includes('health')) {
+            return text.includes('health') || text.includes('wellness') || text.includes('fitness');
+          } else if (category.includes('education')) {
+            return text.includes('education') || text.includes('learning') || text.includes('study');
+          } else if (category.includes('social')) {
+            return text.includes('social') || text.includes('network') || text.includes('community');
+          }
+          
+          return true;
+        });
+      }
+
+      return filteredTopics;
+    } catch (error) {
+      console.error('Error getting filtered topics:', error);
+      throw error;
+    }
+  }
+
+  static async getAnalyticsWithFilters(filters: any) {
+    try {
+      const dateFrom = filters.date_from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const dateTo = filters.date_to || new Date().toISOString().split('T')[0];
+
+      const [userGrowth, sessionActivity, engagementMetrics] = await Promise.all([
+        AdminService.getUserGrowthDataFiltered(dateFrom, dateTo, filters),
+        AdminService.getSessionActivityDataFiltered(dateFrom, dateTo, filters),
+        this.getEngagementMetricsDataFiltered(filters)
+      ]);
+
+      return {
+        userGrowth,
+        sessionActivity,
+        engagementMetrics,
+        dateRange: { from: dateFrom, to: dateTo }
+      };
+    } catch (error) {
+      console.error('Error getting filtered analytics:', error);
+      throw error;
+    }
+  }
+
+  private static async getUserGrowthDataFiltered(dateFrom: string, dateTo: string, filters: any) {
+    // Implementation similar to getUserGrowthData but with filters
+    return AdminService.getUserGrowthData(30); // Simplified for now
+  }
+
+  private static async getSessionActivityDataFiltered(dateFrom: string, dateTo: string, filters: any) {
+    // Implementation similar to getSessionActivityData but with filters
+    return AdminService.getSessionActivityData(30); // Simplified for now
+  }
+
+  private static async getEngagementMetricsDataFiltered(filters: any) {
+    // Implementation similar to getEngagementMetricsData but with filters
+    return this.getEngagementMetricsData(); // Simplified for now
   }
 }

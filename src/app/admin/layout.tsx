@@ -13,7 +13,9 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminNav />
-      {children}
+      <div className="w-full overflow-x-hidden">
+        {children}
+      </div>
     </div>
   );
 }

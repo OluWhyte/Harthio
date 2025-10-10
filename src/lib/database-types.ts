@@ -379,9 +379,121 @@ export interface Database {
           created_at?: string; // Should not be updated
         };
       };
+      user_sessions: {
+        Row: {
+          id: string; // UUID, auto-generated
+          user_id: string; // UUID, references auth.users(id)
+          session_token: string; // NOT NULL, UNIQUE
+          ip_address: string; // INET, NOT NULL
+          user_agent: string | null;
+          device_info: any; // JSONB, NOT NULL
+          location_info: any | null; // JSONB
+          device_fingerprint: string | null;
+          created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          last_active: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          ended_at: string | null; // TIMESTAMP WITH TIME ZONE
+          is_active: boolean; // DEFAULT TRUE
+          session_duration_minutes: number | null; // GENERATED ALWAYS AS computed
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          user_id: string; // Required
+          session_token: string; // Required, must be unique
+          ip_address: string; // Required
+          user_agent?: string | null;
+          device_info: any; // Required
+          location_info?: any | null;
+          device_fingerprint?: string | null;
+          created_at?: string; // Auto-generated if not provided
+          last_active?: string; // Auto-generated if not provided
+          ended_at?: string | null;
+          is_active?: boolean; // Defaults to true
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          user_id?: string; // Should not be updated
+          session_token?: string; // Should not be updated
+          ip_address?: string; // Should not be updated
+          user_agent?: string | null;
+          device_info?: any;
+          location_info?: any | null;
+          device_fingerprint?: string | null;
+          created_at?: string; // Should not be updated
+          last_active?: string; // Auto-updated
+          ended_at?: string | null;
+          is_active?: boolean;
+        };
+      };
+      device_fingerprints: {
+        Row: {
+          id: string; // UUID, auto-generated
+          fingerprint_hash: string; // NOT NULL, UNIQUE
+          device_info: any; // JSONB, NOT NULL
+          first_seen: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          last_seen: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          total_sessions: number; // DEFAULT 1
+          unique_users: number; // DEFAULT 1
+          is_suspicious: boolean; // DEFAULT FALSE
+          notes: string | null;
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          fingerprint_hash: string; // Required, must be unique
+          device_info: any; // Required
+          first_seen?: string; // Auto-generated if not provided
+          last_seen?: string; // Auto-generated if not provided
+          total_sessions?: number; // Defaults to 1
+          unique_users?: number; // Defaults to 1
+          is_suspicious?: boolean; // Defaults to false
+          notes?: string | null;
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          fingerprint_hash?: string; // Should not be updated
+          device_info?: any;
+          first_seen?: string; // Should not be updated
+          last_seen?: string; // Auto-updated
+          total_sessions?: number;
+          unique_users?: number;
+          is_suspicious?: boolean;
+          notes?: string | null;
+        };
+      };
     };
     Views: {
-      [_ in never]: never;
+      user_footprints: {
+        Row: {
+          user_id: string;
+          email: string;
+          display_name: string | null;
+          total_sessions: number;
+          unique_devices: number;
+          unique_ip_addresses: number;
+          unique_countries: number;
+          first_session: string | null;
+          last_session: string | null;
+          avg_session_duration: number | null;
+          total_session_time: number | null;
+          sessions_last_7_days: number;
+          sessions_last_30_days: number;
+          most_used_device: any | null;
+          most_common_location: any | null;
+          engagement_level: 'High' | 'Medium' | 'Low';
+        };
+      };
+      device_analytics: {
+        Row: {
+          device_type: string | null;
+          browser: string | null;
+          operating_system: string | null;
+          country: string | null;
+          unique_users: number;
+          total_sessions: number;
+          avg_session_duration: number | null;
+          sessions_last_7_days: number;
+          sessions_last_30_days: number;
+        };
+      };
     };
     Functions: {
       handle_new_user: {
@@ -409,6 +521,39 @@ export interface Database {
       cleanup_expired_signaling: {
         Args: Record<PropertyKey, never>;
         Returns: undefined;
+      };
+      create_user_session: {
+        Args: {
+          p_user_id: string;
+          p_ip_address: string;
+          p_user_agent: string | null;
+          p_device_info: any;
+          p_location_info: any | null;
+          p_device_fingerprint: string | null;
+        };
+        Returns: string;
+      };
+      update_session_activity: {
+        Args: {
+          p_session_id: string;
+        };
+        Returns: undefined;
+      };
+      end_user_session: {
+        Args: {
+          p_session_id: string;
+        };
+        Returns: undefined;
+      };
+      check_returning_device: {
+        Args: {
+          p_fingerprint: string;
+        };
+        Returns: boolean;
+      };
+      cleanup_old_sessions: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
       };
     };
     Enums: {
@@ -480,6 +625,14 @@ export type AdminRole = Tables<"admin_roles">;
 export type AdminRoleInsert = TablesInsert<"admin_roles">;
 export type AdminRoleUpdate = TablesUpdate<"admin_roles">;
 
+export type UserSession = Tables<"user_sessions">;
+export type UserSessionInsert = TablesInsert<"user_sessions">;
+export type UserSessionUpdate = TablesUpdate<"user_sessions">;
+
+export type DeviceFingerprint = Tables<"device_fingerprints">;
+export type DeviceFingerprintInsert = TablesInsert<"device_fingerprints">;
+export type DeviceFingerprintUpdate = TablesUpdate<"device_fingerprints">;
+
 // ============================================================================
 // EXTENDED TYPES WITH RELATIONS
 // ============================================================================
@@ -496,7 +649,48 @@ export type TopicWithDetails = Topic & {
   author: User;
   message_count?: number;
   participant_count?: number;
+  join_requests?: JoinRequest[];
+  session_presence?: SessionPresence[];
+  session_status?: SessionStatus;
+  actual_duration?: number; // in minutes
+  ended_early?: boolean;
+  no_show?: boolean;
 };
+
+// ============================================================================
+// SESSION STATUS TYPES
+// ============================================================================
+
+export type SessionStatus = 
+  | 'created'           // Just created, no requests yet
+  | 'has_requests'      // Has pending join requests
+  | 'approved'          // Has approved participants, waiting for start time
+  | 'upcoming'          // Approved and start time is near (within 30 minutes)
+  | 'waiting'           // Session time started but no one joined yet
+  | 'active'            // Session is active with participants
+  | 'ended_complete'    // Session ended at scheduled time with participants
+  | 'ended_early'       // Session ended before scheduled time
+  | 'ended_no_show'     // Session ended with no participants showing up
+  | 'cancelled';        // Session was cancelled
+
+export interface SessionStatusInfo {
+  status: SessionStatus;
+  color: string;
+  description: string;
+  priority: number; // For sorting
+}
+
+export interface SessionAnalytics {
+  total_sessions: number;
+  active_sessions: number;
+  completed_sessions: number;
+  cancelled_sessions: number;
+  no_show_sessions: number;
+  early_ended_sessions: number;
+  average_actual_duration: number;
+  completion_rate: number;
+  show_up_rate: number;
+}
 
 export type UserWithStats = User & {
   topic_count?: number;
@@ -619,6 +813,61 @@ export interface UserProfileFormData {
 }
 
 // ============================================================================
+// USER FOOTPRINT & DEVICE TRACKING TYPES
+// ============================================================================
+
+export interface UserSessionData {
+  id: string;
+  user_id: string;
+  session_token: string;
+  ip_address: string;
+  user_agent: string;
+  device_info: DeviceInfo;
+  location_info: LocationInfo | null;
+  created_at: string;
+  last_active: string;
+  is_active: boolean;
+}
+
+export interface DeviceInfo {
+  browser: string;
+  browser_version: string;
+  os: string;
+  os_version: string;
+  device_type: 'desktop' | 'mobile' | 'tablet';
+  device_vendor?: string;
+  device_model?: string;
+  screen_resolution?: string;
+  timezone?: string;
+  language?: string;
+}
+
+export interface LocationInfo {
+  country: string;
+  country_code: string;
+  region?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
+  isp?: string;
+}
+
+export interface UserFootprint {
+  user_id: string;
+  total_sessions: number;
+  unique_devices: number;
+  unique_locations: number;
+  first_seen: string;
+  last_seen: string;
+  most_used_device: DeviceInfo;
+  most_common_location: LocationInfo;
+  session_history: UserSessionData[];
+  device_history: DeviceInfo[];
+  location_history: LocationInfo[];
+}
+
+// ============================================================================
 // FILTER AND SEARCH TYPES
 // ============================================================================
 
@@ -629,6 +878,9 @@ export interface TopicFilters {
   search_query?: string;
   participant_id?: string;
   status?: "upcoming" | "active" | "ended";
+  category?: string;
+  min_participants?: number;
+  max_participants?: number;
 }
 
 export interface MessageFilters {
@@ -642,7 +894,25 @@ export interface MessageFilters {
 export interface UserFilters {
   search_query?: string;
   min_rating?: number;
+  max_rating?: number;
   has_avatar?: boolean;
+  country?: string;
+  device_type?: 'desktop' | 'mobile' | 'tablet';
+  date_from?: string;
+  date_to?: string;
+  engagement_level?: 'High' | 'Medium' | 'Low';
+  phone_verified?: boolean;
+  min_topics?: number;
+  min_messages?: number;
+}
+
+export interface AnalyticsFilters {
+  date_from: string;
+  date_to: string;
+  user_ids?: string[];
+  countries?: string[];
+  device_types?: string[];
+  engagement_levels?: string[];
 }
 
 // ============================================================================

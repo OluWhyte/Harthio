@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Logo } from '@/components/common/logo';
+import { ResponsiveAdminHeader } from '@/components/admin/responsive-admin-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Plus, Edit, Trash2, Eye, Calendar, User, Home } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Calendar, User } from 'lucide-react';
 import { BlogService } from '@/lib/services/blog-service';
 import { BlogPostWithAuthor } from '@/lib/database-types';
 import { useAuth } from '@/hooks/use-auth';
@@ -122,40 +122,24 @@ export default function AdminBlogManagement() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Logo />
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/admin">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Dashboard
-                  </Link>
-                </Button>
-                <span className="text-gray-400">/</span>
-                <h1 className="text-xl font-semibold text-gray-900">Blog Management</h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <Button variant="outline" asChild>
-                <Link href="/blog" target="_blank">
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Blog
-                </Link>
-              </Button>
-              <Button asChild className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
-                <Link href="/admin/blog/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Post
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <ResponsiveAdminHeader
+        title="Blog Management"
+        actions={[
+          {
+            label: 'View Blog',
+            icon: <Eye className="h-4 w-4" />,
+            onClick: () => window.open('/blog', '_blank'),
+            variant: 'outline'
+          },
+          {
+            label: 'New Post',
+            icon: <Plus className="h-4 w-4" />,
+            onClick: () => router.push('/admin/blog/new'),
+            variant: 'default',
+            className: 'bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90'
+          }
+        ]}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}

@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Logo } from '@/components/common/logo';
+import { ResponsiveAdminHeader } from '@/components/admin/responsive-admin-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save, Eye } from 'lucide-react';
+import { Save, Eye } from 'lucide-react';
 import { BlogService, CreateBlogPostData } from '@/lib/services/blog-service';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
@@ -140,44 +140,28 @@ export default function NewBlogPost() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Logo />
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/admin/blog">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Back to Posts
-                  </Link>
-                </Button>
-                <span className="text-gray-400">/</span>
-                <h1 className="text-xl font-semibold text-gray-900">New Post</h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                onClick={(e) => handleSubmit(e, 'draft')}
-                disabled={saving || !formData.title || !formData.content}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save Draft
-              </Button>
-              <Button 
-                onClick={(e) => handleSubmit(e, 'published')}
-                disabled={saving || !formData.title || !formData.content}
-                className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Publish
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <ResponsiveAdminHeader
+        title="New Post"
+        backHref="/admin/blog"
+        backLabel="Back to Posts"
+        actions={[
+          {
+            label: 'Save Draft',
+            icon: <Save className="h-4 w-4" />,
+            onClick: (e) => handleSubmit(e, 'draft'),
+            disabled: saving || !formData.title || !formData.content,
+            variant: 'outline'
+          },
+          {
+            label: 'Publish',
+            icon: <Eye className="h-4 w-4" />,
+            onClick: (e) => handleSubmit(e, 'published'),
+            disabled: saving || !formData.title || !formData.content,
+            variant: 'default',
+            className: 'bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90'
+          }
+        ]}
+      />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card>

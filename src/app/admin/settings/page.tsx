@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Logo } from '@/components/common/logo';
+import { ResponsiveAdminHeader } from '@/components/admin/responsive-admin-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowLeft, 
   Settings, 
   Globe, 
   Bell, 
@@ -156,30 +155,39 @@ export default function PlatformSettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-4">
-              <Logo />
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/admin">
-                    <ArrowLeft className="h-4 w-4 mr-1" />
-                    Dashboard
-                  </Link>
-                </Button>
-                <span className="text-gray-400">/</span>
-                <h1 className="text-xl font-semibold text-gray-900">Platform Settings</h1>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <ResponsiveAdminHeader
+        title="Platform Settings"
+        actions={[
+          {
+            label: 'Add Admin',
+            icon: <UserPlus className="h-4 w-4" />,
+            onClick: () => {
+              // TODO: Implement add admin functionality
+              toast({
+                title: 'Coming Soon',
+                description: 'Add admin functionality will be implemented soon.',
+              });
+            },
+            variant: 'outline'
+          },
+          {
+            label: 'Save Settings',
+            icon: <Save className="h-4 w-4" />,
+            onClick: () => {
+              // TODO: Implement save settings functionality
+              toast({
+                title: 'Settings Saved',
+                description: 'Platform settings have been saved successfully.',
+              });
+            },
+            variant: 'default'
+          }
+        ]}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Settings Categories */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card className="cursor-pointer hover:shadow-md transition-shadow">
             <CardContent className="p-6 text-center">
               <Globe className="h-12 w-12 text-blue-600 mx-auto mb-4" />
@@ -216,15 +224,9 @@ export default function PlatformSettingsPage() {
         {/* Admin Management */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5" />
-                Admin Management ({admins.length})
-              </div>
-              <Button variant="outline" size="sm">
-                <UserPlus className="h-4 w-4 mr-1" />
-                Add Admin
-              </Button>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5" />
+              Admin Management ({admins.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -237,7 +239,7 @@ export default function PlatformSettingsPage() {
             ) : (
               <div className="space-y-4">
                 {admins.map((admin) => (
-                  <div key={admin.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+                  <div key={admin.id} className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1">
                         {/* Avatar */}
@@ -401,12 +403,7 @@ export default function PlatformSettingsPage() {
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <Button className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90">
-                <Save className="h-4 w-4 mr-2" />
-                Save Settings
-              </Button>
-            </div>
+
           </CardContent>
         </Card>
       </main>

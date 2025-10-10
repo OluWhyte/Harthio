@@ -27,6 +27,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { AdminService } from '@/lib/services/admin-service';
+import { UserFootprint } from '@/components/admin/user-footprint';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,6 +35,7 @@ export default function UserDetailPage() {
   const params = useParams();
   const userId = params.id as string;
   const [userFootprint, setUserFootprint] = useState<any>(null);
+  const [detailedFootprint, setDetailedFootprint] = useState<any>(null);
   const [engagementMetrics, setEngagementMetrics] = useState<any>(null);
   const [behaviorPattern, setBehaviorPattern] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -87,13 +89,15 @@ export default function UserDetailPage() {
 
   const loadUserData = async () => {
     try {
-      const [footprint, engagement, behavior] = await Promise.all([
+      const [footprint, detailedFootprint, engagement, behavior] = await Promise.all([
         AdminService.getUserFootprint(userId),
+        AdminService.getUserFootprintDetailed(userId),
         AdminService.getUserEngagementMetrics(userId),
         AdminService.getUserBehaviorPattern(userId)
       ]);
 
       setUserFootprint(footprint);
+      setDetailedFootprint(detailedFootprint);
       setEngagementMetrics(engagement);
       setBehaviorPattern(behavior);
     } catch (error) {
@@ -451,6 +455,12 @@ export default function UserDetailPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* User Footprint Section */}
+        <div className="mt-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">User Footprint & Device History</h2>
+          <UserFootprint footprint={detailedFootprint} />
         </div>
       </main>
     </div>

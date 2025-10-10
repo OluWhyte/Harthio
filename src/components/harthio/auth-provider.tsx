@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase";
+import { useDeviceTracking } from "@/hooks/use-device-tracking";
 
 // User object structure compatible with existing code
 export interface User {
@@ -59,6 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isInOngoingSession, setIsInOngoingSession] = useState(false);
   const router = useRouter();
+
+  // Initialize device tracking for authenticated users
+  const deviceTracking = useDeviceTracking({
+    userId: user?.uid,
+    enabled: !!user,
+    activityInterval: 60000 // Update activity every minute
+  });
 
   const refreshUserProfile = useCallback(async () => {
     if (!user) return;
