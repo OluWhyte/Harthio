@@ -947,75 +947,7 @@ function SessionPageContent() {
     webrtcManagerRef.current?.toggleVideo(!newVideoState);
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !user || !sessionId || !topic) {
-      console.log('Message send blocked - missing data:', {
-        hasMessage: !!newMessage.trim(),
-        hasUser: !!user,
-        hasSessionId: !!sessionId,
-        hasTopic: !!topic
-      });
-      return;
-    }
 
-    // Validate user has permission to send messages
-    const isAuthor = topic.author.userId === user.uid;
-    const isParticipant = topic.participants?.includes(user.uid) || false;
-    
-    console.log('Message Send Debug:', {
-      sessionId,
-      userId: user.uid,
-      userEmail: user.email,
-      authorId: topic.author.userId,
-      authorName: topic.author.name,
-      participants: topic.participants,
-      isAuthor,
-      isParticipant,
-      messageText: newMessage.trim(),
-      topicTitle: topic.title
-    });
-    
-    if (!isAuthor && !isParticipant) {
-      console.error('Message permission denied:', { isAuthor, isParticipant });
-      toast({
-        variant: "destructive",
-        title: "Access Denied",
-        description: "You don't have permission to send messages in this session.",
-      });
-      return;
-    }
-
-    try {
-      console.log('Attempting to send message...');
-      const result = await messageService.sendMessage({
-        topic_id: sessionId as string,
-        sender_id: user.uid,
-        text: newMessage.trim(),
-      });
-      console.log('Message sent successfully:', result);
-      setNewMessage("");
-      
-      toast({
-        title: "Message Sent",
-        description: "Your message has been sent successfully.",
-      });
-    } catch (error: any) {
-      console.error("Error sending message:", error);
-      console.error("Error details:", {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint
-      });
-      
-      toast({
-        title: "Message Failed",
-        description: error?.message || "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const getConnectionStatusMessage = () => {
     if (mediaError) {
