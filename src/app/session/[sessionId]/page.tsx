@@ -287,6 +287,87 @@ function SessionPageContent() {
     router.push("/dashboard");
   }, [router, isEnding, cleanup]);
 
+  // Handle sending chat messages
+  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !user || !sessionId || !topic) return;
+
+    // Validate user has permission to send messages
+    const isAuthor = topic.author.userId === user.uid;
+    const isParticipant = topic.participants?.includes(user.uid) || false;
+    
+    if (!isAuthor && !isParticipant) {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "You don't have permission to send messages in this session.",
+      });
+      return;
+    }
+
+    const messageText = newMessage.trim();
+    setNewMessage(""); // Clear input immediately for better UX
+
+    try {
+      console.log('Sending message:', { messageText, sessionId, userId: user.uid });
+      
+      const result = await messageService.sendMessage({
+        topic_id: sessionId as string,
+        sender_id: user.uid,
+        text: messageText,
+      });
+      
+      console.log('Message sent successfully:', result);
+      
+      // Message will appear via real-time subscription
+      // No need to manually add to messages array
+      
+    } catch (error: any) {
+      console.error("Failed to send message:", error);
+      
+      // Restore the message text if sending failed
+      setNewMessage(messageText);
+      
+      toast({
+        variant: "destructive",
+        title: "Message Failed",
+        description: error.message || "Failed to send message. Please try again.",
+      });
+    }
+  }, [newMessage, user, sessionId, topic, toast]);
+
+  // Toggle mute/unmute
+  const toggleMute = useCallback(() => {
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
+
+    // Update local stream
+    localStreamRef.current?.getAudioTracks().forEach((track) => {
+      track.enabled = !newMutedState;
+    });
+
+    // Update WebRTC manager
+    webrtcManagerRef.current?.toggleAudio(!newMutedState);
+    
+    console.log(`Audio ${newMutedState ? 'muted' : 'unmuted'}`);
+  }, [isMuted]);
+
+  // Toggle video on/off
+  const toggleVideo = useCallback(() => {
+    const newVideoState = !isVideoOff;
+    setIsVideoOff(newVideoState);
+
+    // Update local stream
+    localStreamRef.current?.getVideoTracks().forEach((track) => {
+      track.enabled = !newVideoState;
+    });
+
+    // Update WebRTC manager
+    webrtcManagerRef.current?.toggleVideo(!newVideoState);
+    
+    console.log(`Video ${newVideoState ? 'disabled' : 'enabled'}`);
+  }, [isVideoOff]);
+
   // Setup local media stream and WebRTC connection with improved performance
   useEffect(() => {
     let isMounted = true;
@@ -1011,29 +1092,7 @@ function SessionPageContent() {
   // Monitor page load performance
   useEffect(() => {
     performanceMonitor.monitorPageLoad(`session-${sessionId}`);
-    
-    // Add global test function for debugging
-    if (typeof window !== 'undefined') {
-      (window as any).testMessageSend = async () => {
-        if (!user || !sessionId || !topic) {
-          console.log('Missing required data for test');
-          return;
-        }
-        
-        try {
-          console.log('Testing message send with test message...');
-          const result = await messageService.sendMessage({
-            topic_id: sessionId as string,
-            sender_id: user.uid,
-            text: 'Test message from debug function',
-          });
-          console.log('Test message sent successfully:', result);
-        } catch (error) {
-          console.error('Test message failed:', error);
-        }
-      };
-    }
-  }, [sessionId, user, topic]);
+  }, [sessionId]);
 
   // Show loading while checking authentication and session validation
   if (authLoading || sessionValidation.isLoading) {
@@ -1347,11 +1406,7 @@ function SessionPageContent() {
               <Send className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </form>
-          {/* Debug info - remove after testing */}
-          <div className="mt-2 text-xs text-gray-500">
-            Debug: User {user?.email} | Session {sessionId?.slice(0, 8)}... | 
-            Author: {topic?.author.name} | Participants: {topic?.participants.length || 0}
-          </div>
+
         </div>
       </div>
 
