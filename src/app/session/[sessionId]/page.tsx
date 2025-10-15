@@ -921,31 +921,9 @@ function SessionPageContent() {
     [handleDragMove, handleDragEnd]
   );
 
-  const toggleMute = () => {
-    const newMutedState = !isMuted;
-    setIsMuted(newMutedState);
 
-    // Update local stream
-    localStreamRef.current?.getAudioTracks().forEach((track) => {
-      track.enabled = !newMutedState;
-    });
 
-    // Update WebRTC manager
-    webrtcManagerRef.current?.toggleAudio(newMutedState);
-  };
 
-  const toggleVideo = () => {
-    const newVideoState = !isVideoOff;
-    setIsVideoOff(newVideoState);
-
-    // Update local stream
-    localStreamRef.current?.getVideoTracks().forEach((track) => {
-      track.enabled = !newVideoState;
-    });
-
-    // Update WebRTC manager
-    webrtcManagerRef.current?.toggleVideo(!newVideoState);
-  };
 
 
 
