@@ -141,7 +141,7 @@ export function getMediaConstraints(config: MediaConstraintsConfig = {}): MediaS
 }
 
 /**
- * Progressive fallback strategy for getUserMedia
+ * Progressive fallback strategy for getUserMedia with timeout and better mobile handling
  * Tries multiple constraint configurations until one works
  */
 export async function getUserMediaWithFallback(
@@ -149,56 +149,111 @@ export async function getUserMediaWithFallback(
 ): Promise<MediaStream> {
   const deviceInfo = getDeviceInfo();
   
-  // Strategy 1: Try optimal constraints
+  // Add timeout wrapper to prevent hanging
+  const getUserMediaWithTimeout = (constraints: MediaStreamConstraints, timeout = 10000): Promise<MediaStream> => {
+    return Promise.race([
+      navigator.mediaDevices.getUserMedia(constraints),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('getUserMedia timeout')), timeout)
+      )
+    ]);
+  };
+  
+  // Strategy 1: Try optimal constraints with timeout
   try {
     const constraints = getMediaConstraints(config);
     console.log('Attempting getUserMedia with optimal constraints:', constraints);
-    return await navigator.mediaDevices.getUserMedia(constraints);
+    const timeout = deviceInfo.isIOS ? 15000 : 10000; // Longer timeout for iOS
+    return await getUserMediaWithTimeout(constraints, timeout);
   } catch (error) {
     console.warn('Optimal constraints failed:', error);
   }
 
-  // Strategy 2: Try basic constraints with facingMode (important for mobile)
+  // Strategy 2: Try iOS-specific constraints if on iOS
+  if (deviceInfo.isIOS) {
+    try {
+      console.log('Attempting getUserMedia with iOS-optimized constraints');
+      return await getUserMediaWithTimeout({
+        video: { 
+          facingMode: 'user',
+          width: { ideal: 480, max: 640 },
+          height: { ideal: 360, max: 480 },
+          frameRate: { ideal: 15, max: 24 }
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000
+        }
+      }, 12000);
+    } catch (error) {
+      console.warn('iOS-optimized constraints failed:', error);
+    }
+  }
+
+  // Strategy 3: Try basic constraints with facingMode (important for mobile)
   try {
     console.log('Attempting getUserMedia with basic constraints');
-    return await navigator.mediaDevices.getUserMedia({
+    return await getUserMediaWithTimeout({
       video: { facingMode: 'user' },
       audio: true,
-    });
+    }, 8000);
   } catch (error) {
     console.warn('Basic constraints with facingMode failed:', error);
   }
 
-  // Strategy 3: Try minimal constraints (just true/false)
+  // Strategy 4: Try minimal constraints (just true/false)
   try {
     console.log('Attempting getUserMedia with minimal constraints');
-    return await navigator.mediaDevices.getUserMedia({
+    return await getUserMediaWithTimeout({
       video: true,
       audio: true,
-    });
+    }, 8000);
   } catch (error) {
     console.warn('Minimal constraints failed:', error);
   }
 
-  // Strategy 4: Try very low resolution (for older devices)
+  // Strategy 5: Try very low resolution (for older devices)
   if (deviceInfo.isMobile) {
     try {
       console.log('Attempting getUserMedia with low resolution');
-      return await navigator.mediaDevices.getUserMedia({
-        video: { width: 320, height: 240 },
+      return await getUserMediaWithTimeout({
+        video: { width: 320, height: 240, frameRate: 15 },
         audio: true,
-      });
+      }, 6000);
     } catch (error) {
       console.warn('Low resolution failed:', error);
     }
   }
 
-  // Strategy 5: Audio only (last resort)
+  // Strategy 6: Try video only (in case audio is the issue)
+  try {
+    console.log('Attempting getUserMedia with video only');
+    const videoStream = await getUserMediaWithTimeout({
+      video: deviceInfo.isMobile ? { facingMode: 'user' } : true,
+    }, 5000);
+    
+    // Try to add audio separately
+    try {
+      const audioStream = await getUserMediaWithTimeout({ audio: true }, 3000);
+      const combinedStream = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audioStream.getAudioTracks()
+      ]);
+      return combinedStream;
+    } catch (audioError) {
+      console.warn('Audio failed, continuing with video only:', audioError);
+      return videoStream;
+    }
+  } catch (error) {
+    console.warn('Video only failed:', error);
+  }
+
+  // Strategy 7: Audio only (last resort)
   try {
     console.log('Attempting getUserMedia with audio only');
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
+    const stream = await getUserMediaWithTimeout({ audio: true }, 5000);
     console.warn('Only audio available - video not accessible');
     return stream;
   } catch (error) {

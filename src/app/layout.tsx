@@ -4,6 +4,7 @@ import { Inter, Poppins } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/components/harthio/auth-provider';
+import { AppPerformanceProvider } from '@/components/common/app-performance-provider';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -32,10 +33,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${poppins.variable}`}>
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-        <Toaster />
+        <AppPerformanceProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+          <Toaster />
+        </AppPerformanceProvider>
       </body>
     </html>
   );

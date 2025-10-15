@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { withDatabaseTimeout, DB_TIMEOUTS } from "./timeout-utils";
 import {
   parseError,
   withRetry,
@@ -39,18 +40,21 @@ export type RealtimeChannel = ReturnType<typeof typedSupabase.channel>;
 // Service functions for managing conversation topics/sessions
 
 export const topicService = {
-  // Get all topics with author information
+  // Get all topics with author information - with timeout protection
   async getAllTopics(): Promise<TopicWithAuthor[]> {
     try {
-      const { data, error } = await typedSupabase
-        .from("topics")
-        .select(
+      const { data, error } = await withDatabaseTimeout(
+        () => typedSupabase
+          .from("topics")
+          .select(
+            `
+            *,
+            author:users!topics_author_id_fkey(*)
           `
-          *,
-          author:users!topics_author_id_fkey(*)
-        `
-        )
-        .order("start_time", { ascending: true });
+          )
+          .order("start_time", { ascending: true }),
+        DB_TIMEOUTS.COMPLEX_QUERY
+      );
 
       if (error) {
         logError("getAllTopics", error);
@@ -66,7 +70,11 @@ export const topicService = {
       }
 
       return data || [];
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'TimeoutError') {
+        logError("getAllTopics", error);
+        throw new Error("Loading topics timed out. Please try again.");
+      }
       logError("getAllTopics", error);
       throw error;
     }
@@ -1244,11 +1252,15 @@ export const messageService = {
     messageData: Omit<MessageInsert, "id" | "created_at">
   ): Promise<Message> {
     try {
+      console.log('MessageService.sendMessage called with:', messageData);
+      
       // Validate message data
       if (!messageData.topic_id || !messageData.sender_id || !messageData.text?.trim()) {
+        console.error('Invalid message data:', messageData);
         throw new Error("Invalid message data");
       }
 
+      console.log('Checking topic permissions...');
       // Check if user has permission to send messages in this topic
       const { data: topic, error: topicError } = await typedSupabase
         .from("topics")
@@ -1258,17 +1270,29 @@ export const messageService = {
 
       if (topicError) {
         console.error("Error checking topic permissions:", topicError);
-        throw new Error("Session not found or access denied");
+        throw new Error(`Session not found or access denied: ${topicError.message}`);
       }
+
+      console.log('Topic data retrieved:', topic);
 
       // Verify user is either author or approved participant
       const isAuthor = topic.author_id === messageData.sender_id;
       const isParticipant = topic.participants?.includes(messageData.sender_id) || false;
 
+      console.log('Permission check:', {
+        authorId: topic.author_id,
+        senderId: messageData.sender_id,
+        participants: topic.participants,
+        isAuthor,
+        isParticipant
+      });
+
       if (!isAuthor && !isParticipant) {
+        console.error('Permission denied for message sending');
         throw new Error("You don't have permission to send messages in this session");
       }
 
+      console.log('Inserting message into database...');
       // Send the message
       const { data, error } = await typedSupabase
         .from("messages")
@@ -1281,10 +1305,17 @@ export const messageService = {
         .single();
 
       if (error) {
-        console.error("Error sending message:", error);
-        throw new Error("Failed to send message");
+        console.error("Database error sending message:", error);
+        console.error("Error details:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw new Error(`Failed to send message: ${error.message}`);
       }
 
+      console.log('Message sent successfully:', data);
       return data as Message;
     } catch (error) {
       console.error("Message sending error:", error);

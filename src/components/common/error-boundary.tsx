@@ -1,219 +1,303 @@
 'use client';
 
-import React, { Component, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { performanceMonitor } from '@/lib/performance-monitor';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: React.ErrorInfo | null;
+  errorInfo: ErrorInfo | null;
+  isRecovering: boolean;
 }
 
-class ErrorBoundaryClass extends Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
+  private retryCount = 0;
+  private maxRetries = 3;
+  private recoveryTimeout: NodeJS.Timeout | null = null;
+
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      isRecovering: false
+    };
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null };
+  static getDerivedStateFromError(error: Error): Partial<State> {
+    return {
+      hasError: true,
+      error
+    };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    this.setState({ errorInfo });
-    
-    // Log error to console for debugging
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Error Boundary caught an error:', error, errorInfo);
     
-    // Call custom error handler if provided
-    if (this.props.onError) {
-      this.props.onError(error, errorInfo);
+    this.setState({
+      error,
+      errorInfo
+    });
+
+    // Log to performance monitor
+    performanceMonitor.startTiming('error_recovery', {
+      errorName: error.name,
+      errorMessage: error.message,
+      componentStack: errorInfo.componentStack
+    });
+
+    // Call custom error handler
+    this.props.onError?.(error, errorInfo);
+
+    // Send to analytics if available
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'exception', {
+        description: error.message,
+        fatal: false,
+        custom_parameters: {
+          error_boundary: true,
+          component_stack: errorInfo.componentStack?.substring(0, 500)
+        }
+      });
     }
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    if (this.retryCount >= this.maxRetries) {
+      console.warn('Max retry attempts reached');
+      return;
+    }
+
+    this.retryCount++;
+    this.setState({ isRecovering: true });
+
+    // Clear any existing timeout
+    if (this.recoveryTimeout) {
+      clearTimeout(this.recoveryTimeout);
+    }
+
+    // Attempt recovery after a delay
+    this.recoveryTimeout = setTimeout(() => {
+      this.setState({
+        hasError: false,
+        error: null,
+        errorInfo: null,
+        isRecovering: false
+      });
+
+      performanceMonitor.endTiming('error_recovery');
+    }, 1000);
+  };
+
+  handleGoHome = () => {
+    window.location.href = '/';
+  };
+
+  handleRefreshPage = () => {
+    window.location.reload();
   };
 
   render() {
     if (this.state.hasError) {
+      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      return <ErrorFallback error={this.state.error} onRetry={this.handleRetry} />;
+      const { error, isRecovering } = this.state;
+      const canRetry = this.retryCount < this.maxRetries;
+
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <CardTitle className="text-xl font-semibold text-gray-900">
+                Something went wrong
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-gray-600 text-center">
+                {error?.message === 'ChunkLoadError' || error?.message?.includes('Loading chunk') ? (
+                  <p>
+                    There was a problem loading the application. This usually happens when the app has been updated.
+                  </p>
+                ) : error?.message?.includes('timeout') || error?.message?.includes('hanging') ? (
+                  <p>
+                    The operation took too long to complete. This might be due to a slow network connection or device performance.
+                  </p>
+                ) : (
+                  <p>
+                    An unexpected error occurred. Don't worry, this has been logged and we're working to fix it.
+                  </p>
+                )}
+              </div>
+
+              {process.env.NODE_ENV === 'development' && error && (
+                <details className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+                  <summary className="cursor-pointer font-medium">Error Details</summary>
+                  <pre className="mt-2 whitespace-pre-wrap break-words">
+                    {error.name}: {error.message}
+                    {error.stack && `\n\nStack trace:\n${error.stack}`}
+                  </pre>
+                </details>
+              )}
+
+              <div className="flex flex-col gap-2">
+                {canRetry && (
+                  <Button
+                    onClick={this.handleRetry}
+                    disabled={isRecovering}
+                    className="w-full"
+                  >
+                    {isRecovering ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Recovering...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Try Again ({this.maxRetries - this.retryCount} attempts left)
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                <Button
+                  onClick={this.handleRefreshPage}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh Page
+                </Button>
+
+                <Button
+                  onClick={this.handleGoHome}
+                  variant="ghost"
+                  className="w-full"
+                >
+                  <Home className="w-4 h-4 mr-2" />
+                  Go Home
+                </Button>
+              </div>
+
+              <div className="text-xs text-gray-400 text-center">
+                If this problem persists, please contact support.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
     }
 
     return this.props.children;
   }
+
+  componentWillUnmount() {
+    if (this.recoveryTimeout) {
+      clearTimeout(this.recoveryTimeout);
+    }
+  }
 }
 
-interface ErrorFallbackProps {
-  error: Error | null;
-  onRetry: () => void;
-}
-
-function ErrorFallback({ error, onRetry }: ErrorFallbackProps) {
-  const router = useRouter();
-
-  const getErrorMessage = (error: Error | null): string => {
-    if (!error) return 'An unexpected error occurred';
-    
-    const message = error.message.toLowerCase();
-    
-    if (message.includes('network') || message.includes('fetch')) {
-      return 'Network connection error. Please check your internet connection.';
-    }
-    
-    if (message.includes('unauthorized') || message.includes('auth')) {
-      return 'Your session has expired. Please refresh the page and log in again.';
-    }
-    
-    if (message.includes('not found')) {
-      return 'The requested resource was not found.';
-    }
-    
-    if (message.includes('timeout')) {
-      return 'The request timed out. Please try again.';
-    }
-    
-    return error.message || 'An unexpected error occurred';
-  };
-
-  const getErrorTitle = (error: Error | null): string => {
-    if (!error) return 'Something went wrong';
-    
-    const message = error.message.toLowerCase();
-    
-    if (message.includes('network') || message.includes('fetch')) {
-      return 'Connection Error';
-    }
-    
-    if (message.includes('unauthorized') || message.includes('auth')) {
-      return 'Authentication Error';
-    }
-    
-    if (message.includes('not found')) {
-      return 'Not Found';
-    }
-    
-    if (message.includes('timeout')) {
-      return 'Request Timeout';
-    }
-    
-    return 'Application Error';
-  };
-
-  return (
-    <div className="min-h-[400px] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-            <AlertTriangle className="h-6 w-6 text-destructive" />
-          </div>
-          <CardTitle className="text-xl">{getErrorTitle(error)}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-center text-muted-foreground">
-            {getErrorMessage(error)}
-          </p>
-          
-          <div className="flex flex-col gap-2">
-            <Button onClick={onRetry} className="w-full">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Try Again
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push('/dashboard')}
-              className="w-full"
-            >
-              <Home className="mr-2 h-4 w-4" />
-              Go to Dashboard
-            </Button>
-          </div>
-          
-          {process.env.NODE_ENV === 'development' && error && (
-            <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-muted-foreground">
-                Error Details (Development)
-              </summary>
-              <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto">
-                {error.stack}
-              </pre>
-            </details>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// Main export with proper typing
-export function ErrorBoundary(props: Props) {
-  return <ErrorBoundaryClass {...props} />;
-}
-
-// Specialized error boundaries for different contexts
-export function RequestErrorBoundary({ children }: { children: ReactNode }) {
-  return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        console.error('Request Error Boundary:', error, errorInfo);
-      }}
-      fallback={
-        <Card className="w-full">
-          <CardContent className="p-6 text-center">
-            <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Request Error</h3>
-            <p className="text-muted-foreground mb-4">
-              There was an error processing your request. Please try refreshing the page.
-            </p>
-            <Button onClick={() => window.location.reload()}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh Page
-            </Button>
-          </CardContent>
-        </Card>
-      }
-    >
-      {children}
+// Higher-order component for easier usage
+export function withErrorBoundary<P extends object>(
+  Component: React.ComponentType<P>,
+  errorBoundaryProps?: Omit<Props, 'children'>
+) {
+  const WrappedComponent = (props: P) => (
+    <ErrorBoundary {...errorBoundaryProps}>
+      <Component {...props} />
     </ErrorBoundary>
   );
+
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
+  return WrappedComponent;
 }
 
+// Topic-specific error boundary
 export function TopicErrorBoundary({ children }: { children: ReactNode }) {
   return (
     <ErrorBoundary
       onError={(error, errorInfo) => {
-        console.error('Topic Error Boundary:', error, errorInfo);
+        console.error('Topic error:', error, errorInfo);
+        // Additional topic-specific error handling
       }}
       fallback={
-        <Card className="w-full">
-          <CardContent className="p-6 text-center">
-            <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Topic Loading Error</h3>
-            <p className="text-muted-foreground mb-4">
-              Unable to load session information. Please try again.
-            </p>
-            <Button onClick={() => window.location.reload()}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh Page
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+          <p className="text-red-800 text-sm">
+            Unable to load this session. Please try refreshing the page.
+          </p>
+        </div>
       }
     >
       {children}
     </ErrorBoundary>
   );
+}
+
+// Request-specific error boundary
+export function RequestErrorBoundary({ children }: { children: ReactNode }) {
+  return (
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('Request error:', error, errorInfo);
+        // Additional request-specific error handling
+      }}
+      fallback={
+        <div className="container mx-auto p-6">
+          <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+            <h2 className="text-red-800 font-semibold mb-2">Unable to load requests</h2>
+            <p className="text-red-700 text-sm">
+              There was an error loading your join requests. Please try refreshing the page.
+            </p>
+          </div>
+        </div>
+      }
+    >
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+// Hook for error reporting
+export function useErrorHandler() {
+  const reportError = React.useCallback((error: Error, context?: string) => {
+    console.error(`Error in ${context || 'unknown context'}:`, error);
+    
+    // Log to performance monitor
+    performanceMonitor.startTiming('manual_error_report', {
+      errorName: error.name,
+      errorMessage: error.message,
+      context
+    });
+
+    // Send to analytics if available
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'exception', {
+        description: error.message,
+        fatal: false,
+        custom_parameters: {
+          manual_report: true,
+          context: context || 'unknown'
+        }
+      });
+    }
+  }, []);
+
+  return { reportError };
 }

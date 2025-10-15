@@ -47,7 +47,14 @@ export default function LoginPage() {
     setShowResendVerification(false);
 
     try {
-      await logIn(email, password);
+      // Add timeout protection for login
+      const loginPromise = logIn(email, password);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Login timeout - please try again')), 30000)
+      );
+      
+      await Promise.race([loginPromise, timeoutPromise]);
+      
       // Login successful - redirect will be handled by useEffect when user state updates
       toast({
         title: "Login Successful",

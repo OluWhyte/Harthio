@@ -37,7 +37,7 @@ export class RealtimeManager {
     return RealtimeManager.instance;
   }
 
-  // Optimized debounced callback wrapper with better performance
+  // Optimized debounced callback wrapper with better performance and mobile handling
   private createDebouncedCallback<T>(
     channelId: string, 
     callback: RealtimeCallback<T>, 
@@ -50,18 +50,35 @@ export class RealtimeManager {
         clearTimeout(debouncedCallback.timeout);
       }
 
+      // Mobile-optimized delays to prevent hanging
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      
       // For critical updates (requests/participants), use shorter delay
-      const actualDelay = payload.eventType === 'UPDATE' && 
-        ((payload.new as any)?.requests || (payload.new as any)?.participants) ? 
-        Math.min(delay, 300) : delay;
+      let actualDelay = delay;
+      if (payload.eventType === 'UPDATE' && 
+          ((payload.new as any)?.requests || (payload.new as any)?.participants)) {
+        actualDelay = isIOS ? 150 : (isMobile ? 200 : 300);
+      } else if (isMobile) {
+        actualDelay = Math.min(delay, isIOS ? 800 : 600);
+      }
 
-      const timeout = setTimeout(() => {
+      // Use requestIdleCallback for non-critical updates on modern browsers
+      const executeCallback = () => {
         try {
           callback(payload);
         } catch (error) {
           console.error('Error in debounced callback:', error);
         } finally {
           this.debouncedCallbacks.delete(channelId);
+        }
+      };
+
+      const timeout = setTimeout(() => {
+        if ('requestIdleCallback' in window && actualDelay > 300) {
+          requestIdleCallback(executeCallback, { timeout: actualDelay + 1000 });
+        } else {
+          executeCallback();
         }
       }, actualDelay);
 

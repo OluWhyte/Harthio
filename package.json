@@ -13,6 +13,7 @@
     "mobile:https": "node mobile-video-test.js --start",
     "mobile:help": "node mobile-video-test.js",
     "mobile:ngrok": "node setup-https-mobile.js --ngrok",
+    "mobile:config": "node start-mobile-dev.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

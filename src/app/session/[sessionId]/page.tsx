@@ -30,6 +30,9 @@ import { WebRTCManager, type ConnectionState } from "@/lib/webrtc-manager";
 import { realtimeManager } from "@/lib/realtime-manager";
 import { formatTimeRemaining } from "@/lib/time-utils";
 import { PublicProfileDialog } from "@/components/harthio/public-profile-dialog";
+import { performanceMonitor, usePerformanceMonitor } from "@/lib/performance-monitor";
+import { useMobileOptimizations } from "@/lib/mobile-optimizations";
+import { ErrorBoundary, useErrorHandler } from "@/components/common/error-boundary";
 
 import { 
   getUserMediaWithFallback, 
@@ -60,12 +63,15 @@ interface Message {
 
 // Remove old type, using ConnectionState from WebRTCManager now
 
-export default function SessionPage() {
+function SessionPageContent() {
   const { sessionId } = useParams();
   const { user, userProfile, loading: authLoading } = useAuth();
   const sessionValidation = useSessionValidation(sessionId as string);
   const router = useRouter();
   const { toast } = useToast();
+  const { startTiming, endTiming } = usePerformanceMonitor('SessionPage');
+  const { capabilities, getOptimizedTimeout } = useMobileOptimizations();
+  const { reportError } = useErrorHandler();
 
   const [topic, setTopic] = useState<TopicData | null>(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -281,15 +287,17 @@ export default function SessionPage() {
     router.push("/dashboard");
   }, [router, isEnding, cleanup]);
 
-  // Setup local media stream and WebRTC connection
+  // Setup local media stream and WebRTC connection with improved performance
   useEffect(() => {
     let isMounted = true;
+    let setupTimeout: NodeJS.Timeout | null = null;
 
     async function setupMediaAndWebRTC() {
       if (!user?.uid || !topic) return;
 
       try {
         setConnectionState("loading");
+        setMediaError(null);
 
         // Check media support first
         const mediaSupport = checkMediaSupport();
@@ -303,83 +311,150 @@ export default function SessionPage() {
           return;
         }
 
-        // Use improved media acquisition with fallbacks
-        const stream = await getUserMediaWithFallback({
-          preferredWidth: 1280,
-          preferredHeight: 720,
-          preferredFrameRate: 30,
-          facingMode: 'user'
+        // Add timeout for the entire setup process to prevent hanging
+        const setupPromise = new Promise<void>(async (resolve, reject) => {
+          try {
+            // Monitor media access performance
+            startTiming('media_access', { sessionId });
+            
+            // Use improved media acquisition with fallbacks and timeout
+            const stream = await getUserMediaWithFallback({
+              preferredWidth: 1280,
+              preferredHeight: 720,
+              preferredFrameRate: 30,
+              facingMode: 'user'
+            });
+            
+            endTiming('media_access');
+
+            if (!isMounted) {
+              stream.getTracks().forEach((track) => track.stop());
+              resolve();
+              return;
+            }
+
+            localStreamRef.current = stream;
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = stream;
+            }
+
+            // Find the other participant (could be author or approved participant)
+            const allSessionParticipants = [topic.author.userId, ...topic.participants];
+            const otherParticipant = allSessionParticipants.find(
+              (id) => id !== user.uid
+            );
+            if (!otherParticipant) {
+              setConnectionState("waiting");
+              console.log("No other participant found, waiting...");
+              resolve();
+              return;
+            }
+
+            console.log("Found other participant:", otherParticipant);
+
+            // Monitor WebRTC setup performance
+            startTiming('webrtc_setup', { sessionId, otherParticipant });
+
+            // Initialize WebRTC connection with non-blocking callbacks
+            const webrtcManager = new WebRTCManager(
+              sessionId as string,
+              user.uid,
+              otherParticipant,
+              userProfile?.display_name || user.email || "Unknown User",
+              (remoteStream) => {
+                console.log("Remote stream received");
+                // Use requestAnimationFrame for smooth UI updates
+                requestAnimationFrame(() => {
+                  setRemoteStream(remoteStream);
+                  if (remoteVideoRef.current) {
+                    remoteVideoRef.current.srcObject = remoteStream;
+                  }
+                });
+              },
+              (state) => {
+                console.log("Connection state changed:", state);
+                // Use requestAnimationFrame for smooth state updates
+                requestAnimationFrame(() => {
+                  setConnectionState(state);
+                });
+              },
+              (error) => {
+                console.error("WebRTC error:", error);
+                // Non-blocking error handling
+                setTimeout(() => {
+                  toast({
+                    variant: "destructive",
+                    title: "Connection Error",
+                    description: error,
+                  });
+                }, 0);
+              },
+              (notification) => {
+                console.log("User notification:", notification);
+                // Non-blocking notification handling
+                setTimeout(() => {
+                  setNotifications((prev) => [...prev, notification]);
+                  toast({
+                    title: "Session Update",
+                    description: notification,
+                  });
+
+                  // Auto-remove notification after 5 seconds
+                  setTimeout(() => {
+                    setNotifications((prev) => prev.slice(1));
+                  }, 5000);
+                }, 0);
+              }
+            );
+
+            webrtcManagerRef.current = webrtcManager;
+            
+            // Initialize WebRTC in the background
+            webrtcManager.initialize(stream).then(() => {
+              endTiming('webrtc_setup');
+              resolve();
+            }).catch((error) => {
+              endTiming('webrtc_setup');
+              reject(error);
+            });
+            
+          } catch (error) {
+            reject(error);
+          }
         });
 
-        if (!isMounted) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
-        localStreamRef.current = stream;
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-
-        // Find the other participant (could be author or approved participant)
-        const allSessionParticipants = [topic.author.userId, ...topic.participants];
-        const otherParticipant = allSessionParticipants.find(
-          (id) => id !== user.uid
-        );
-        if (!otherParticipant) {
-          setConnectionState("waiting");
-          console.log("No other participant found, waiting...");
-          return;
-        }
-
-        console.log("Found other participant:", otherParticipant);
-
-        // Initialize WebRTC connection
-        const webrtcManager = new WebRTCManager(
-          sessionId as string,
-          user.uid,
-          otherParticipant,
-          userProfile?.display_name || user.email || "Unknown User",
-          (remoteStream) => {
-            console.log("Remote stream received");
-            setRemoteStream(remoteStream);
-            if (remoteVideoRef.current) {
-              remoteVideoRef.current.srcObject = remoteStream;
-            }
-          },
-          (state) => {
-            console.log("Connection state changed:", state);
-            setConnectionState(state);
-          },
-          (error) => {
-            console.error("WebRTC error:", error);
-            toast({
-              variant: "destructive",
-              title: "Connection Error",
-              description: error,
-            });
-          },
-          (notification) => {
-            console.log("User notification:", notification);
-            setNotifications((prev) => [...prev, notification]);
-            toast({
-              title: "Session Update",
-              description: notification,
-            });
-
-            // Auto-remove notification after 5 seconds
-            setTimeout(() => {
-              setNotifications((prev) => prev.slice(1));
-            }, 5000);
+        // Race against timeout to prevent hanging - use optimized timeout
+        const baseTimeout = 20000;
+        const timeoutDuration = getOptimizedTimeout(baseTimeout);
+        setupTimeout = setTimeout(() => {
+          console.warn('Setup timeout reached');
+          if (isMounted) {
+            setConnectionState("failed");
+            setMediaError("Setup took too long. Please try refreshing the page.");
           }
-        );
+        }, timeoutDuration);
 
-        webrtcManagerRef.current = webrtcManager;
-        await webrtcManager.initialize(stream);
+        await Promise.race([
+          setupPromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Setup timeout')), timeoutDuration)
+          )
+        ]);
+
+        if (setupTimeout) {
+          clearTimeout(setupTimeout);
+          setupTimeout = null;
+        }
+
       } catch (error: any) {
         console.error("Failed to setup WebRTC:", error);
+        
+        // Report error for monitoring
+        reportError(error, 'WebRTC Setup');
+        
         if (isMounted) {
           const errorMessage = getMediaErrorMessage(error);
+          setMediaError(errorMessage);
           toast({
             variant: "destructive",
             title: "Media Access Error",
@@ -392,10 +467,19 @@ export default function SessionPage() {
       }
     }
 
-    setupMediaAndWebRTC();
+    // Use requestIdleCallback if available for better performance
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => setupMediaAndWebRTC(), { timeout: 1000 });
+    } else {
+      // Small delay to ensure DOM is ready
+      setTimeout(setupMediaAndWebRTC, 100);
+    }
 
     return () => {
       isMounted = false;
+      if (setupTimeout) {
+        clearTimeout(setupTimeout);
+      }
     };
   }, [user?.uid, topic, sessionId, handleEndCall, toast]);
 
@@ -429,6 +513,17 @@ export default function SessionPage() {
         // Check if user has permission to join this session (must be author or approved participant)
         const isAuthor = currentTopic.author_id === user.uid;
         const isApprovedParticipant = currentTopic.participants?.includes(user.uid) || false;
+        
+        // Debug logging to help understand access issues
+        console.log('Session Access Debug:', {
+          sessionId,
+          currentUserId: user.uid,
+          authorId: currentTopic.author_id,
+          participants: currentTopic.participants,
+          isAuthor,
+          isApprovedParticipant,
+          topicTitle: currentTopic.title
+        });
         
         if (!isAuthor && !isApprovedParticipant) {
           toast({
@@ -773,13 +868,35 @@ export default function SessionPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !sessionId || !topic) return;
+    if (!newMessage.trim() || !user || !sessionId || !topic) {
+      console.log('Message send blocked - missing data:', {
+        hasMessage: !!newMessage.trim(),
+        hasUser: !!user,
+        hasSessionId: !!sessionId,
+        hasTopic: !!topic
+      });
+      return;
+    }
 
     // Validate user has permission to send messages
     const isAuthor = topic.author.userId === user.uid;
     const isParticipant = topic.participants?.includes(user.uid) || false;
     
+    console.log('Message Send Debug:', {
+      sessionId,
+      userId: user.uid,
+      userEmail: user.email,
+      authorId: topic.author.userId,
+      authorName: topic.author.name,
+      participants: topic.participants,
+      isAuthor,
+      isParticipant,
+      messageText: newMessage.trim(),
+      topicTitle: topic.title
+    });
+    
     if (!isAuthor && !isParticipant) {
+      console.error('Message permission denied:', { isAuthor, isParticipant });
       toast({
         variant: "destructive",
         title: "Access Denied",
@@ -789,14 +906,28 @@ export default function SessionPage() {
     }
 
     try {
-      await messageService.sendMessage({
+      console.log('Attempting to send message...');
+      const result = await messageService.sendMessage({
         topic_id: sessionId as string,
         sender_id: user.uid,
         text: newMessage.trim(),
       });
+      console.log('Message sent successfully:', result);
       setNewMessage("");
+      
+      toast({
+        title: "Message Sent",
+        description: "Your message has been sent successfully.",
+      });
     } catch (error: any) {
       console.error("Error sending message:", error);
+      console.error("Error details:", {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint
+      });
+      
       toast({
         title: "Message Failed",
         description: error?.message || "Failed to send message. Please try again.",
@@ -876,6 +1007,33 @@ export default function SessionPage() {
       videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
     };
   }, [remoteStream]);
+
+  // Monitor page load performance
+  useEffect(() => {
+    performanceMonitor.monitorPageLoad(`session-${sessionId}`);
+    
+    // Add global test function for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).testMessageSend = async () => {
+        if (!user || !sessionId || !topic) {
+          console.log('Missing required data for test');
+          return;
+        }
+        
+        try {
+          console.log('Testing message send with test message...');
+          const result = await messageService.sendMessage({
+            topic_id: sessionId as string,
+            sender_id: user.uid,
+            text: 'Test message from debug function',
+          });
+          console.log('Test message sent successfully:', result);
+        } catch (error) {
+          console.error('Test message failed:', error);
+        }
+      };
+    }
+  }, [sessionId, user, topic]);
 
   // Show loading while checking authentication and session validation
   if (authLoading || sessionValidation.isLoading) {
@@ -1189,6 +1347,11 @@ export default function SessionPage() {
               <Send className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </form>
+          {/* Debug info - remove after testing */}
+          <div className="mt-2 text-xs text-gray-500">
+            Debug: User {user?.email} | Session {sessionId?.slice(0, 8)}... | 
+            Author: {topic?.author.name} | Participants: {topic?.participants.length || 0}
+          </div>
         </div>
       </div>
 
@@ -1244,5 +1407,22 @@ export default function SessionPage() {
 
 
     </div>
+  );
+}
+
+export default function SessionPage() {
+  return (
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('Session page error:', error, errorInfo);
+        // Additional error handling for session-specific issues
+        if (error.message?.includes('WebRTC') || error.message?.includes('media')) {
+          // Handle WebRTC/media specific errors
+          console.warn('WebRTC/Media error detected in session');
+        }
+      }}
+    >
+      <SessionPageContent />
+    </ErrorBoundary>
   );
 }

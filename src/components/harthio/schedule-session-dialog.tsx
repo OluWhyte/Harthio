@@ -343,8 +343,8 @@ export function ScheduleSessionDialog({
         return;
       }
 
-      // Create topic in Supabase with retry logic
-      const createdTopic = await executeWithRetry(
+      // Create topic in Supabase with retry logic and timeout protection
+      const createTopicPromise = executeWithRetry(
         () =>
           topicService.createTopic({
             title: validationResult.sanitized.title,
@@ -358,6 +358,12 @@ export function ScheduleSessionDialog({
         "createSession",
         ErrorType.NETWORK
       );
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Session creation timeout')), 20000)
+      );
+      
+      const createdTopic = await Promise.race([createTopicPromise, timeoutPromise]);
 
       // Show success toast and close dialog immediately
       showSessionCreatedSuccess(

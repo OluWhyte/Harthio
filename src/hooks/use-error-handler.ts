@@ -58,17 +58,37 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
     setErrorState(prev => ({ ...prev, isRetrying: true, error: null }));
     
     try {
-      const result = await withRetry(operation, errorType);
+      // Add timeout protection to retry operations
+      const operationPromise = withRetry(operation, errorType);
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Operation timeout during retry')), 30000)
+      );
+      
+      const result = await Promise.race([operationPromise, timeoutPromise]);
       setErrorState({ error: null, isRetrying: false, retryCount: 0 });
       return result;
-    } catch (error) {
+    } catch (error: any) {
+      const newRetryCount = errorState.retryCount + 1;
+      
+      // Prevent infinite retry loops
+      if (newRetryCount > 5) {
+        const maxRetriesError = new Error('Maximum retry attempts exceeded');
+        setErrorState({
+          error: maxRetriesError,
+          isRetrying: false,
+          retryCount: newRetryCount
+        });
+        handleError(maxRetriesError, { operationName, retryCount: newRetryCount });
+        throw maxRetriesError;
+      }
+      
       setErrorState(prev => ({
         error: error instanceof Error ? error : new Error(String(error)),
         isRetrying: false,
-        retryCount: prev.retryCount + 1
+        retryCount: newRetryCount
       }));
       
-      handleError(error, { operationName, retryCount: errorState.retryCount + 1 });
+      handleError(error, { operationName, retryCount: newRetryCount });
       throw error;
     }
   }, [handleError, errorState.retryCount]);

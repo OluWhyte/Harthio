@@ -7,7 +7,6 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function middleware(request: NextRequest) {
-  const hostname = request.headers.get('host') || '';
   const url = request.nextUrl.clone();
   
   // Security: Protect admin routes
@@ -49,24 +48,6 @@ export async function middleware(request: NextRequest) {
       url.searchParams.set('redirect', request.nextUrl.pathname);
       return NextResponse.redirect(url);
     }
-  }
-  
-  // Handle admin subdomain
-  if (hostname.startsWith('admin.') || hostname.includes('admin.')) {
-    // If accessing root of admin subdomain, redirect to admin login
-    if (url.pathname === '/') {
-      url.pathname = '/admin/login';
-      return NextResponse.rewrite(url);
-    }
-    
-    // If accessing admin routes directly, allow them (after auth check above)
-    if (url.pathname.startsWith('/admin')) {
-      return NextResponse.next();
-    }
-    
-    // For any other path on admin subdomain, redirect to admin login
-    url.pathname = '/admin/login';
-    return NextResponse.rewrite(url);
   }
   
   return NextResponse.next();

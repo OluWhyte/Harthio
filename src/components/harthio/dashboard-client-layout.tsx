@@ -44,6 +44,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isSheetOpen, setSheetOpen] = useState(false);
   const [hasRedirected, setHasRedirected] = useState(false);
+  const [profileLoadDelay, setProfileLoadDelay] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -58,6 +59,20 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     setSheetOpen(false);
   }, [pathname]);
+
+  // Handle profile loading delay to prevent premature error display
+  useEffect(() => {
+    if (!loading && user && !userProfile) {
+      const timer = setTimeout(() => {
+        setProfileLoadDelay(false);
+      }, 3000); // Wait 3 seconds for profile to load
+      
+      return () => clearTimeout(timer);
+    } else if (userProfile) {
+      // Profile loaded successfully, reset delay
+      setProfileLoadDelay(true);
+    }
+  }, [loading, user, userProfile]);
 
   // Show loading while auth is being determined or during redirect
   if (loading || (!user && !hasRedirected)) {
@@ -84,8 +99,8 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   }
   
   if (!userProfile) {
-    // Show loading spinner while profile is being fetched
-    if (loading) {
+    // Show loading spinner while profile is being fetched or auth is still loading
+    if (loading || profileLoadDelay) {
       return (
         <div className="flex items-center justify-center min-h-screen bg-background">
           <div className="text-center">
@@ -96,7 +111,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
       );
     }
     
-    // Only show error after loading is complete and still no profile
+    // Only show error after loading is complete and reasonable delay has passed
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background">
         <div className="text-center max-w-md">

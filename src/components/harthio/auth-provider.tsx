@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { withAuthTimeout, AUTH_TIMEOUTS } from "@/lib/timeout-utils";
 import type { Database } from "@/lib/supabase";
 // import { useDeviceTracking } from "@/hooks/use-device-tracking";
 
@@ -247,13 +248,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    // Get initial session
+    let isMounted = true;
+    
+    // Get initial session with timeout to prevent hanging
     const getInitialSession = async () => {
       try {
+        // Add timeout to prevent hanging on slow networks
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session fetch timeout')), 10000)
+        );
+        
         const {
           data: { session },
           error: sessionError,
-        } = await supabase.auth.getSession();
+        } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+
+        if (!isMounted) return;
 
         if (sessionError) {
           setUser(null);
@@ -278,61 +289,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
           setUserProfile(null);
         }
-      } catch {
-        // Silent error handling for security
-        setUser(null);
-        setUserProfile(null);
+      } catch (error) {
+        console.warn('Session fetch failed or timed out:', error);
+        if (isMounted) {
+          setUser(null);
+          setUserProfile(null);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    getInitialSession();
+    // Use requestIdleCallback for better performance if available
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => getInitialSession(), { timeout: 2000 });
+    } else {
+      getInitialSession();
+    }
 
-    // Listen for auth changes
+    // Listen for auth changes with non-blocking handling
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const supabaseUser = session.user;
-        const user: User = {
-          uid: supabaseUser.id,
-          email: supabaseUser.email || null,
-          displayName:
-            supabaseUser.user_metadata?.display_name ||
-            supabaseUser.email ||
-            null,
-          emailVerified: supabaseUser.email_confirmed_at !== null,
-        };
-        setUser(user);
-      } else {
-        setUser(null);
-        setUserProfile(null);
-      }
-      setLoading(false);
+      if (!isMounted) return;
+      
+      // Use setTimeout to make auth state changes non-blocking
+      setTimeout(() => {
+        if (!isMounted) return;
+        
+        if (session?.user) {
+          const supabaseUser = session.user;
+          const user: User = {
+            uid: supabaseUser.id,
+            email: supabaseUser.email || null,
+            displayName:
+              supabaseUser.user_metadata?.display_name ||
+              supabaseUser.email ||
+              null,
+            emailVerified: supabaseUser.email_confirmed_at !== null,
+          };
+          setUser(user);
+        } else {
+          setUser(null);
+          setUserProfile(null);
+        }
+        setLoading(false);
+      }, 0);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
-    if (user && !userProfile) {
-      // Only refresh if we don't have a profile yet
+    if (user && !userProfile && !loading) {
+      // Only refresh if we don't have a profile yet and auth loading is complete
       const timer = setTimeout(() => {
         refreshUserProfile();
-      }, 100);
+      }, 500); // Increased delay to ensure auth is fully settled
       return () => clearTimeout(timer);
     } else if (!user) {
       setUserProfile(null);
     }
-  }, [refreshUserProfile, user, userProfile]); // Only depend on user and profile
+  }, [refreshUserProfile, user, userProfile, loading]); // Include loading in dependencies
 
   const logIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await withAuthTimeout(
+        () => supabase.auth.signInWithPassword({
+          email,
+          password,
+        }),
+        AUTH_TIMEOUTS.LOGIN
+      );
 
       if (error) {
         // Provide more specific error messages
@@ -401,20 +434,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (data: SignUpData) => {
     const displayName = `${data.firstName} ${data.lastName}`.trim();
 
-    const { data: signupData, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        emailRedirectTo: `${
-          process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-        }/auth/callback?next=/auth/verified`,
-        data: {
-          display_name: displayName,
-          first_name: data.firstName,
-          last_name: data.lastName,
+    const { data: signupData, error } = await withAuthTimeout(
+      () => supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          emailRedirectTo: `${
+            process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+          }/auth/callback?next=/auth/verified`,
+          data: {
+            display_name: displayName,
+            first_name: data.firstName,
+            last_name: data.lastName,
+          },
         },
-      },
-    });
+      }),
+      AUTH_TIMEOUTS.SIGNUP
+    );
 
     if (error) {
       // Provide more specific error messages

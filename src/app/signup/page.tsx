@@ -138,7 +138,13 @@ export default function SignupPage() {
         dob: dob,
       };
       
-      await signUp(signupData);
+      // Add timeout protection for signup
+      const signupPromise = signUp(signupData);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Signup timeout - please try again')), 30000)
+      );
+      
+      await Promise.race([signupPromise, timeoutPromise]);
       
       toast({
         title: 'Account Created Successfully!',

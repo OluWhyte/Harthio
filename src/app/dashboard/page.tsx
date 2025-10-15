@@ -254,7 +254,7 @@ function DashboardContent() {
     return () => clearInterval(timer);
   }, []);
 
-  // Debounced fetchTopics to prevent rapid successive calls
+  // Optimized fetchTopics with timeout protection and better error handling
   const fetchTopics = useCallback(async (force = false) => {
     if (!user) {
       setIsLoadingTopics(false);
@@ -281,17 +281,30 @@ function DashboardContent() {
       clearError();
 
       console.log('Fetching topics for user:', user.uid);
-      const data = await topicService.getAllTopics();
+      
+      // Add timeout protection to prevent hanging
+      const fetchPromise = topicService.getAllTopics();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Topics fetch timeout')), 15000)
+      );
+      
+      const data = await Promise.race([fetchPromise, timeoutPromise]) as any[];
       console.log('Topics fetched successfully:', data?.length || 0);
 
       const convertedTopics = (data || []).map(convertSupabaseTopicToTopic);
       
-      // Only update if data actually changed
+      // Only update if data actually changed - use shallow comparison for better performance
       setTopics(prevTopics => {
-        const hasChanged = JSON.stringify(prevTopics.map(t => ({ id: t.id, requests: t.requests, participants: t.participants }))) !== 
-                          JSON.stringify(convertedTopics.map(t => ({ id: t.id, requests: t.requests, participants: t.participants })));
+        if (prevTopics.length !== convertedTopics.length) {
+          console.log('Topics count changed, updating state');
+          return convertedTopics;
+        }
         
-        if (hasChanged) {
+        // Quick comparison of IDs and key fields
+        const prevIds = prevTopics.map(t => `${t.id}-${t.requests?.length || 0}-${t.participants?.length || 0}`);
+        const newIds = convertedTopics.map(t => `${t.id}-${t.requests?.length || 0}-${t.participants?.length || 0}`);
+        
+        if (prevIds.join(',') !== newIds.join(',')) {
           console.log('Topics data changed, updating state');
           return convertedTopics;
         } else {
@@ -300,9 +313,11 @@ function DashboardContent() {
         }
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in fetchTopics:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to fetch topics";
+      const errorMessage = error?.message?.includes('timeout') ? 
+        'Loading topics is taking longer than expected. Please check your connection.' :
+        (error instanceof Error ? error.message : "Failed to fetch topics");
       setTopicsError(errorMessage);
       handleError(error, { context: 'fetchTopics' });
     } finally {
@@ -413,17 +428,38 @@ function DashboardContent() {
     });
   }, [connectionStatus.isConnected, connectionStatus.hasErrors]);
 
-  // Initial fetch on mount and when user changes
+  // Initial fetch on mount and when user changes - with timeout protection
   useEffect(() => {
+    let isMounted = true;
+    
     if (user) {
       console.log('User authenticated, fetching initial topics...');
-      fetchTopics(true);
+      
+      // Use requestIdleCallback for better performance if available
+      const scheduleFetch = () => {
+        if (!isMounted) return;
+        fetchTopics(true).catch(error => {
+          if (isMounted) {
+            console.error('Initial topics fetch failed:', error);
+          }
+        });
+      };
+      
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(scheduleFetch, { timeout: 2000 });
+      } else {
+        setTimeout(scheduleFetch, 100);
+      }
     } else {
       console.log('No user, clearing topics');
       setTopics([]);
       setIsLoadingTopics(false);
     }
-  }, [user?.uid]); // Fetch whenever user ID changes
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.uid, fetchTopics]); // Include fetchTopics in dependencies
 
   const now = currentTime;
 

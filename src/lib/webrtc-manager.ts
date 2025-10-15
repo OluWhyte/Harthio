@@ -8,6 +8,7 @@
 import { generateTurnCredentials, validateWebRTCConfig } from './crypto-utils';
 import { SignalingService, type SignalingMessage } from './signaling-service';
 import { PresenceService } from './presence-service';
+import { mobileOptimizer } from './mobile-optimizations';
 
 // WebRTC connection states
 export type ConnectionState = 'loading' | 'waiting' | 'connecting' | 'connected' | 'reconnecting' | 'failed' | 'disconnected';
@@ -16,6 +17,7 @@ export type ConnectionState = 'loading' | 'waiting' | 'connecting' | 'connected'
 
 // Detect if running on mobile device
 function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
@@ -136,27 +138,33 @@ async function getIceServers(userId: string, sessionId: string): Promise<RTCIceS
 
   // Add your COTURN server if configured (works for both localhost and production)
   if (config.coturnServer && turnCreds) {
+    // Parse server to handle cases where port is already included
+    const serverParts = config.coturnServer.split(':');
+    const serverHost = serverParts[0];
+    const serverPort = serverParts[1] || '3478'; // Default to 3478 if no port specified
+    
     servers.push(
       {
-        urls: `turn:${config.coturnServer}:3478`,
+        urls: `turn:${serverHost}:${serverPort}`,
         username: turnCreds.username,
         credential: turnCreds.credential
       },
       {
-        urls: `turn:${config.coturnServer}:3478?transport=tcp`,
+        urls: `turn:${serverHost}:${serverPort}?transport=tcp`,
+        username: turnCreds.username,
+        credential: turnCreds.credential
+      },
+      // Also try TLS port if different from main port
+      ...(serverPort !== '5349' ? [{
+        urls: `turn:${serverHost}:5349`,
         username: turnCreds.username,
         credential: turnCreds.credential
       },
       {
-        urls: `turn:${config.coturnServer}:5349`,
+        urls: `turn:${serverHost}:5349?transport=tcp`,
         username: turnCreds.username,
         credential: turnCreds.credential
-      },
-      {
-        urls: `turn:${config.coturnServer}:5349?transport=tcp`,
-        username: turnCreds.username,
-        credential: turnCreds.credential
-      }
+      }] : [])
     );
   }
 
@@ -172,6 +180,8 @@ export class WebRTCManager {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 3;
   private connectionTimeout: NodeJS.Timeout | null = null;
+  private lastStateChange: number = 0;
+  private isCleaningUp: boolean = false;
 
   constructor(
     private sessionId: string,
@@ -190,43 +200,68 @@ export class WebRTCManager {
     console.log(`WebRTC Manager initialized. Initiator: ${this.isInitiator}`);
   }
 
-  // Initialize WebRTC connection
+  // Initialize WebRTC connection with improved error handling and performance
   async initialize(localStream: MediaStream): Promise<void> {
     try {
       this.localStream = localStream;
       this.onConnectionStateChange('connecting');
       
-      // Join session and setup presence
-      await this.presenceService.joinSession();
+      // Use Promise.allSettled for non-blocking parallel initialization
+      const initPromises = [
+        this.presenceService.joinSession().catch(err => {
+          console.warn('Presence service failed, continuing without it:', err);
+          return null;
+        }),
+        this.createPeerConnection()
+      ];
+      
+      await Promise.allSettled(initPromises);
+      
+      // Setup presence after peer connection is ready
       this.setupPresence();
       
-      // Create peer connection with ICE servers
-      await this.createPeerConnection();
-      
-      // Add local stream to peer connection
-      this.localStream.getTracks().forEach(track => {
-        if (this.peerConnection && this.localStream) {
-          this.peerConnection.addTrack(track, this.localStream);
-        }
-      });
+      // Add local stream to peer connection with error handling
+      if (this.peerConnection && this.localStream) {
+        this.localStream.getTracks().forEach(track => {
+          try {
+            if (this.peerConnection && this.localStream) {
+              this.peerConnection.addTrack(track, this.localStream);
+            }
+          } catch (trackError) {
+            console.warn('Failed to add track:', trackError);
+          }
+        });
+      }
       
       // Setup signaling
       this.setupSignaling();
       
-      // Notify other user that we joined
-      await this.signalingService.sendUserJoined(this.remoteUserId, this.userName);
+      // Non-blocking user notification
+      this.signalingService.sendUserJoined(this.remoteUserId, this.userName)
+        .catch(err => console.warn('Failed to send user joined notification:', err));
       
-      // Start connection process
+      // Start connection process with delay for mobile stability
       if (this.isInitiator) {
-        await this.createOffer();
+        // Small delay for mobile devices to ensure everything is ready
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const delay = isMobile ? 1000 : 500;
+        
+        setTimeout(() => {
+          this.createOffer().catch(err => {
+            console.error('Failed to create initial offer:', err);
+            this.onError('Failed to start connection');
+          });
+        }, delay);
       }
       
-      // Set connection timeout
+      // Use optimized timeout from mobile optimizer
+      const baseTimeout = 30000;
+      const timeoutDuration = mobileOptimizer.getOptimizedTimeout(baseTimeout);
       this.connectionTimeout = setTimeout(() => {
         if (this.peerConnection?.connectionState !== 'connected') {
           this.handleConnectionTimeout();
         }
-      }, 30000); // 30 second timeout
+      }, timeoutDuration);
       
     } catch (error) {
       console.error('Failed to initialize WebRTC:', error);
@@ -235,10 +270,11 @@ export class WebRTCManager {
     }
   }
 
-  // Create RTCPeerConnection with proper configuration
+  // Create RTCPeerConnection with proper configuration and mobile optimizations
   private async createPeerConnection(): Promise<void> {
     const iceServers = await getIceServers(this.userId, this.sessionId);
     const isMobile = isMobileDevice();
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     
     // Check if we're on localhost for testing
     const isLocalhost = typeof window !== 'undefined' && (
@@ -248,17 +284,24 @@ export class WebRTCManager {
       window.location.hostname.startsWith('172.')
     );
     
-    this.peerConnection = new RTCPeerConnection({
+    // Get optimized configuration from mobile optimizer
+    const optimizedConfig = mobileOptimizer.getOptimizedWebRTCConfig();
+    
+    const peerConfig: RTCConfiguration = {
       iceServers,
-      iceCandidatePoolSize: isMobile ? (isLocalhost ? 5 : 3) : 10, // More candidates for localhost testing
-      bundlePolicy: 'max-bundle',
-      rtcpMuxPolicy: 'require',
-      iceTransportPolicy: 'all', // Allow both STUN and TURN
+      iceTransportPolicy: 'all',
+      ...optimizedConfig,
+      // Override with mobile-specific settings
+      ...(isIOS && {
+        sdpSemantics: 'unified-plan'
+      }),
       // Mobile-specific optimizations
-      ...(isMobile && {
+      ...(isMobile && !isIOS && {
         sdpSemantics: 'unified-plan'
       })
-    });
+    };
+    
+    this.peerConnection = new RTCPeerConnection(peerConfig);
 
     // Handle remote stream
     this.peerConnection.ontrack = (event) => {
@@ -274,10 +317,17 @@ export class WebRTCManager {
       }
     };
 
-    // Handle connection state changes
+    // Handle connection state changes with improved mobile handling
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection?.connectionState;
       console.log('Connection state changed:', state);
+      
+      // Prevent rapid state changes from causing issues
+      if (this.lastStateChange && Date.now() - this.lastStateChange < 1000) {
+        console.log('Throttling rapid state change');
+        return;
+      }
+      this.lastStateChange = Date.now();
       
       switch (state) {
         case 'connected':
@@ -296,23 +346,34 @@ export class WebRTCManager {
           // Don't immediately show error - might be temporary
           console.log('Connection disconnected, monitoring for recovery...');
           const isMobile = isMobileDevice();
-          const waitTime = isMobile ? 5000 : 3000; // Wait longer on mobile
+          const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+          const waitTime = isIOS ? 8000 : (isMobile ? 5000 : 3000); // Wait longer on iOS
           
-          setTimeout(() => {
+          // Use requestIdleCallback if available for better performance
+          const scheduleCheck = (callback: () => void) => {
+            if ('requestIdleCallback' in window) {
+              requestIdleCallback(callback, { timeout: waitTime });
+            } else {
+              setTimeout(callback, waitTime);
+            }
+          };
+          
+          scheduleCheck(() => {
             if (this.peerConnection?.connectionState === 'disconnected') {
-              this.onConnectionStateChange('waiting'); // Show waiting instead of error
+              this.onConnectionStateChange('waiting');
               this.onUserNotification?.('Connection lost. Waiting for participant to rejoin...');
             }
-          }, waitTime);
+          });
           break;
         case 'failed':
           console.log('Connection failed, attempting recovery...');
-          this.onConnectionStateChange('waiting'); // Show waiting for rejoin
+          this.onConnectionStateChange('waiting');
           this.onUserNotification?.('Connection failed. Preparing for reconnection...');
-          this.handleUserLeft(); // Prepare for rejoin
+          // Use non-blocking recovery
+          setTimeout(() => this.handleUserLeft(), 100);
           break;
         case 'closed':
-          this.onConnectionStateChange('waiting'); // Show waiting instead of disconnected
+          this.onConnectionStateChange('waiting');
           break;
       }
     };
@@ -594,34 +655,88 @@ export class WebRTCManager {
     }
   }
 
-  // Clean up resources
+  // Clean up resources with improved error handling and performance
   async cleanup(): Promise<void> {
-    console.log('Cleaning up WebRTC resources');
-    
-    // Notify other user that we're leaving
-    try {
-      await this.signalingService.sendUserLeft(this.remoteUserId, this.userName);
-    } catch (error) {
-      console.error('Failed to send user left notification:', error);
+    if (this.isCleaningUp) {
+      console.log('Cleanup already in progress, skipping...');
+      return;
     }
     
+    this.isCleaningUp = true;
+    console.log('Cleaning up WebRTC resources');
+    
+    // Clear timeout first to prevent any pending operations
     if (this.connectionTimeout) {
       clearTimeout(this.connectionTimeout);
       this.connectionTimeout = null;
     }
     
+    // Parallel cleanup for better performance
+    const cleanupPromises = [];
+    
+    // Non-blocking user notification
+    if (this.signalingService) {
+      cleanupPromises.push(
+        this.signalingService.sendUserLeft(this.remoteUserId, this.userName)
+          .catch(error => console.warn('Failed to send user left notification:', error))
+      );
+    }
+    
+    // Cleanup presence service
+    if (this.presenceService) {
+      cleanupPromises.push(
+        this.presenceService.cleanup()
+          .catch(error => console.warn('Failed to cleanup presence service:', error))
+      );
+    }
+    
+    // Close peer connection immediately
     if (this.peerConnection) {
-      this.peerConnection.close();
+      try {
+        this.peerConnection.close();
+      } catch (error) {
+        console.warn('Error closing peer connection:', error);
+      }
       this.peerConnection = null;
     }
     
-    this.signalingService.unsubscribe();
-    await this.presenceService.cleanup();
-    
+    // Stop local stream tracks
     if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
+      try {
+        this.localStream.getTracks().forEach(track => {
+          try {
+            track.stop();
+          } catch (error) {
+            console.warn('Error stopping track:', error);
+          }
+        });
+      } catch (error) {
+        console.warn('Error stopping local stream:', error);
+      }
       this.localStream = null;
     }
+    
+    // Unsubscribe from signaling
+    if (this.signalingService) {
+      try {
+        this.signalingService.unsubscribe();
+      } catch (error) {
+        console.warn('Error unsubscribing from signaling:', error);
+      }
+    }
+    
+    // Wait for async cleanup operations with timeout
+    try {
+      await Promise.race([
+        Promise.allSettled(cleanupPromises),
+        new Promise(resolve => setTimeout(resolve, 3000)) // 3 second timeout
+      ]);
+    } catch (error) {
+      console.warn('Cleanup operations timed out or failed:', error);
+    }
+    
+    this.isCleaningUp = false;
+    console.log('WebRTC cleanup completed');
   }
 
   // Get connection statistics (for debugging)

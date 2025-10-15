@@ -17,6 +17,10 @@ export async function POST(request: NextRequest) {
     return rateLimitResult;
   }
 
+  // Add timeout protection for the entire request
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
   try {
     // Authenticate the request
     const authHeader = request.headers.get("authorization");
@@ -58,8 +62,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { sessionId, userId } = await request.json();
+    console.log(`[API] Validating session ${sessionId} for user ${userId}`);
 
     if (!sessionId || !userId) {
+      console.log("[API] Missing sessionId or userId");
       return NextResponse.json(
         { error: "Session ID and User ID are required" },
         { status: 400, headers: getSecurityHeaders() }
@@ -68,6 +74,9 @@ export async function POST(request: NextRequest) {
 
     // Validate that the authenticated user matches the userId in the request
     if (user.id !== userId) {
+      console.log(
+        `[API] User ID mismatch: authenticated=${user.id}, requested=${userId}`
+      );
       logSecurityEvent({
         type: "suspicious_activity",
         userId: user.id,
@@ -81,14 +90,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate the session exists and user has access
-    const { data: session, error } = await supabase
+    // Validate the session exists and user has access with timeout
+    const queryPromise = supabase
       .from("topics")
       .select("*")
       .eq("id", sessionId)
       .single();
 
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Database query timeout")), 10000)
+    );
+
+    const { data: session, error } = (await Promise.race([
+      queryPromise,
+      timeoutPromise,
+    ])) as any;
+
+    clearTimeout(timeoutId);
+
     if (error || !session) {
+      console.log(`[API] Session not found: ${sessionId}`, error);
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
@@ -96,13 +117,30 @@ export async function POST(request: NextRequest) {
     const isAuthor = session.author_id === userId;
     const isParticipant = session.participants?.includes(userId);
 
+    console.log(`[API] Access check for session ${sessionId}:`, {
+      userId,
+      authorId: session.author_id,
+      participants: session.participants,
+      isAuthor,
+      isParticipant,
+    });
+
     if (!isAuthor && !isParticipant) {
+      console.log(
+        `[API] Access denied for user ${userId} to session ${sessionId}`
+      );
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
+
+    console.log(
+      `[API] Access granted for user ${userId} to session ${sessionId}`
+    );
+    const role = isAuthor ? "author" : "participant";
 
     return NextResponse.json(
       {
         valid: true,
+        role,
         session: {
           id: session.id,
           title: session.title,
@@ -117,7 +155,16 @@ export async function POST(request: NextRequest) {
         headers: getSecurityHeaders(),
       }
     );
-  } catch (error) {
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+
+    if (error.name === "AbortError") {
+      return NextResponse.json(
+        { error: "Request timeout" },
+        { status: 408, headers: getSecurityHeaders() }
+      );
+    }
+
     const sanitized = sanitizeError(error);
 
     logSecurityEvent({
