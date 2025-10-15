@@ -25,9 +25,11 @@ export class RealtimeManager {
   private channels: Map<string, RealtimeChannel> = new Map();
   private debouncedCallbacks: Map<string, DebouncedCallback<any>> = new Map();
   private retryAttempts: Map<string, number> = new Map();
-  private maxRetries: number = 3;
-  private retryDelay: number = 1000; // Start with 1 second
+  private maxRetries: number = 2; // Reduced from 3
+  private retryDelay: number = 2000; // Increased to 2 seconds
   private static instance: RealtimeManager | null = null;
+  private connectionState: 'connecting' | 'connected' | 'disconnected' = 'disconnected';
+  private reconnectTimeout: NodeJS.Timeout | null = null;
 
   // Singleton pattern for global real-time management
   static getInstance(): RealtimeManager {
@@ -35,6 +37,45 @@ export class RealtimeManager {
       RealtimeManager.instance = new RealtimeManager();
     }
     return RealtimeManager.instance;
+  }
+
+  // Cleanup all subscriptions and reset state
+  cleanup(): void {
+    console.log('Cleaning up RealtimeManager subscriptions');
+    
+    // Clear all timeouts
+    this.debouncedCallbacks.forEach(({ timeout }) => {
+      if (timeout) clearTimeout(timeout);
+    });
+    this.debouncedCallbacks.clear();
+    
+    // Unsubscribe from all channels
+    this.channels.forEach((channel, channelId) => {
+      try {
+        channel.unsubscribe();
+        console.log(`Unsubscribed from channel: ${channelId}`);
+      } catch (error) {
+        console.warn(`Error unsubscribing from channel ${channelId}:`, error);
+      }
+    });
+    this.channels.clear();
+    
+    // Clear retry attempts
+    this.retryAttempts.clear();
+    
+    // Clear reconnect timeout
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    
+    this.connectionState = 'disconnected';
+  }
+
+  // Check if a channel already exists to prevent duplicates
+  private hasActiveChannel(channelId: string): boolean {
+    const channel = this.channels.get(channelId);
+    return channel !== undefined && channel.state === 'joined';
   }
 
   // Optimized debounced callback wrapper with better performance and mobile handling
@@ -99,8 +140,21 @@ export class RealtimeManager {
       userId?: string; // For user-specific filtering
     }
   ): string {
-    const channelId = `topics-${Date.now()}-${Math.random()}`;
-    const debounceMs = options?.debounceMs ?? 500; // Increased default debounce to prevent rapid updates
+    // Create a more stable channel ID to prevent duplicates
+    const baseId = options?.userId ? `topics-user-${options.userId}` : 'topics-global';
+    const channelId = `${baseId}-${Date.now()}`;
+    
+    // Check if we already have an active subscription for this user
+    const existingChannelId = Array.from(this.channels.keys()).find(id => 
+      id.startsWith(baseId) && this.hasActiveChannel(id)
+    );
+    
+    if (existingChannelId) {
+      console.log(`Reusing existing channel: ${existingChannelId}`);
+      return existingChannelId;
+    }
+    
+    const debounceMs = options?.debounceMs ?? 800; // Increased default debounce to prevent rapid updates
     
     // Create debounced callback to prevent excessive updates
     const debouncedCallback = this.createDebouncedCallback(channelId, callback, debounceMs);
@@ -174,18 +228,23 @@ export class RealtimeManager {
         console.log(`Topics subscription ${channelId}:`, status);
         if (status === 'SUBSCRIBED') {
           console.log(`Successfully subscribed to topics with filter: ${dbFilter || 'none'}`);
+          this.connectionState = 'connected';
           // Reset retry count on successful subscription
           this.retryAttempts.delete(channelId);
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error(`Topics subscription error for ${channelId}`);
-          this.handleSubscriptionError(channelId, () => 
-            this.subscribeToTopics(callback, options)
-          );
-        } else if (status === 'TIMED_OUT') {
-          console.warn(`Topics subscription timed out for ${channelId}`);
-          this.handleSubscriptionError(channelId, () => 
-            this.subscribeToTopics(callback, options)
-          );
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error(`Topics subscription ${status.toLowerCase()} for ${channelId}`);
+          this.connectionState = 'disconnected';
+          this.handleSubscriptionError(channelId, callback, options);
+        } else if (status === 'CLOSED') {
+          console.log(`Topics subscription closed for ${channelId}`);
+          this.connectionState = 'disconnected';
+          // Clean up the channel
+          this.channels.delete(channelId);
+          const debouncedCallback = this.debouncedCallbacks.get(channelId);
+          if (debouncedCallback?.timeout) {
+            clearTimeout(debouncedCallback.timeout);
+          }
+          this.debouncedCallbacks.delete(channelId);
         }
       });
 
@@ -336,6 +395,50 @@ export class RealtimeManager {
 
     this.channels.set(channelId, channel);
     return channelId;
+  }
+
+  // Handle subscription errors with exponential backoff
+  private handleSubscriptionError(
+    channelId: string, 
+    callback: RealtimeCallback<any>,
+    options?: any
+  ): void {
+    const currentAttempts = this.retryAttempts.get(channelId) || 0;
+    
+    if (currentAttempts >= this.maxRetries) {
+      console.error(`Max retry attempts reached for channel ${channelId}, giving up`);
+      this.channels.delete(channelId);
+      this.retryAttempts.delete(channelId);
+      return;
+    }
+    
+    const nextAttempt = currentAttempts + 1;
+    this.retryAttempts.set(channelId, nextAttempt);
+    
+    // Exponential backoff: 2s, 4s, 8s
+    const delay = this.retryDelay * Math.pow(2, currentAttempts);
+    
+    console.log(`Retrying subscription for ${channelId} in ${delay}ms (attempt ${nextAttempt}/${this.maxRetries})`);
+    
+    // Clean up the failed channel
+    const failedChannel = this.channels.get(channelId);
+    if (failedChannel) {
+      try {
+        failedChannel.unsubscribe();
+      } catch (error) {
+        console.warn(`Error cleaning up failed channel ${channelId}:`, error);
+      }
+      this.channels.delete(channelId);
+    }
+    
+    // Retry after delay
+    this.reconnectTimeout = setTimeout(() => {
+      if (channelId.startsWith('topics-')) {
+        this.subscribeToTopics(callback, options);
+      } else if (channelId.startsWith('users-')) {
+        this.subscribeToUsers(callback, options);
+      }
+    }, delay);
   }
 
   // Unsubscribe from a specific channel with proper cleanup

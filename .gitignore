@@ -129,3 +129,6 @@ fix-*.sql
 *-temp.*
 *-backup.*
 *-old.*
+
+# Platform handbook (internal documentation)
+HARTHIO_PLATFORM_HANDBOOK.md

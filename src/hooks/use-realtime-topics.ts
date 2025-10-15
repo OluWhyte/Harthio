@@ -131,27 +131,33 @@ export function useRealtimeTopics(options: UseRealtimeTopicsOptions = {}) {
   useEffect(() => {
     if (!user) return;
 
+    // Prevent duplicate subscriptions
+    if (subscriptionRefs.current.topicsChannelId) {
+      console.log('Real-time subscriptions already active, skipping setup');
+      return;
+    }
+
     console.log('Setting up real-time subscriptions for user:', user.uid);
 
     // Subscribe to topic changes with user filtering
     const topicsChannelId = realtimeManager.subscribeToTopics(handleTopicChange, {
-      debounceMs: Math.max(debounceMs, 500), // Ensure minimum debounce
+      debounceMs: Math.max(debounceMs, 800), // Increased minimum debounce
       userId: user.uid
     });
     subscriptionRefs.current.topicsChannelId = topicsChannelId;
 
     // Subscribe to user profile changes if enabled
     let usersChannelId: string | undefined;
-    if (enableUserUpdates) {
+    if (enableUserUpdates && !subscriptionRefs.current.usersChannelId) {
       usersChannelId = realtimeManager.subscribeToUsers(handleUserChange, {
-        debounceMs: Math.max(debounceMs * 2, 1000) // Longer debounce for user updates
+        debounceMs: Math.max(debounceMs * 2, 1500) // Longer debounce for user updates
       });
       subscriptionRefs.current.usersChannelId = usersChannelId;
     }
 
     // Only subscribe to request updates if explicitly enabled and not already covered
     let requestUpdatesChannelId: string | undefined;
-    if (enableRequestUpdates && immediateRequestUpdates) {
+    if (enableRequestUpdates && immediateRequestUpdates && !subscriptionRefs.current.requestUpdatesChannelId) {
       requestUpdatesChannelId = realtimeManager.subscribeToRequestUpdates(handleRequestUpdate, {
         userId: user.uid,
         immediateUpdates: false // Disable immediate updates to prevent cascading
