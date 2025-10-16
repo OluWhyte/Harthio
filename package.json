@@ -23,7 +23,9 @@
     "deploy:db:advanced": "node deploy-database.js",
     "deploy:db:rollback": "node deploy-database-simple.js --rollback",
     "validate:db": "node validate-deployment.js",
-    "validate:db:verbose": "node validate-deployment.js --verbose"
+    "validate:db:verbose": "node validate-deployment.js --verbose",
+    "resume": "node scripts/resume-session.js",
+    "status": "bash scripts/quick-status.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

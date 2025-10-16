@@ -801,219 +801,61 @@ export interface RatingDistribution {
 // API RESPONSE TYPES
 // ============================================================================
 
-export interface ApiResponse<T> {
-  data: T | null;
-  error: string | null;
+export interface ApiResponse<T = any> {
+  data?: T;
+  error?: string;
+  message?: string;
   success: boolean;
 }
 
-export interface PaginatedResponse<T> {
+export interface PaginatedResponse<T = any> {
   data: T[];
   count: number;
   page: number;
   limit: number;
-  has_more: boolean;
-}
-
-export interface ValidationResult {
-  valid: boolean;
-  errors: string[];
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 // ============================================================================
-// REAL-TIME SUBSCRIPTION TYPES
-// ============================================================================
-
-export interface SubscriptionCallback<T> {
-  (payload: {
-    eventType: "INSERT" | "UPDATE" | "DELETE";
-    new: T | null;
-    old: T | null;
-  }): void;
-}
-
-export interface RealtimePayload<T> {
-  eventType: "INSERT" | "UPDATE" | "DELETE";
-  new: T | null;
-  old: T | null;
-  errors: string[] | null;
-}
-
-// ============================================================================
-// FORM AND INPUT TYPES
-// ============================================================================
-
-export interface TopicFormData {
-  title: string;
-  description: string;
-  start_time: string;
-  end_time: string;
-}
-
-export interface MessageFormData {
-  text: string;
-}
-
-export interface RatingFormData {
-  politeness: RatingValue;
-  relevance: RatingValue;
-  problem_solved: RatingValue;
-  communication: RatingValue;
-  professionalism: RatingValue;
-}
-
-export interface UserProfileFormData {
-  display_name?: string;
-  first_name?: string;
-  last_name?: string;
-  avatar_url?: string;
-}
-
-// ============================================================================
-// USER FOOTPRINT & DEVICE TRACKING TYPES
-// ============================================================================
-
-export interface UserSessionData {
-  id: string;
-  user_id: string;
-  session_token: string;
-  ip_address: string;
-  user_agent: string;
-  device_info: DeviceInfo;
-  location_info: LocationInfo | null;
-  created_at: string;
-  last_active: string;
-  is_active: boolean;
-}
-
-export interface UserFootprint {
-  user_id: string;
-  total_sessions: number;
-  unique_devices: number;
-  unique_locations: number;
-  first_seen: string;
-  last_seen: string;
-  most_used_device: DeviceInfo;
-  most_common_location: LocationInfo;
-  session_history: UserSessionData[];
-  device_history: DeviceInfo[];
-  location_history: LocationInfo[];
-}
-
-// ============================================================================
-// FILTER AND SEARCH TYPES
+// SEARCH AND FILTER TYPES
 // ============================================================================
 
 export interface TopicFilters {
   author_id?: string;
   start_date?: string;
   end_date?: string;
-  search_query?: string;
-  participant_id?: string;
-  status?: "upcoming" | "active" | "ended";
-  category?: string;
-  min_participants?: number;
-  max_participants?: number;
-}
-
-export interface MessageFilters {
-  topic_id: string;
-  sender_id?: string;
-  date_from?: string;
-  date_to?: string;
-  search_query?: string;
+  has_participants?: boolean;
+  status?: SessionStatus;
+  search?: string;
 }
 
 export interface UserFilters {
-  search_query?: string;
-  min_rating?: number;
-  max_rating?: number;
-  has_avatar?: boolean;
   country?: string;
-  device_type?: "desktop" | "mobile" | "tablet";
-  date_from?: string;
-  date_to?: string;
-  engagement_level?: "High" | "Medium" | "Low";
-  phone_verified?: boolean;
-  min_topics?: number;
-  min_messages?: number;
-}
-
-export interface AnalyticsFilters {
-  date_from: string;
-  date_to: string;
-  user_ids?: string[];
-  countries?: string[];
-  device_types?: string[];
-  engagement_levels?: string[];
+  created_after?: string;
+  created_before?: string;
+  has_ratings?: boolean;
+  search?: string;
 }
 
 // ============================================================================
-// VALIDATION SCHEMAS
+// REAL-TIME SUBSCRIPTION TYPES
 // ============================================================================
 
-export interface ValidationSchema<T> {
-  validate: (data: T) => ValidationResult;
-  sanitize: (data: T) => T;
+export interface RealtimePayload<T = any> {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new?: T;
+  old?: T;
+  errors?: string[];
 }
 
-// ============================================================================
-// ERROR TYPES
-// ============================================================================
-
-export interface DatabaseError {
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-  hint?: string;
-}
-
-export interface ValidationError {
-  field: string;
-  message: string;
-  code: string;
-}
+export interface TopicSubscriptionPayload extends RealtimePayload<Topic> {}
+export interface MessageSubscriptionPayload extends RealtimePayload<Message> {}
+export interface PresenceSubscriptionPayload extends RealtimePayload<SessionPresence> {}
 
 // ============================================================================
-// PERMISSION TYPES
+// EXPORT ALL TYPES
 // ============================================================================
 
-export interface UserPermissions {
-  canCreateTopic: boolean;
-  canJoinTopic: (topicId: string) => boolean;
-  canSendMessage: (topicId: string) => boolean;
-  canRateUser: (userId: string, topicId: string) => boolean;
-  canUpdateProfile: boolean;
-}
-
-// ============================================================================
-// ANALYTICS TYPES
-// ============================================================================
-
-export interface TopicAnalytics {
-  total_topics: number;
-  active_topics: number;
-  total_participants: number;
-  average_duration: number;
-  popular_times: { hour: number; count: number }[];
-}
-
-export interface UserAnalytics {
-  total_users: number;
-  active_users: number;
-  new_users_today: number;
-  average_rating: number;
-  top_rated_users: UserWithStats[];
-}
-
-export interface MessageAnalytics {
-  total_messages: number;
-  messages_today: number;
-  average_messages_per_topic: number;
-  most_active_topics: TopicWithDetails[];
-}
-
-// ============================================================================
-// END OF TYPES
-// ============================================================================
-// All types are already exported above - no need for re-export
+export default Database;

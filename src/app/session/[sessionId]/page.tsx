@@ -9,40 +9,44 @@ import {
   MicOff,
   Video,
   VideoOff,
-  Users,
-  Clock,
   MessageSquare,
   Send,
   X,
+  Settings,
+  Wifi,
   WifiOff,
   Signal,
   SignalHigh,
   SignalLow,
+  Phone,
+  Monitor,
+  Maximize2,
+  Minimize2,
+  Volume2,
+  VolumeX,
+  AlertTriangle,
+  CheckCircle,
+  RefreshCw,
+  ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
-import { useSessionValidation } from "@/hooks/use-session-validation";
-import { messageService, topicService, dbUtils } from "@/lib/supabase-services";
-import { WebRTCManager, type ConnectionState } from "@/lib/webrtc-manager";
-import { realtimeManager } from "@/lib/realtime-manager";
+import { messageService, topicService } from "@/lib/supabase-services";
 import { formatTimeRemaining } from "@/lib/time-utils";
-import { PublicProfileDialog } from "@/components/harthio/public-profile-dialog";
-import { performanceMonitor, usePerformanceMonitor } from "@/lib/performance-monitor";
-import { useMobileOptimizations } from "@/lib/mobile-optimizations";
-import { ErrorBoundary, useErrorHandler } from "@/components/common/error-boundary";
 
-import { 
-  getUserMediaWithFallback, 
-  checkMediaSupport, 
-  getMediaErrorMessage,
-  requestMediaPermissions 
-} from "@/lib/media-utils";
+// Enhanced WebRTC Manager with fallbacks
+import { EnhancedWebRTCManager } from "@/lib/enhanced-webrtc-manager";
+import { JitsiManager } from "@/lib/jitsi-manager";
+import { ConnectionQualityMonitor } from "@/lib/connection-quality-monitor";
+import { AudioProcessor } from "@/lib/audio-processor";
+import { VideoProcessor } from "@/lib/video-processor";
 
-// Mock data, as Firebase is removed
-interface TopicData {
+// Types
+interface SessionData {
+  id: string;
   title: string;
   participants: string[];
   author: {
@@ -50,7 +54,6 @@ interface TopicData {
     name: string;
   };
   endTime: Date;
-  [key: string]: any;
 }
 
 interface Message {
@@ -61,602 +64,137 @@ interface Message {
   timestamp: Date;
 }
 
-// Remove old type, using ConnectionState from WebRTCManager now
+type ConnectionState = 
+  | "initializing" 
+  | "connecting" 
+  | "connected" 
+  | "reconnecting" 
+  | "failed" 
+  | "ended";
 
-function SessionPageContent() {
+type CallProvider = "webrtc" | "jitsi" | "google-meet" | "phone";
+
+type ConnectionQuality = "excellent" | "good" | "fair" | "poor" | "critical";
+
+interface CallStats {
+  bitrate: number;
+  packetLoss: number;
+  latency: number;
+  jitter: number;
+  resolution: string;
+  frameRate: number;
+}
+
+export default function SessionPage() {
   const { sessionId } = useParams();
-  const { user, userProfile, loading: authLoading } = useAuth();
-  const sessionValidation = useSessionValidation(sessionId as string);
+  const { user, userProfile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const { startTiming, endTiming } = usePerformanceMonitor('SessionPage');
-  const { capabilities, getOptimizedTimeout } = useMobileOptimizations();
-  const { reportError } = useErrorHandler();
 
-  const [topic, setTopic] = useState<TopicData | null>(null);
+  // Core state
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [connectionState, setConnectionState] = useState<ConnectionState>("initializing");
+  const [currentProvider, setCurrentProvider] = useState<CallProvider>("webrtc");
+  const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality>("excellent");
+  const [callStats, setCallStats] = useState<CallStats | null>(null);
+  
+  // Media state
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
-  const [isEnding, setIsEnding] = useState(false);
-  const [connectionState, setConnectionState] =
-    useState<ConnectionState>("loading");
-  const [connectionQuality, setConnectionQuality] = useState<
-    "good" | "fair" | "poor"
-  >("good");
-  const [notifications, setNotifications] = useState<string[]>([]);
-
-  const [position, setPosition] = useState({ x: 20, y: 20 });
-  const isDraggingRef = useRef(false);
-  const dragStartRef = useRef({ x: 0, y: 0 });
-  const initialPosRef = useRef({ x: 20, y: 20 });
-
-  const [isPortrait, setIsPortrait] = useState<boolean>(true);
-  const draggableRef = useRef<HTMLDivElement>(null);
-
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const webrtcManagerRef = useRef<WebRTCManager | null>(null);
-
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  
+  // UI state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  
+  // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Timer state
+  const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
+  const [callDuration, setCallDuration] = useState<string>("00:00");
+  
+  // Refs
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const webrtcManagerRef = useRef<EnhancedWebRTCManager | null>(null);
+  const jitsiManagerRef = useRef<JitsiManager | null>(null);
+  const qualityMonitorRef = useRef<ConnectionQualityMonitor | null>(null);
+  const audioProcessorRef = useRef<AudioProcessor | null>(null);
+  const videoProcessorRef = useRef<VideoProcessor | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const callStartTimeRef = useRef<Date | null>(null);
 
-  const [remoteAspectRatio, setRemoteAspectRatio] = useState<number | null>(
-    null
-  );
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [mediaError, setMediaError] = useState<string | null>(null);
-  const shouldShowRemoteVideo = connectionState === "connected" && remoteStream;
-
-  // WebRTC cleanup function
-  const cleanup = useCallback(async () => {
-    console.log("Cleaning up session resources");
-
-    // Cleanup WebRTC manager
-    if (webrtcManagerRef.current) {
-      await webrtcManagerRef.current.cleanup();
-      webrtcManagerRef.current = null;
-    }
-
-    // Stop local stream
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
-    }
-
-    // Clear remote stream
-    setRemoteStream(null);
-  }, []);
-
-  // Retry media access function
-  const retryMediaAccess = useCallback(async () => {
-    if (!user?.uid || !topic) return;
-
-    console.log("Retrying media access...");
-    setConnectionState("loading");
-    setMediaError(null);
-
-    try {
-      // Check media support again
-      const mediaSupport = checkMediaSupport();
-      if (!mediaSupport.supported) {
-        setMediaError(mediaSupport.error!);
-        setConnectionState("failed");
-        return;
-      }
-
-      // Try to get media with fallbacks
-      const stream = await getUserMediaWithFallback({
-        preferredWidth: 1280,
-        preferredHeight: 720,
-        preferredFrameRate: 30,
-        facingMode: 'user'
-      });
-
-      localStreamRef.current = stream;
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-
-      // Find other participant and setup WebRTC
-      const allSessionParticipants = [topic.author.userId, ...topic.participants];
-      const otherParticipant = allSessionParticipants.find(
-        (id) => id !== user.uid
-      );
-      
-      if (!otherParticipant) {
-        setConnectionState("waiting");
-        return;
-      }
-
-      // Initialize WebRTC connection
-      const webrtcManager = new WebRTCManager(
-        sessionId as string,
-        user.uid,
-        otherParticipant,
-        userProfile?.display_name || user.email || "Unknown User",
-        (remoteStream) => {
-          console.log("Remote stream received");
-          setRemoteStream(remoteStream);
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
-          }
-        },
-        (state) => {
-          console.log("Connection state changed:", state);
-          setConnectionState(state);
-        },
-        (error) => {
-          console.error("WebRTC error:", error);
-          toast({
-            variant: "destructive",
-            title: "Connection Error",
-            description: error,
-          });
-        },
-        (notification) => {
-          console.log("User notification:", notification);
-          setNotifications((prev) => [...prev, notification]);
-          toast({
-            title: "Session Update",
-            description: notification,
-          });
-          setTimeout(() => setNotifications((prev) => prev.slice(1)), 5000);
-        }
-      );
-
-      webrtcManagerRef.current = webrtcManager;
-      await webrtcManager.initialize(stream);
-
-    } catch (error: any) {
-      console.error("Failed to retry media access:", error);
-      const errorMessage = getMediaErrorMessage(error);
-      setMediaError(errorMessage);
-      setConnectionState("failed");
-      toast({
-        variant: "destructive",
-        title: "Media Access Failed",
-        description: errorMessage,
-      });
-    }
-  }, [user, topic, sessionId, userProfile, toast]);
-
-  // Retry connection function
-  const retryConnection = useCallback(async () => {
-    if (!user?.uid || !topic) return;
-
-    console.log("Retrying connection...");
-    setConnectionState("connecting");
-
-    // Cleanup existing connection
-    if (webrtcManagerRef.current) {
-      await webrtcManagerRef.current.cleanup();
-      webrtcManagerRef.current = null;
-    }
-
-    // Find other participant
-    const allSessionParticipants = [topic.author.userId, ...topic.participants];
-    const otherParticipant = allSessionParticipants.find((id) => id !== user.uid);
-    if (!otherParticipant) {
-      setConnectionState("waiting");
-      return;
-    }
-
-    // Restart WebRTC with existing local stream
-    if (localStreamRef.current) {
-      const webrtcManager = new WebRTCManager(
-        sessionId as string,
-        user.uid,
-        otherParticipant,
-        userProfile?.display_name || user.email || "Unknown User",
-        (remoteStream) => {
-          setRemoteStream(remoteStream);
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
-          }
-        },
-        (state) => setConnectionState(state),
-        (error) => {
-          toast({
-            variant: "destructive",
-            title: "Connection Error",
-            description: error,
-          });
-        },
-        (notification) => {
-          setNotifications((prev) => [...prev, notification]);
-          toast({
-            title: "Session Update",
-            description: notification,
-          });
-          setTimeout(() => setNotifications((prev) => prev.slice(1)), 5000);
-        }
-      );
-
-      webrtcManagerRef.current = webrtcManager;
-      await webrtcManager.initialize(localStreamRef.current);
-    }
-  }, [user, topic, sessionId, userProfile, toast]);
-
-  const handleEndCall = useCallback(async () => {
-    if (isEnding) return;
-    setIsEnding(true);
-    await cleanup();
-    router.push("/dashboard");
-  }, [router, isEnding, cleanup]);
-
-  // Handle sending chat messages
-  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !user || !sessionId || !topic) return;
-
-    // Validate user has permission to send messages
-    const isAuthor = topic.author.userId === user.uid;
-    const isParticipant = topic.participants?.includes(user.uid) || false;
-    
-    if (!isAuthor && !isParticipant) {
-      toast({
-        variant: "destructive",
-        title: "Access Denied",
-        description: "You don't have permission to send messages in this session.",
-      });
-      return;
-    }
-
-    const messageText = newMessage.trim();
-    setNewMessage(""); // Clear input immediately for better UX
-
-    try {
-      console.log('Sending message:', { messageText, sessionId, userId: user.uid });
-      
-      const result = await messageService.sendMessage({
-        topic_id: sessionId as string,
-        sender_id: user.uid,
-        text: messageText,
-      });
-      
-      console.log('Message sent successfully:', result);
-      
-      // Message will appear via real-time subscription
-      // No need to manually add to messages array
-      
-    } catch (error: any) {
-      console.error("Failed to send message:", error);
-      
-      // Restore the message text if sending failed
-      setNewMessage(messageText);
-      
-      toast({
-        variant: "destructive",
-        title: "Message Failed",
-        description: error.message || "Failed to send message. Please try again.",
-      });
-    }
-  }, [newMessage, user, sessionId, topic, toast]);
-
-  // Toggle mute/unmute
-  const toggleMute = useCallback(() => {
-    const newMutedState = !isMuted;
-    setIsMuted(newMutedState);
-
-    // Update local stream
-    localStreamRef.current?.getAudioTracks().forEach((track) => {
-      track.enabled = !newMutedState;
-    });
-
-    // Update WebRTC manager
-    webrtcManagerRef.current?.toggleAudio(!newMutedState);
-    
-    console.log(`Audio ${newMutedState ? 'muted' : 'unmuted'}`);
-  }, [isMuted]);
-
-  // Toggle video on/off
-  const toggleVideo = useCallback(() => {
-    const newVideoState = !isVideoOff;
-    setIsVideoOff(newVideoState);
-
-    // Update local stream
-    localStreamRef.current?.getVideoTracks().forEach((track) => {
-      track.enabled = !newVideoState;
-    });
-
-    // Update WebRTC manager
-    webrtcManagerRef.current?.toggleVideo(!newVideoState);
-    
-    console.log(`Video ${newVideoState ? 'disabled' : 'enabled'}`);
-  }, [isVideoOff]);
-
-  // Setup local media stream and WebRTC connection with improved performance
+  // Initialize session and load data
   useEffect(() => {
-    let isMounted = true;
-    let setupTimeout: NodeJS.Timeout | null = null;
+    if (!sessionId || !user?.uid) return;
 
-    async function setupMediaAndWebRTC() {
-      if (!user?.uid || !topic) return;
-
+    const initializeSession = async () => {
       try {
-        setConnectionState("loading");
-        setMediaError(null);
-
-        // Check media support first
-        const mediaSupport = checkMediaSupport();
-        if (!mediaSupport.supported) {
-          toast({
-            variant: "destructive",
-            title: "Media Not Supported",
-            description: mediaSupport.error,
-          });
-          handleEndCall();
-          return;
-        }
-
-        // Add timeout for the entire setup process to prevent hanging
-        const setupPromise = new Promise<void>(async (resolve, reject) => {
-          try {
-            // Monitor media access performance
-            startTiming('media_access', { sessionId });
-            
-            // Use improved media acquisition with fallbacks and timeout
-            const stream = await getUserMediaWithFallback({
-              preferredWidth: 1280,
-              preferredHeight: 720,
-              preferredFrameRate: 30,
-              facingMode: 'user'
-            });
-            
-            endTiming('media_access');
-
-            if (!isMounted) {
-              stream.getTracks().forEach((track) => track.stop());
-              resolve();
-              return;
-            }
-
-            localStreamRef.current = stream;
-            if (localVideoRef.current) {
-              localVideoRef.current.srcObject = stream;
-            }
-
-            // Find the other participant (could be author or approved participant)
-            const allSessionParticipants = [topic.author.userId, ...topic.participants];
-            const otherParticipant = allSessionParticipants.find(
-              (id) => id !== user.uid
-            );
-            if (!otherParticipant) {
-              setConnectionState("waiting");
-              console.log("No other participant found, waiting...");
-              resolve();
-              return;
-            }
-
-            console.log("Found other participant:", otherParticipant);
-
-            // Monitor WebRTC setup performance
-            startTiming('webrtc_setup', { sessionId, otherParticipant });
-
-            // Initialize WebRTC connection with non-blocking callbacks
-            const webrtcManager = new WebRTCManager(
-              sessionId as string,
-              user.uid,
-              otherParticipant,
-              userProfile?.display_name || user.email || "Unknown User",
-              (remoteStream) => {
-                console.log("Remote stream received");
-                // Use requestAnimationFrame for smooth UI updates
-                requestAnimationFrame(() => {
-                  setRemoteStream(remoteStream);
-                  if (remoteVideoRef.current) {
-                    remoteVideoRef.current.srcObject = remoteStream;
-                  }
-                });
-              },
-              (state) => {
-                console.log("Connection state changed:", state);
-                // Use requestAnimationFrame for smooth state updates
-                requestAnimationFrame(() => {
-                  setConnectionState(state);
-                });
-              },
-              (error) => {
-                console.error("WebRTC error:", error);
-                // Non-blocking error handling
-                setTimeout(() => {
-                  toast({
-                    variant: "destructive",
-                    title: "Connection Error",
-                    description: error,
-                  });
-                }, 0);
-              },
-              (notification) => {
-                console.log("User notification:", notification);
-                // Non-blocking notification handling
-                setTimeout(() => {
-                  setNotifications((prev) => [...prev, notification]);
-                  toast({
-                    title: "Session Update",
-                    description: notification,
-                  });
-
-                  // Auto-remove notification after 5 seconds
-                  setTimeout(() => {
-                    setNotifications((prev) => prev.slice(1));
-                  }, 5000);
-                }, 0);
-              }
-            );
-
-            webrtcManagerRef.current = webrtcManager;
-            
-            // Initialize WebRTC in the background
-            webrtcManager.initialize(stream).then(() => {
-              endTiming('webrtc_setup');
-              resolve();
-            }).catch((error) => {
-              endTiming('webrtc_setup');
-              reject(error);
-            });
-            
-          } catch (error) {
-            reject(error);
-          }
-        });
-
-        // Race against timeout to prevent hanging - use optimized timeout
-        const baseTimeout = 20000;
-        const timeoutDuration = getOptimizedTimeout(baseTimeout);
-        setupTimeout = setTimeout(() => {
-          console.warn('Setup timeout reached');
-          if (isMounted) {
-            setConnectionState("failed");
-            setMediaError("Setup took too long. Please try refreshing the page.");
-          }
-        }, timeoutDuration);
-
-        await Promise.race([
-          setupPromise,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Setup timeout')), timeoutDuration)
-          )
-        ]);
-
-        if (setupTimeout) {
-          clearTimeout(setupTimeout);
-          setupTimeout = null;
-        }
-
-      } catch (error: any) {
-        console.error("Failed to setup WebRTC:", error);
+        setConnectionState("initializing");
         
-        // Report error for monitoring
-        reportError(error, 'WebRTC Setup');
-        
-        if (isMounted) {
-          const errorMessage = getMediaErrorMessage(error);
-          setMediaError(errorMessage);
-          toast({
-            variant: "destructive",
-            title: "Media Access Error",
-            description: errorMessage,
-          });
-          
-          // Don't immediately end call - show error and let user retry
-          setConnectionState("failed");
-        }
-      }
-    }
-
-    // Use requestIdleCallback if available for better performance
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => setupMediaAndWebRTC(), { timeout: 1000 });
-    } else {
-      // Small delay to ensure DOM is ready
-      setTimeout(setupMediaAndWebRTC, 100);
-    }
-
-    return () => {
-      isMounted = false;
-      if (setupTimeout) {
-        clearTimeout(setupTimeout);
-      }
-    };
-  }, [user?.uid, topic, sessionId, handleEndCall, toast]);
-
-  // Load topic data and messages from Supabase
-  useEffect(() => {
-    if (!sessionId) return;
-
-    // If user is not authenticated, redirect to login
-    if (!user?.uid) {
-      router.push('/login');
-      return;
-    }
-
-    const loadSessionData = async () => {
-      try {
-        // Load topic data
+        // Load session data
         const topics = await topicService.getAllTopics();
-        const currentTopic = topics.find((t) => t.id === sessionId);
-
-        if (!currentTopic) {
-          // Session not found (might have been cancelled)
+        const topic = topics.find((t) => t.id === sessionId);
+        
+        if (!topic) {
           toast({
             variant: "destructive",
             title: "Session Not Found",
             description: "This session may have been cancelled or does not exist.",
           });
-          router.push('/dashboard');
+          router.push("/dashboard");
           return;
         }
 
-        // Check if user has permission to join this session (must be author or approved participant)
-        const isAuthor = currentTopic.author_id === user.uid;
-        const isApprovedParticipant = currentTopic.participants?.includes(user.uid) || false;
+        // Validate permissions
+        const isAuthor = topic.author_id === user.uid;
+        const isParticipant = topic.participants?.includes(user.uid) || false;
         
-        // Debug logging to help understand access issues
-        console.log('Session Access Debug:', {
-          sessionId,
-          currentUserId: user.uid,
-          authorId: currentTopic.author_id,
-          participants: currentTopic.participants,
-          isAuthor,
-          isApprovedParticipant,
-          topicTitle: currentTopic.title
-        });
-        
-        if (!isAuthor && !isApprovedParticipant) {
+        if (!isAuthor && !isParticipant) {
           toast({
             variant: "destructive",
             title: "Access Denied",
-            description: "You don't have permission to join this session. Only the host and approved participants can join.",
+            description: "You don't have permission to join this session.",
           });
-          router.push('/dashboard');
-          return;
-        }
-
-        // Check if session has enough participants (need at least 1 approved participant + author)
-        const approvedParticipants = currentTopic.participants?.length || 0;
-        if (approvedParticipants < 1) {
-          toast({
-            variant: "destructive",
-            title: "Session Not Ready",
-            description: "This session doesn't have enough participants yet. At least one participant must be approved to start the session.",
-          });
-          router.push('/dashboard');
+          router.push("/dashboard");
           return;
         }
 
         // Check if session has ended
-        const sessionEndTime = new Date(currentTopic.end_time);
-        const now = new Date();
-        if (now > sessionEndTime) {
+        const sessionEndTime = new Date(topic.end_time);
+        if (new Date() > sessionEndTime) {
           toast({
             variant: "destructive",
             title: "Session Ended",
             description: "This session has already ended.",
           });
-          router.push('/dashboard');
+          router.push("/dashboard");
           return;
         }
 
-        const topicData: TopicData = {
-          title: currentTopic.title,
-          participants: currentTopic.participants,
+        const sessionInfo: SessionData = {
+          id: topic.id,
+          title: topic.title,
+          participants: topic.participants || [],
           author: {
-            userId: currentTopic.author.id,
-            name:
-              currentTopic.author.display_name || currentTopic.author.email,
+            userId: topic.author.id,
+            name: topic.author.display_name || topic.author.email,
           },
           endTime: sessionEndTime,
         };
-        setTopic(topicData);
 
+        setSessionData(sessionInfo);
+        
         // Load messages
-        const supabaseMessages = await messageService.getTopicMessages(
-          sessionId as string
-        );
+        const supabaseMessages = await messageService.getTopicMessages(sessionId as string);
         const convertedMessages: Message[] = supabaseMessages.map((msg) => ({
           id: msg.id,
           text: msg.text,
@@ -667,727 +205,829 @@ function SessionPageContent() {
         setMessages(convertedMessages);
 
         // Subscribe to new messages
-        const subscription = messageService.subscribeToMessages(
+        messageService.subscribeToMessages(
           sessionId as string,
           (payload) => {
             if (payload.eventType === "INSERT" && payload.new) {
-              const convertedMessage: Message = {
+              const newMsg: Message = {
                 id: payload.new.id,
                 text: payload.new.text,
                 senderId: payload.new.sender_id,
-                senderName:
-                  payload.new.sender?.display_name ||
-                  payload.new.sender?.email ||
-                  "Unknown User",
+                senderName: payload.new.sender?.display_name || payload.new.sender?.email || "Unknown",
                 timestamp: new Date(payload.new.created_at),
               };
-              setMessages((prev) => [...prev, convertedMessage]);
+              setMessages((prev) => [...prev, newMsg]);
+              
+              // Update unread count if chat is closed
+              if (!showChat && payload.new.sender_id !== user.uid) {
+                setUnreadCount(prev => prev + 1);
+              }
             }
           }
         );
 
-        return () => {
-          subscription.unsubscribe();
-        };
+        // Initialize call
+        await initializeCall(sessionInfo);
+        
       } catch (error) {
-        console.error("Error loading session data:", error);
+        console.error("Failed to initialize session:", error);
         toast({
-          title: "Error",
-          description: "Failed to load session data.",
           variant: "destructive",
+          title: "Initialization Failed",
+          description: "Failed to load session. Please try refreshing.",
         });
       }
     };
 
-    loadSessionData();
-  }, [sessionId, user?.uid, userProfile, cleanup, toast]);
+    initializeSession();
+  }, [sessionId, user?.uid, router, toast, showChat]);
 
-  // Timer effect with real-time updates
+  // Initialize call with fallback providers
+  const initializeCall = async (session: SessionData) => {
+    try {
+      setConnectionState("connecting");
+      callStartTimeRef.current = new Date();
+      
+      // Find other participant
+      const allParticipants = [session.author.userId, ...session.participants];
+      const otherParticipant = allParticipants.find(id => id !== user!.uid);
+      
+      if (!otherParticipant) {
+        setConnectionState("failed");
+        toast({
+          variant: "destructive",
+          title: "No Participant",
+          description: "Waiting for another participant to join...",
+        });
+        return;
+      }
+
+      // Try WebRTC first
+      const success = await tryWebRTCConnection(session, otherParticipant);
+      if (!success) {
+        // Fallback to Jitsi
+        await tryJitsiConnection(session);
+      }
+      
+    } catch (error) {
+      console.error("Call initialization failed:", error);
+      await handleConnectionFailure();
+    }
+  };
+
+  // WebRTC connection attempt
+  const tryWebRTCConnection = async (session: SessionData, otherParticipant: string): Promise<boolean> => {
+    try {
+      // Get user media with optimizations
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30, max: 60 },
+          facingMode: "user"
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000
+        }
+      });
+
+      setLocalStream(stream);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      // Initialize enhanced WebRTC manager
+      const webrtcManager = new EnhancedWebRTCManager({
+        sessionId: session.id,
+        userId: user!.uid,
+        otherUserId: otherParticipant,
+        userName: userProfile?.display_name || user!.email || "Unknown User",
+        onRemoteStream: (remoteStream) => {
+          setRemoteStream(remoteStream);
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = remoteStream;
+          }
+        },
+        onConnectionStateChange: (state) => {
+          setConnectionState(state);
+          if (state === "connected") {
+            setCurrentProvider("webrtc");
+            startQualityMonitoring();
+          }
+        },
+        onConnectionQualityChange: (quality) => {
+          setConnectionQuality(quality);
+        },
+        onStatsUpdate: (stats) => {
+          setCallStats(stats);
+        },
+        onError: (error) => {
+          console.error("WebRTC error:", error);
+          toast({
+            variant: "destructive",
+            title: "Connection Issue",
+            description: error,
+          });
+        }
+      });
+
+      webrtcManagerRef.current = webrtcManager;
+      await webrtcManager.initialize(stream);
+      
+      return true;
+    } catch (error) {
+      console.error("WebRTC connection failed:", error);
+      return false;
+    }
+  };
+
+  // Jitsi fallback connection
+  const tryJitsiConnection = async (session: SessionData) => {
+    try {
+      toast({
+        title: "Switching to Backup",
+        description: "Using Jitsi Meet for better connectivity...",
+      });
+
+      const jitsiManager = new JitsiManager({
+        roomName: `harthio-${session.id}`,
+        userName: userProfile?.display_name || user!.email || "Unknown User",
+        onConnectionStateChange: (state) => {
+          setConnectionState(state);
+          if (state === "connected") {
+            setCurrentProvider("jitsi");
+          }
+        },
+        onError: (error) => {
+          console.error("Jitsi error:", error);
+          handleConnectionFailure();
+        }
+      });
+
+      jitsiManagerRef.current = jitsiManager;
+      await jitsiManager.initialize();
+      
+    } catch (error) {
+      console.error("Jitsi connection failed:", error);
+      await handleConnectionFailure();
+    }
+  };
+
+  // Handle connection failure with more fallbacks
+  const handleConnectionFailure = async () => {
+    setConnectionState("failed");
+    
+    toast({
+      variant: "destructive",
+      title: "Connection Failed",
+      description: "Would you like to try alternative calling methods?",
+      action: (
+        <div className="flex gap-2">
+          <Button size="sm" onClick={openGoogleMeet}>
+            Google Meet
+          </Button>
+          <Button size="sm" variant="outline" onClick={showPhoneOption}>
+            Phone
+          </Button>
+        </div>
+      ),
+    });
+  };
+
+  // Google Meet fallback
+  const openGoogleMeet = () => {
+    const meetUrl = `https://meet.google.com/new`;
+    window.open(meetUrl, '_blank');
+    setCurrentProvider("google-meet");
+    
+    toast({
+      title: "Google Meet Opened",
+      description: "Share the meeting link with the other participant.",
+    });
+  };
+
+  // Phone fallback option
+  const showPhoneOption = () => {
+    toast({
+      title: "Phone Backup",
+      description: "Contact support for phone bridge: support@harthio.com",
+    });
+    setCurrentProvider("phone");
+  };
+
+  // Start quality monitoring
+  const startQualityMonitoring = () => {
+    if (!webrtcManagerRef.current) return;
+
+    const qualityMonitor = new ConnectionQualityMonitor({
+      webrtcManager: webrtcManagerRef.current,
+      onQualityChange: (quality) => {
+        setConnectionQuality(quality);
+        
+        // Auto-adjust quality based on connection
+        if (quality === "poor" || quality === "critical") {
+          handlePoorConnection();
+        }
+      },
+      onStatsUpdate: (stats) => {
+        setCallStats(stats);
+      }
+    });
+
+    qualityMonitorRef.current = qualityMonitor;
+    qualityMonitor.start();
+  };
+
+  // Handle poor connection
+  const handlePoorConnection = async () => {
+    if (!webrtcManagerRef.current) return;
+
+    try {
+      // Try to improve connection
+      await webrtcManagerRef.current.optimizeForPoorConnection();
+      
+      toast({
+        title: "Optimizing Connection",
+        description: "Adjusting quality for better stability...",
+      });
+    } catch (error) {
+      console.error("Failed to optimize connection:", error);
+      
+      // Offer fallback
+      toast({
+        variant: "destructive",
+        title: "Poor Connection",
+        description: "Would you like to switch to audio-only mode?",
+        action: (
+          <Button size="sm" onClick={switchToAudioOnly}>
+            Audio Only
+          </Button>
+        ),
+      });
+    }
+  };
+
+  // Switch to audio-only mode
+  const switchToAudioOnly = async () => {
+    if (!webrtcManagerRef.current) return;
+    
+    try {
+      await webrtcManagerRef.current.switchToAudioOnly();
+      setIsVideoOff(true);
+      
+      toast({
+        title: "Audio-Only Mode",
+        description: "Video disabled to improve connection quality.",
+      });
+    } catch (error) {
+      console.error("Failed to switch to audio-only:", error);
+    }
+  };
+
+  // Media controls
+  const toggleMute = useCallback(async () => {
+    if (!localStream) return;
+
+    const audioTracks = localStream.getAudioTracks();
+    const newMutedState = !isMuted;
+    
+    audioTracks.forEach(track => {
+      track.enabled = !newMutedState;
+    });
+    
+    setIsMuted(newMutedState);
+    
+    // Update WebRTC manager
+    if (webrtcManagerRef.current) {
+      await webrtcManagerRef.current.toggleAudio(!newMutedState);
+    }
+    
+    // Audio feedback
+    if (audioProcessorRef.current) {
+      audioProcessorRef.current.playFeedbackSound(newMutedState ? 'mute' : 'unmute');
+    }
+  }, [isMuted, localStream]);
+
+  const toggleVideo = useCallback(async () => {
+    if (!localStream) return;
+
+    const videoTracks = localStream.getVideoTracks();
+    const newVideoState = !isVideoOff;
+    
+    videoTracks.forEach(track => {
+      track.enabled = !newVideoState;
+    });
+    
+    setIsVideoOff(newVideoState);
+    
+    // Update WebRTC manager
+    if (webrtcManagerRef.current) {
+      await webrtcManagerRef.current.toggleVideo(!newVideoState);
+    }
+  }, [isVideoOff, localStream]);
+
+  const toggleSpeaker = useCallback(() => {
+    if (!remoteVideoRef.current) return;
+    
+    const newSpeakerState = !isSpeakerOn;
+    remoteVideoRef.current.muted = !newSpeakerState;
+    setIsSpeakerOn(newSpeakerState);
+  }, [isSpeakerOn]);
+
+  // End call
+  const endCall = useCallback(async () => {
+    try {
+      // Cleanup all connections
+      if (webrtcManagerRef.current) {
+        await webrtcManagerRef.current.cleanup();
+      }
+      
+      if (jitsiManagerRef.current) {
+        await jitsiManagerRef.current.cleanup();
+      }
+      
+      if (qualityMonitorRef.current) {
+        qualityMonitorRef.current.stop();
+      }
+      
+      // Stop local stream
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+      
+      setConnectionState("ended");
+      
+      // Navigate back
+      router.push("/dashboard");
+      
+    } catch (error) {
+      console.error("Error ending call:", error);
+      router.push("/dashboard");
+    }
+  }, [localStream, router]);
+
+  // Chat functions
+  const sendMessage = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !user || !sessionId) return;
+
+    const messageText = newMessage.trim();
+    setNewMessage("");
+
+    try {
+      await messageService.sendMessage({
+        topic_id: sessionId as string,
+        sender_id: user.uid,
+        text: messageText,
+      });
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      setNewMessage(messageText); // Restore message on error
+      toast({
+        variant: "destructive",
+        title: "Message Failed",
+        description: "Failed to send message. Please try again.",
+      });
+    }
+  }, [newMessage, user, sessionId, toast]);
+
+  const toggleChat = () => {
+    setShowChat(!showChat);
+    if (!showChat) {
+      setUnreadCount(0);
+    }
+  };
+
+  // Timer effects
   useEffect(() => {
-    if (!topic?.endTime) return;
+    if (!sessionData?.endTime) return;
 
     const timer = setInterval(() => {
-      const remaining = formatTimeRemaining(topic.endTime);
+      const remaining = formatTimeRemaining(sessionData.endTime);
+      setTimeRemaining(remaining);
+      
       if (remaining === "00:00") {
-        clearInterval(timer);
-        setTimeRemaining("00:00");
-        if (!isEnding) handleEndCall();
-      } else {
-        setTimeRemaining(remaining);
+        endCall();
       }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [topic, handleEndCall, isEnding]);
+  }, [sessionData?.endTime, endCall]);
 
-  // Real-time subscriptions for session updates
   useEffect(() => {
-    if (!sessionId) return;
+    if (!callStartTimeRef.current) return;
 
-    // Subscribe to topic changes (participant updates, etc.)
-    const topicChannelId = realtimeManager.subscribeToTopics((payload) => {
-      if (payload.new?.id === sessionId) {
-        console.log("Session topic updated:", payload);
+    const timer = setInterval(() => {
+      const now = new Date();
+      const diff = now.getTime() - callStartTimeRef.current!.getTime();
+      const minutes = Math.floor(diff / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setCallDuration(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+    }, 1000);
 
-        // Check if participants changed (someone joined/left)
-        const oldParticipants: string[] = payload.old?.participants || [];
-        const newParticipants: string[] = payload.new?.participants || [];
+    return () => clearInterval(timer);
+  }, [connectionState]);
 
-        if (newParticipants.length !== oldParticipants.length) {
-          console.log("Participants changed:", {
-            old: oldParticipants,
-            new: newParticipants,
-          });
-
-          // If someone new joined and we're in waiting state, try to connect
-          if (
-            newParticipants.length > oldParticipants.length &&
-            connectionState === "waiting"
-          ) {
-            console.log(
-              "New participant detected, attempting to establish connection..."
-            );
-
-            // Find the new participant
-            const newParticipant = newParticipants.find(
-              (id: string) => !oldParticipants.includes(id) && id !== user?.uid
-            );
-
-            if (
-              newParticipant &&
-              localStreamRef.current &&
-              !webrtcManagerRef.current
-            ) {
-              console.log(
-                "Setting up WebRTC with new participant:",
-                newParticipant
-              );
-
-              // Create new WebRTC manager for the new participant
-              const webrtcManager = new WebRTCManager(
-                sessionId as string,
-                user!.uid,
-                newParticipant,
-                userProfile?.display_name || user!.email || "Unknown User",
-                (remoteStream) => {
-                  console.log("Remote stream received from new participant");
-                  setRemoteStream(remoteStream);
-                  if (remoteVideoRef.current) {
-                    remoteVideoRef.current.srcObject = remoteStream;
-                  }
-                },
-                (state) => {
-                  console.log(
-                    "Connection state changed with new participant:",
-                    state
-                  );
-                  setConnectionState(state);
-                },
-                (error) => {
-                  console.error("WebRTC error with new participant:", error);
-                  toast({
-                    variant: "destructive",
-                    title: "Connection Error",
-                    description: error,
-                  });
-                },
-                (notification) => {
-                  console.log("User notification:", notification);
-                  setNotifications((prev) => [...prev, notification]);
-                  toast({
-                    title: "Session Update",
-                    description: notification,
-                  });
-
-                  setTimeout(() => {
-                    setNotifications((prev) => prev.slice(1));
-                  }, 5000);
-                }
-              );
-
-              webrtcManagerRef.current = webrtcManager;
-              webrtcManager.initialize(localStreamRef.current);
-            }
-          }
-        }
-
-        // Refetch topic data to get latest participants, etc.
-        const refetchTopic = async () => {
-          try {
-            const topics = await topicService.getAllTopics();
-            const currentTopic = topics.find((t) => t.id === sessionId);
-            if (currentTopic) {
-              const topicData: TopicData = {
-                title: currentTopic.title,
-                participants: currentTopic.participants,
-                author: {
-                  userId: currentTopic.author.id,
-                  name:
-                    currentTopic.author.display_name ||
-                    currentTopic.author.email,
-                },
-                endTime: new Date(currentTopic.end_time),
-              };
-              setTopic(topicData);
-            }
-          } catch (error) {
-            console.error("Error refetching topic:", error);
-          }
-        };
-        refetchTopic();
-      }
-    }, { filter: `id=eq.${sessionId}` });
-
-    // Subscribe to presence changes
-    const presenceChannelId = realtimeManager.subscribeToPresence((payload) => {
-      if (payload.new?.session_id === sessionId) {
-        console.log("Session presence updated:", payload);
-        // Handle user join/leave notifications here if needed
-      }
-    }, sessionId as string);
-
-    return () => {
-      realtimeManager.unsubscribe(topicChannelId);
-      realtimeManager.unsubscribe(presenceChannelId);
-    };
-  }, [sessionId]);
-
-  // UI effects (chat scroll, viewport, draggable)
+  // Scroll chat to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Keyboard shortcuts
   useEffect(() => {
-    const handleResize = () => {
-      const doc = document.documentElement;
-      doc.style.setProperty("--app-height", `${window.innerHeight}px`);
-      setIsPortrait(window.innerHeight > window.innerWidth);
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement) return;
+      
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'v':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            toggleVideo();
+          }
+          break;
+        case 'c':
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            toggleChat();
+          }
+          break;
+        case 'Escape':
+          if (isFullscreen) {
+            setIsFullscreen(false);
+          }
+          break;
+      }
     };
-    handleResize(); // Initial call
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
-  const constrainPosition = useCallback((newPos: { x: number; y: number }) => {
-    if (!draggableRef.current) return newPos;
-    const bounds = draggableRef.current.getBoundingClientRect();
-    const maxX = window.innerWidth - bounds.width - 10;
-    const maxY = window.innerHeight - bounds.height - 10;
-    return {
-      x: Math.max(10, Math.min(newPos.x, maxX)),
-      y: Math.max(10, Math.min(newPos.y, maxY)),
-    };
-  }, []);
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [toggleMute, toggleVideo, toggleChat, isFullscreen]);
 
-  const handleDragMove = useCallback(
-    (e: MouseEvent | TouchEvent) => {
-      if (!isDraggingRef.current) return;
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      const dx = clientX - dragStartRef.current.x;
-      const dy = clientY - dragStartRef.current.y;
-      const newPos = {
-        x: initialPosRef.current.x + dx,
-        y: initialPosRef.current.y + dy,
-      };
-      setPosition(constrainPosition(newPos));
-    },
-    [constrainPosition]
-  );
-
-  const handleDragEnd = useCallback(() => {
-    isDraggingRef.current = false;
-    initialPosRef.current = position;
-    window.removeEventListener("mousemove", handleDragMove);
-    window.removeEventListener("mouseup", handleDragEnd);
-    window.removeEventListener("touchmove", handleDragMove);
-    window.removeEventListener("touchend", handleDragEnd);
-  }, [position, handleDragMove]);
-
-  const handleDragStart = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      e.preventDefault();
-      isDraggingRef.current = true;
-      const clientX =
-        "touches" in e ? e.nativeEvent.touches[0].clientX : e.clientX;
-      const clientY =
-        "touches" in e ? e.nativeEvent.touches[0].clientY : e.clientY;
-      dragStartRef.current = { x: clientX, y: clientY };
-      window.addEventListener("mousemove", handleDragMove);
-      window.addEventListener("mouseup", handleDragEnd);
-      window.addEventListener("touchmove", handleDragMove);
-      window.addEventListener("touchend", handleDragEnd);
-    },
-    [handleDragMove, handleDragEnd]
-  );
-
-
-
-
-
-
-
-  const getConnectionStatusMessage = () => {
-    if (mediaError) {
-      return mediaError;
-    }
-    
-    switch (connectionState) {
-      case "loading":
-        return "Loading session...";
-      case "waiting":
-        return "Waiting for participant to join...";
-      case "connecting":
-        return "Connecting to participant...";
-      case "reconnecting":
-        return "Reconnecting...";
-      case "failed":
-        return mediaError || "Connection failed. Please try again.";
-      case "disconnected":
-        return "Waiting for participant to join...";
-      default:
-        return null;
+  // Connection quality indicator
+  const getQualityIcon = () => {
+    switch (connectionQuality) {
+      case "excellent":
+        return <Signal className="w-4 h-4 text-green-500" />;
+      case "good":
+        return <SignalHigh className="w-4 h-4 text-green-400" />;
+      case "fair":
+        return <SignalLow className="w-4 h-4 text-yellow-500" />;
+      case "poor":
+        return <Wifi className="w-4 h-4 text-orange-500" />;
+      case "critical":
+        return <WifiOff className="w-4 h-4 text-red-500" />;
     }
   };
 
-  const statusMessage = getConnectionStatusMessage();
-  const showRetryButton = connectionState === "failed" || mediaError;
-
-  // Connection quality monitoring
-  useEffect(() => {
-    if (connectionState === "connected" && webrtcManagerRef.current) {
-      const interval = setInterval(async () => {
-        const stats = await webrtcManagerRef.current?.getConnectionStats();
-        if (stats) {
-          // Analyze connection quality based on stats
-          // This is a simplified implementation
-          let quality: "good" | "fair" | "poor" = "good";
-
-          stats.forEach((report) => {
-            if (report.type === "inbound-rtp" && report.kind === "video") {
-              const packetsLost = report.packetsLost || 0;
-              const packetsReceived = report.packetsReceived || 1;
-              const lossRate = packetsLost / (packetsLost + packetsReceived);
-
-              if (lossRate > 0.05) quality = "poor";
-              else if (lossRate > 0.02) quality = "fair";
-            }
-          });
-
-          setConnectionQuality(quality);
-        }
-      }, 5000); // Check every 5 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [connectionState]);
-
-  // Handle remote video metadata
-  useEffect(() => {
-    const videoElement = remoteVideoRef.current;
-    if (!videoElement || !remoteStream) return;
-
-    const handleLoadedMetadata = () => {
-      const aspectRatio = videoElement.videoWidth / videoElement.videoHeight;
-      setRemoteAspectRatio(aspectRatio);
-    };
-
-    videoElement.addEventListener("loadedmetadata", handleLoadedMetadata);
-
-    return () => {
-      videoElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
-    };
-  }, [remoteStream]);
-
-  // Monitor page load performance
-  useEffect(() => {
-    performanceMonitor.monitorPageLoad(`session-${sessionId}`);
-  }, [sessionId]);
-
-  // Show loading while checking authentication and session validation
-  if (authLoading || sessionValidation.isLoading) {
+  // Loading state
+  if (!sessionData || connectionState === "initializing") {
     return (
-      <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Redirect unauthenticated users
-  if (!user) {
-    router.push('/login');
-    return null;
-  }
-
-  // Handle session validation errors
-  if (sessionValidation.error) {
-    return (
-      <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background p-4">
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-4">{sessionValidation.error}</p>
-          <Button onClick={() => router.push('/dashboard')}>
-            Return to Dashboard
-          </Button>
+          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-white mb-2">Initializing Session</h2>
+          <p className="text-gray-400">Setting up your call...</p>
         </div>
-      </div>
-    );
-  }
-
-  // Ensure session is valid before proceeding
-  if (!sessionValidation.isValid) {
-    return (
-      <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Show loading while loading session data
-  if (!topic) {
-    return (
-      <div className="flex h-[var(--app-height,100vh)] w-full items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div
-      style={{ height: "var(--app-height, 100vh)" }}
-      className="w-full bg-black text-white flex flex-col relative overflow-hidden outline-none"
-      tabIndex={-1}
-    >
-      {/* Notifications */}
-      {notifications.length > 0 && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-30 space-y-2">
-          {notifications.map((notification, index) => (
-            <div
-              key={index}
-              className="bg-black/80 text-white px-4 py-2 rounded-lg text-sm animate-in slide-in-from-top"
-            >
-              {notification}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <header className="absolute top-0 left-0 right-0 z-20 p-2 sm:p-3 md:p-4 flex flex-col sm:flex-row sm:justify-between sm:items-start bg-gradient-to-b from-black/70 to-transparent">
-        <div className="bg-black/50 p-2 rounded-lg w-full sm:w-auto">
-          <h1 className="text-xs sm:text-sm md:text-lg font-bold leading-tight break-words sm:truncate sm:max-w-[50vw] md:max-w-[60vw]">
-            {topic?.title || "Loading session..."}
-          </h1>
-          {topic && (
-            <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 text-xs sm:text-sm text-neutral-300 mt-1 sm:mt-2">
-              <div className="flex items-center gap-1 sm:gap-2">
-                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span>{topic.participants.length}</span>
-              </div>
-              {timeRemaining && (
-                <div className="flex items-center gap-1 sm:gap-2 font-mono">
-                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span>{timeRemaining}</span>
-                </div>
-              )}
-              {connectionState === "connected" && (
-                <div className="flex items-center gap-1 sm:gap-2">
-                  {connectionQuality === "good" && (
-                    <SignalHigh className="h-3 w-3 sm:h-4 sm:w-4 text-green-400" />
-                  )}
-                  {connectionQuality === "fair" && (
-                    <Signal className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400" />
-                  )}
-                  {connectionQuality === "poor" && (
-                    <SignalLow className="h-3 w-3 sm:h-4 sm:w-4 text-red-400" />
-                  )}
-                  <span className="text-xs">
-                    {connectionQuality === "good" && "HD"}
-                    {connectionQuality === "fair" && "SD"}
-                    {connectionQuality === "poor" && "Low"}
+    <div className={cn(
+      "min-h-screen bg-gray-900 relative overflow-hidden",
+      isFullscreen && "fixed inset-0 z-50"
+    )}>
+      {/* Main video area */}
+      <div className="relative w-full h-screen">
+        {/* Remote video (main) */}
+        <div className="absolute inset-0">
+          {remoteStream ? (
+            <video
+              ref={remoteVideoRef}
+              autoPlay
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-24 h-24 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl font-semibold text-white">
+                    {sessionData.author.userId === user?.uid 
+                      ? sessionData.participants[0]?.charAt(0).toUpperCase() || "P"
+                      : sessionData.author.name.charAt(0).toUpperCase()
+                    }
                   </span>
                 </div>
+                <p className="text-white text-lg">
+                  {connectionState === "connecting" ? "Connecting..." : "Waiting for participant"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Local video (picture-in-picture) */}
+        <div className="absolute top-4 right-4 w-48 h-36 bg-gray-800 rounded-lg overflow-hidden border-2 border-gray-600">
+          {localStream && !isVideoOff ? (
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+              <div className="w-12 h-12 bg-gray-600 rounded-full flex items-center justify-center">
+                <span className="text-lg font-semibold text-white">
+                  {userProfile?.display_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "Y"}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Top bar with session info */}
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/50 to-transparent p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-white font-semibold">{sessionData.title}</h1>
+              <div className="flex items-center space-x-2 text-sm text-gray-300">
+                {getQualityIcon()}
+                <span className="capitalize">{connectionQuality}</span>
+                {currentProvider !== "webrtc" && (
+                  <span className="px-2 py-1 bg-blue-600 rounded text-xs">
+                    {currentProvider.toUpperCase()}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4 text-white">
+              <span className="text-sm">{callDuration}</span>
+              {timeRemaining && (
+                <span className="text-sm text-yellow-400">
+                  Ends in {timeRemaining}
+                </span>
               )}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Participant Info */}
-        {topic && connectionState === "connected" && (
-          <div className="bg-black/50 p-2 rounded-lg mt-2 sm:mt-0">
-            <div className="text-xs text-gray-300">
-              <span>With: </span>
-              {topic.participants
-                .filter((participantId) => participantId !== user?.uid)
-                .map((participantId) => (
-                  <PublicProfileDialog
-                    key={participantId}
-                    userId={participantId}
-                  >
-                    <span className="text-white hover:underline cursor-pointer">
-                      Participant
-                    </span>
-                  </PublicProfileDialog>
-                ))}
+        {/* Bottom controls */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
+          <div className="flex items-center justify-center space-x-4">
+            {/* Mute button */}
+            <Button
+              onClick={toggleMute}
+              variant={isMuted ? "destructive" : "secondary"}
+              size="lg"
+              className="rounded-full w-14 h-14"
+            >
+              {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+            </Button>
+
+            {/* Video button */}
+            <Button
+              onClick={toggleVideo}
+              variant={isVideoOff ? "destructive" : "secondary"}
+              size="lg"
+              className="rounded-full w-14 h-14"
+            >
+              {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
+            </Button>
+
+            {/* End call button */}
+            <Button
+              onClick={endCall}
+              variant="destructive"
+              size="lg"
+              className="rounded-full w-16 h-16"
+            >
+              <PhoneOff className="w-7 h-7" />
+            </Button>
+
+            {/* Speaker button */}
+            <Button
+              onClick={toggleSpeaker}
+              variant={isSpeakerOn ? "secondary" : "outline"}
+              size="lg"
+              className="rounded-full w-14 h-14"
+            >
+              {isSpeakerOn ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+            </Button>
+
+            {/* Chat button */}
+            <Button
+              onClick={toggleChat}
+              variant="secondary"
+              size="lg"
+              className="rounded-full w-14 h-14 relative"
+            >
+              <MessageSquare className="w-6 h-6" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </Button>
+
+            {/* Settings button */}
+            <Button
+              onClick={() => setShowSettings(!showSettings)}
+              variant="secondary"
+              size="lg"
+              className="rounded-full w-14 h-14"
+            >
+              <Settings className="w-6 h-6" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Connection status overlay */}
+        {(connectionState === "connecting" || connectionState === "reconnecting") && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="bg-gray-800 rounded-lg p-6 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <h3 className="text-white font-semibold mb-2">
+                {connectionState === "connecting" ? "Connecting..." : "Reconnecting..."}
+              </h3>
+              <p className="text-gray-400">
+                {connectionState === "connecting" 
+                  ? "Establishing secure connection" 
+                  : "Restoring connection"
+                }
+              </p>
             </div>
           </div>
         )}
-      </header>
 
-      <main className="flex-1 relative">
-        <video
-          ref={remoteVideoRef}
-          className={cn(
-            "w-full h-full",
-            remoteAspectRatio && remoteAspectRatio < 1
-              ? "object-contain"
-              : "object-cover",
-            shouldShowRemoteVideo ? "visible" : "invisible"
-          )}
-          autoPlay
-          playsInline
-        />
-
-        {statusMessage && !shouldShowRemoteVideo && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white p-2 sm:p-4 text-center">
-            {connectionState === "connecting" ||
-            connectionState === "loading" ||
-            connectionState === "reconnecting" ? (
-              <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 animate-spin mb-2 sm:mb-3" />
-            ) : connectionState === "failed" ? (
-              <X className="h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-2 sm:mb-3 text-red-400" />
-            ) : connectionState === "waiting" ? (
-              <Users className="h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-2 sm:mb-3 text-blue-400" />
-            ) : (
-              <WifiOff className="h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 mb-2 sm:mb-3" />
-            )}
-            <p className="text-sm sm:text-base md:text-lg">{statusMessage}</p>
-
-            {connectionState === "waiting" && (
-              <div className="mt-4 text-xs sm:text-sm text-gray-300">
-                <p>Share the session link with someone to start the call</p>
-                <div className="flex gap-2 mt-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white border-white hover:bg-white hover:text-black"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      toast({
-                        title: "Link Copied",
-                        description: "Session link copied to clipboard",
-                      });
-                    }}
-                  >
-                    Copy Link
-                  </Button>
-                  {topic?.participants && topic.participants.length > 1 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-white border-white hover:bg-white hover:text-black"
-                      onClick={retryConnection}
-                    >
-                      Retry Connection
-                    </Button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {connectionState === "failed" && (
-              <div className="mt-4 flex flex-col gap-2 items-center">
-                {mediaError ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white border-white hover:bg-white hover:text-black"
-                    onClick={retryMediaAccess}
-                  >
-                    Retry Media Access
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-white border-white hover:bg-white hover:text-black"
-                    onClick={retryConnection}
-                  >
-                    Retry Connection
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-white border-white hover:bg-white hover:text-black"
-                  onClick={() => window.location.reload()}
-                >
-                  Refresh Page
+        {/* Failed connection overlay */}
+        {connectionState === "failed" && (
+          <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+            <div className="bg-gray-800 rounded-lg p-8 text-center max-w-md">
+              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-white font-semibold mb-4">Connection Failed</h3>
+              <p className="text-gray-400 mb-6">
+                We're having trouble connecting. Try these alternatives:
+              </p>
+              <div className="space-y-3">
+                <Button onClick={() => initializeCall(sessionData)} className="w-full">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+                <Button onClick={openGoogleMeet} variant="outline" className="w-full">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Use Google Meet
+                </Button>
+                <Button onClick={showPhoneOption} variant="outline" className="w-full">
+                  <Phone className="w-4 h-4 mr-2" />
+                  Phone Bridge
                 </Button>
               </div>
-            )}
+            </div>
           </div>
         )}
+      </div>
 
-        <div
-          ref={draggableRef}
-          style={{ top: `${position.y}px`, left: `${position.x}px` }}
-          className={cn(
-            "absolute cursor-move overflow-hidden shadow-2xl border-2 border-white/50 z-10 rounded-lg",
-            isPortrait
-              ? "w-[40vw] h-auto aspect-[9/16] max-w-[200px]"
-              : "w-[30vw] h-auto aspect-video max-w-[420px]"
-          )}
-          onMouseDown={handleDragStart}
-          onTouchStart={handleDragStart}
-        >
-          <video
-            ref={localVideoRef}
-            className="w-full h-full object-cover"
-            autoPlay
-            playsInline
-            muted
-          />
-        </div>
-      </main>
+      {/* Chat sidebar */}
+      {showChat && (
+        <div className="fixed right-0 top-0 h-full w-80 bg-gray-800 border-l border-gray-700 flex flex-col z-40">
+          {/* Chat header */}
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <h3 className="text-white font-semibold">Chat</h3>
+            <Button
+              onClick={toggleChat}
+              variant="ghost"
+              size="sm"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
 
-      <div
-        className={cn(
-          "fixed right-0 flex flex-col bg-white/90 backdrop-blur-sm text-black shadow-lg border-l border-neutral-200 rounded-l-lg transition-transform duration-300 ease-in-out z-30",
-          "top-[80px] bottom-[80px] w-[90vw] max-w-[400px] sm:w-[360px]",
-          isChatOpen ? "translate-x-0" : "translate-x-full"
-        )}
-      >
-        <div className="flex justify-between items-center p-2 sm:p-3 border-b bg-neutral-100/90 rounded-tl-lg">
-          <h2 className="text-base sm:text-lg font-bold px-2">Chat</h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsChatOpen(false)}
-            className="h-8 w-8 text-neutral-600 hover:text-red-500"
-          >
-            <X className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="sr-only">Close chat</span>
-          </Button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-3 bg-neutral-50/90">
-          {messages.map((message) => {
-            const isSender = message.senderId === user?.uid;
-            return (
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {messages.map((message) => (
               <div
                 key={message.id}
                 className={cn(
-                  "flex w-full",
-                  isSender ? "justify-end" : "justify-start"
+                  "flex",
+                  message.senderId === user?.uid ? "justify-end" : "justify-start"
                 )}
               >
                 <div
                   className={cn(
-                    "p-2 sm:p-3 rounded-lg max-w-[80%] break-words text-sm sm:text-base",
-                    isSender
-                      ? "bg-primary text-primary-foreground rounded-br-none"
-                      : "bg-neutral-200 text-neutral-800 rounded-bl-none"
+                    "max-w-xs px-3 py-2 rounded-lg text-sm",
+                    message.senderId === user?.uid
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-700 text-gray-100"
                   )}
                 >
-                  {!isSender && (
-                    <p className="text-xs font-bold text-neutral-500 mb-1">
-                      {message.senderName}
-                    </p>
-                  )}
+                  <p className="font-medium text-xs opacity-75 mb-1">
+                    {message.senderName}
+                  </p>
                   <p>{message.text}</p>
                 </div>
               </div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
-        <div className="p-2 sm:p-3 border-t bg-white/90 rounded-bl-lg">
-          <form
-            onSubmit={handleSendMessage}
-            className="flex items-center gap-2"
-          >
-            <Input
-              type="text"
-              placeholder="Type a message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 text-sm sm:text-base bg-white"
-            />
-            <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-              <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Message input */}
+          <form onSubmit={sendMessage} className="p-4 border-t border-gray-700">
+            <div className="flex space-x-2">
+              <Input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Type a message..."
+                className="flex-1 bg-gray-700 border-gray-600 text-white"
+              />
+              <Button type="submit" size="sm">
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
           </form>
-
         </div>
-      </div>
+      )}
 
-      <footer className="absolute bottom-0 left-0 right-0 z-20 p-2 sm:p-3 md:p-4 flex-shrink-0 bg-gradient-to-t from-black/70 to-transparent">
-        <div className="flex justify-center items-center gap-2 sm:gap-3 md:gap-4">
-          <Button
-            variant={isMuted ? "destructive" : "secondary"}
-            size="icon"
-            onClick={toggleMute}
-            className="rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 bg-black/50 hover:bg-black/80 text-white"
-          >
-            {isMuted ? (
-              <MicOff className="h-4 w-4 sm:h-5 sm:w-5" />
-            ) : (
-              <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
-            )}
-          </Button>
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={() => setIsChatOpen(!isChatOpen)}
-            className="rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 bg-black/50 hover:bg-black/80 text-white"
-          >
-            <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
-          </Button>
-          <Button
-            variant={isVideoOff ? "destructive" : "secondary"}
-            size="icon"
-            onClick={toggleVideo}
-            className="rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 bg-black/50 hover:bg-black/80 text-white"
-          >
-            {isVideoOff ? (
-              <VideoOff className="h-4 w-4 sm:h-5 sm:w-5" />
-            ) : (
-              <Video className="h-4 w-4 sm:h-5 sm:w-5" />
-            )}
-          </Button>
-          <Button
-            variant="destructive"
-            size="icon"
-            onClick={handleEndCall}
-            className="rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14"
-            disabled={isEnding}
-          >
-            {isEnding ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <PhoneOff className="h-4 w-4 sm:h-5 sm:w-5" />
-            )}
-          </Button>
+      {/* Settings panel */}
+      {showSettings && (
+        <div className="fixed left-4 bottom-20 bg-gray-800 rounded-lg p-4 border border-gray-700 z-40">
+          <div className="space-y-4 min-w-64">
+            <h3 className="text-white font-semibold">Call Settings</h3>
+            
+            {/* Connection info */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Provider:</span>
+                <span className="text-white capitalize">{currentProvider}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Quality:</span>
+                <span className="text-white capitalize">{connectionQuality}</span>
+              </div>
+              {callStats && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Resolution:</span>
+                    <span className="text-white">{callStats.resolution}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Bitrate:</span>
+                    <span className="text-white">{Math.round(callStats.bitrate / 1000)}kbps</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Latency:</span>
+                    <span className="text-white">{callStats.latency}ms</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Quick actions */}
+            <div className="space-y-2">
+              <Button
+                onClick={switchToAudioOnly}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                Switch to Audio Only
+              </Button>
+              <Button
+                onClick={() => setShowStats(!showStats)}
+                variant="outline"
+                size="sm"
+                className="w-full"
+              >
+                {showStats ? "Hide" : "Show"} Stats
+              </Button>
+            </div>
+          </div>
         </div>
-      </footer>
+      )}
 
-
+      {/* Stats overlay */}
+      {showStats && callStats && (
+        <div className="fixed top-20 left-4 bg-black/70 rounded-lg p-4 text-white text-sm font-mono z-40">
+          <div className="space-y-1">
+            <div>Resolution: {callStats.resolution}</div>
+            <div>Frame Rate: {callStats.frameRate}fps</div>
+            <div>Bitrate: {Math.round(callStats.bitrate / 1000)}kbps</div>
+            <div>Packet Loss: {callStats.packetLoss.toFixed(2)}%</div>
+            <div>Latency: {callStats.latency}ms</div>
+            <div>Jitter: {callStats.jitter}ms</div>
+          </div>
+        </div>
+      )}
     </div>
-  );
-}
-
-export default function SessionPage() {
-  return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        console.error('Session page error:', error, errorInfo);
-        // Additional error handling for session-specific issues
-        if (error.message?.includes('WebRTC') || error.message?.includes('media')) {
-          // Handle WebRTC/media specific errors
-          console.warn('WebRTC/Media error detected in session');
-        }
-      }}
-    >
-      <SessionPageContent />
-    </ErrorBoundary>
   );
 }
