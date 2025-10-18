@@ -35,8 +35,8 @@ const signupSchema = z
     email: z.string().email({ message: 'Please enter a valid email.' }),
     password: z.string()
       .min(12, { message: 'Password must be at least 12 characters.' })
-      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
-        { message: 'Password must contain uppercase, lowercase, number, and special character.' }),
+      .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`])[A-Za-z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]+$/, 
+        { message: 'Password must contain at least one uppercase letter, lowercase letter, number, and special character (!@#$%^&*()_+-=[]{};\':"|,.<>/?~`).' }),
     confirmPassword: z.string(),
     dobMonth: z.string().min(1, { message: 'Month is required.' }),
     dobDay: z.string().min(1, { message: 'Day is required.' }),
@@ -346,6 +346,9 @@ export default function SignupPage() {
                         <PasswordInput placeholder="********" {...field} className="h-10 sm:h-11 text-sm sm:text-base" />
                       </FormControl>
                       <FormMessage />
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        Must be at least 12 characters with uppercase, lowercase, number, and special character
+                      </p>
                     </FormItem>
                   )}
                 />
