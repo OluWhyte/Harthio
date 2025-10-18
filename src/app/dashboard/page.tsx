@@ -15,8 +15,7 @@ import {
   UserCheck,
   AlertTriangle,
   RefreshCw,
-  Wifi,
-  WifiOff,
+
 } from "lucide-react";
 import { TopicCard, Topic } from "@/components/harthio/topic-card";
 import { ScheduleSessionDialog } from "@/components/harthio/schedule-session-dialog";
@@ -27,8 +26,10 @@ import {
   TopicCardSkeleton,
   LoadingSpinner,
 } from "@/components/common/loading-states";
-import { useRealtimeTopics } from "@/hooks/use-realtime-topics";
+
 import { useTopicErrorHandler } from "@/hooks/use-error-handler";
+import { useNewTopicDetector } from "@/hooks/use-new-topic-detector";
+import { FloatingRefreshArrow } from "@/components/common/floating-refresh-arrow";
 
 const trendingTopics = [
   { title: "Managing difficult employees", tag: "Management" },
@@ -242,9 +243,16 @@ function DashboardContent() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(true);
   const [topicsError, setTopicsError] = useState<string | null>(null);
-  const [realtimeConnected, setRealtimeConnected] = useState(false);
+
   const lastFetchRef = useRef<number>(0);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // New topic detection system - only when user is active
+  const { hasNewTopics, refreshAndDismiss } = useNewTopicDetector({
+    userId: user?.uid,
+    checkInterval: 300000, // Check every 5 minutes
+    enabled: !!user && !loading
+  });
 
   // Optimized time updates - only when needed
   useEffect(() => {
@@ -253,6 +261,21 @@ function DashboardContent() {
     }, 60000); // Update every minute
     return () => clearInterval(timer);
   }, []);
+
+  // Handle refresh from floating arrow
+  const handleRefreshFromArrow = useCallback(async () => {
+    await refreshAndDismiss();
+    // Force a fresh fetch after dismissing the arrow
+    if (user) {
+      try {
+        const data = await topicService.getAllTopics();
+        const convertedTopics = (data || []).map(convertSupabaseTopicToTopic);
+        setTopics(convertedTopics);
+      } catch (error) {
+        console.debug('Refresh from arrow failed:', error);
+      }
+    }
+  }, [refreshAndDismiss, user]);
 
   // Optimized fetchTopics with timeout protection and better error handling
   const fetchTopics = useCallback(async (force = false) => {
@@ -314,119 +337,18 @@ function DashboardContent() {
       });
       
     } catch (error: any) {
-      console.error("Error in fetchTopics:", error);
-      const errorMessage = error?.message?.includes('timeout') ? 
-        'Loading topics is taking longer than expected. Please check your connection.' :
-        (error instanceof Error ? error.message : "Failed to fetch topics");
-      setTopicsError(errorMessage);
-      handleError(error, { context: 'fetchTopics' });
+      // Silent error handling
+      setTopicsError(null); // Don't show error messages
+      // Still handle error for logging but don't show to user
+      handleError(error, { context: 'fetchTopics', silent: true });
     } finally {
       setIsLoadingTopics(false);
     }
   }, [user, handleError, clearError]);
 
-  // Optimized real-time topic update handlers - prevent unnecessary re-renders
-  const handleTopicInsert = useCallback((newTopic: any) => {
-    console.log('Real-time topic insert:', newTopic.id);
-    const convertedTopic = convertSupabaseTopicToTopic(newTopic);
-    
-    setTopics(prev => {
-      // Check if topic already exists to prevent duplicates
-      const exists = prev.some(t => t.id === convertedTopic.id);
-      if (exists) {
-        console.log('Topic already exists, skipping insert');
-        return prev;
-      }
-      
-      // Only add if it should be visible to the user
-      if (shouldShowTopic(convertedTopic, user?.uid)) {
-        console.log('Adding new topic to dashboard');
-        return [convertedTopic, ...prev];
-      } else {
-        console.log('Topic not relevant to user, skipping insert');
-        return prev;
-      }
-    });
-  }, [user?.uid]);
+  // Real-time callbacks removed - using new topic detection system instead
 
-  const handleTopicUpdate = useCallback((updatedTopic: any, oldTopic: any) => {
-    console.log('Real-time topic update:', updatedTopic.id);
-    
-    // Check if this is a meaningful update
-    const oldRequests = oldTopic?.requests || [];
-    const newRequests = updatedTopic?.requests || [];
-    const oldParticipants = oldTopic?.participants || [];
-    const newParticipants = updatedTopic?.participants || [];
-    
-    const requestsChanged = JSON.stringify(oldRequests) !== JSON.stringify(newRequests);
-    const participantsChanged = JSON.stringify(oldParticipants) !== JSON.stringify(newParticipants);
-    
-    if (!requestsChanged && !participantsChanged) {
-      console.log('No meaningful changes detected, skipping update');
-      return;
-    }
-    
-    const convertedTopic = convertSupabaseTopicToTopic(updatedTopic);
-    
-    setTopics(prev => {
-      const topicIndex = prev.findIndex(topic => topic.id === convertedTopic.id);
-      
-      if (topicIndex === -1) {
-        // Topic doesn't exist, add it if it should be visible
-        if (shouldShowTopic(convertedTopic, user?.uid)) {
-          console.log('Adding updated topic to dashboard');
-          return [convertedTopic, ...prev];
-        }
-        return prev;
-      }
-      
-      // Topic exists, update it if it should still be visible
-      if (shouldShowTopic(convertedTopic, user?.uid)) {
-        console.log('Updating existing topic in dashboard');
-        const newTopics = [...prev];
-        newTopics[topicIndex] = convertedTopic;
-        return newTopics;
-      } else {
-        // Topic should no longer be visible, remove it
-        console.log('Removing topic from dashboard (no longer relevant)');
-        return prev.filter(topic => topic.id !== convertedTopic.id);
-      }
-    });
-  }, [user?.uid]);
-
-  const handleTopicDelete = useCallback((topicId: string) => {
-    console.log('Real-time topic delete:', topicId);
-    setTopics(prev => {
-      const filtered = prev.filter(topic => topic.id !== topicId);
-      if (filtered.length !== prev.length) {
-        console.log('Removed deleted topic from dashboard');
-      }
-      return filtered;
-    });
-  }, []);
-
-  // Optimized real-time subscriptions - single subscription with smart debouncing
-  const { isSubscribed, connectionStatus } = useRealtimeTopics({
-    onTopicInsert: handleTopicInsert,
-    onTopicUpdate: handleTopicUpdate,
-    onTopicDelete: handleTopicDelete,
-    debounceMs: 500, // Increased debounce to prevent rapid updates
-    enableUserUpdates: false, // Don't need user updates on dashboard
-    enableRequestUpdates: false, // Disable duplicate request updates
-    immediateRequestUpdates: false, // Disable immediate updates to prevent cascading
-  });
-
-  // Update connection status only when it actually changes
-  useEffect(() => {
-    const isFullyConnected = connectionStatus.isConnected && !connectionStatus.hasErrors;
-    setRealtimeConnected(prev => {
-      if (prev !== isFullyConnected) {
-        console.log('Real-time connection status changed:', isFullyConnected);
-        return isFullyConnected;
-      }
-      return prev;
-    });
-  }, [connectionStatus.isConnected, connectionStatus.hasErrors]);
+  // Real-time subscriptions replaced with new topic detection system
 
   // Initial fetch on mount and when user changes - with timeout protection
   useEffect(() => {
@@ -560,7 +482,14 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8">
+    <>
+      {/* Floating refresh arrow */}
+      <FloatingRefreshArrow 
+        show={hasNewTopics} 
+        onRefresh={handleRefreshFromArrow}
+      />
+      
+      <div className="flex-1 p-4 sm:p-6 lg:p-8">
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
         <div className="md:col-span-2 lg:col-span-3 space-y-6">
           {/* MY ACTIVE SESSION - Show prominently at the top when user has an active session */}
@@ -588,28 +517,9 @@ function DashboardContent() {
             <div>
               <h1 className="text-3xl font-bold">Timeline</h1>
               <div className="flex items-center gap-4 mt-2">
-                {/* Error display */}
-                {(hasError || topicsError) && (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span>
-                      {topicsError || "Error loading sessions"}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => fetchTopics(true)}
-                      disabled={isLoadingTopics}
-                      className="h-6 px-2"
-                    >
-                      {isLoadingTopics ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-3 w-3" />
-                      )}
-                    </Button>
-                  </div>
-                )}
+
+                
+
               </div>
             </div>
             <ScheduleSessionDialog onSessionCreated={() => fetchTopics()}>
@@ -727,37 +637,7 @@ function DashboardContent() {
             </div>
           )}
 
-          {!isLoadingTopics &&
-            (hasError || topicsError) &&
-            filteredTopics.length === 0 && 
-            !categorizedTopics.myActiveSession && (
-              <div className="text-center text-muted-foreground py-16">
-                <div className="max-w-md mx-auto">
-                  <div className="mb-4">
-                    <AlertTriangle className="h-12 w-12 mx-auto text-destructive/50" />
-                  </div>
-                  <p className="font-semibold text-lg mb-2">
-                    Unable to load sessions
-                  </p>
-                  <p className="text-sm mb-4">
-                    We're having trouble connecting to our servers. Please check
-                    your internet connection and try again.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => fetchTopics(true)}
-                    disabled={isLoadingTopics}
-                  >
-                    {isLoadingTopics ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                    )}
-                    Try Again
-                  </Button>
-                </div>
-              </div>
-            )}
+          {/* No error state shown */}
         </div>
 
         {/* Sidebar */}
@@ -804,7 +684,8 @@ function DashboardContent() {
         </aside>
       </div>
       {/* <PerformanceMonitor /> */}
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -54,6 +54,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { topicService } from "@/lib/supabase-services";
 import { useErrorHandler } from "@/hooks/use-error-handler";
 import { ErrorType } from "@/lib/error-utils";
+import { useNewSessionConflictCheck } from "@/hooks/use-schedule-conflict-check";
+import { ScheduleConflictWarning } from "@/components/common/schedule-conflict-warning";
+
 import {
   validateTopicTitle,
   validateTopicDescription,
@@ -240,6 +243,49 @@ export function ScheduleSessionDialog({
   const startTime = form.watch("startTime");
   const endTime = form.watch("endTime");
 
+  // Parse form values for conflict checking
+  const watchedDate = form.watch("date");
+  const watchedStartTime = form.watch("startTime");
+  const watchedEndTime = form.watch("endTime");
+
+  // Parse watched values for conflict checking
+  const startDateTime = watchedDate && watchedStartTime 
+    ? (() => {
+        try {
+          const startTime24 = convertTo24Hour(watchedStartTime);
+          const [startHours, startMinutes] = startTime24.split(":").map(Number);
+          return setMilliseconds(
+            setSeconds(setMinutes(setHours(watchedDate, startHours), startMinutes), 0),
+            0
+          );
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+  const endDateTime = watchedDate && watchedEndTime 
+    ? (() => {
+        try {
+          const endTime24 = convertTo24Hour(watchedEndTime);
+          const [endHours, endMinutes] = endTime24.split(":").map(Number);
+          return setMilliseconds(
+            setSeconds(setMinutes(setHours(watchedDate, endHours), endMinutes), 0),
+            0
+          );
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
+  // Check for schedule conflicts in real-time
+  const { conflictResult, isChecking: isCheckingConflicts } = useNewSessionConflictCheck(
+    user?.uid || null,
+    startDateTime,
+    endDateTime,
+    { enabled: open && !!user }
+  );
+
   useEffect(() => {
     if (date && startTime && endTime) {
       try {
@@ -367,7 +413,7 @@ export function ScheduleSessionDialog({
 
       // Show success toast and close dialog immediately
       showSessionCreatedSuccess(
-        createdTopic?.id || "unknown",
+        (createdTopic as any)?.id || "unknown",
         validationResult.sanitized.title
       );
 
@@ -823,6 +869,14 @@ export function ScheduleSessionDialog({
                   {calculatedDuration}
                 </div>
               )}
+
+              {/* Schedule Conflict Warning */}
+              {conflictResult?.hasConflict && (
+                <ScheduleConflictWarning 
+                  conflictResult={conflictResult}
+                  className="mt-4"
+                />
+              )}
               <DialogFooter className="flex-shrink-0 pt-4 flex-row justify-end space-x-2">
                 <Button
                   type="button"
@@ -838,7 +892,9 @@ export function ScheduleSessionDialog({
                   type="submit"
                   disabled={
                     form.formState.isSubmitting ||
-                    Object.keys(validationErrors).length > 0
+                    Object.keys(validationErrors).length > 0 ||
+                    conflictResult?.hasConflict ||
+                    isCheckingConflicts
                   }
                   className="px-6"
                 >

@@ -31,6 +31,8 @@ import {
   createValidationContext
 } from '@/lib/error-prevention';
 import { EnhancedValidationFeedback, PreventInvalidActions } from '@/components/common/enhanced-form-validation';
+import { useJoinRequestConflictCheck } from '@/hooks/use-schedule-conflict-check';
+import { ScheduleConflictWarning } from '@/components/common/schedule-conflict-warning';
 
 const requestSchema = z.object({
   message: z.string().max(200, { message: "Message can't be more than 200 characters." }).optional(),
@@ -56,6 +58,13 @@ export function RequestToJoinDialog({ topicId, onSuccess, children }: RequestToJ
   const { user, userProfile } = useAuth();
   const { handleError, executeWithRetry, retry, isRetrying, hasError, clearError } = useRequestErrorHandler();
   const { showRequestSuccess } = useRequestSuccessFeedback();
+
+  // Check for join request conflicts
+  const { conflictResult, isChecking: isCheckingConflicts } = useJoinRequestConflictCheck(
+    topicId,
+    user?.uid || null,
+    { enabled: open && !!user }
+  );
 
   const form = useForm<RequestFormValues>({
     resolver: zodResolver(requestSchema),
@@ -291,6 +300,14 @@ export function RequestToJoinDialog({ topicId, onSuccess, children }: RequestToJ
                   </FormItem>
                 )}
               />
+
+              {/* Join Request Conflict Warning */}
+              {conflictResult?.hasConflict && (
+                <ScheduleConflictWarning 
+                  conflictResult={conflictResult}
+                  className="mt-4"
+                />
+              )}
               
               <DialogFooter className="flex-row justify-end space-x-2">
                 <Button 
@@ -311,6 +328,11 @@ export function RequestToJoinDialog({ topicId, onSuccess, children }: RequestToJ
                       severity: 'error'
                     },
                     {
+                      condition: conflictResult?.hasConflict || false,
+                      message: conflictResult?.reason || 'Schedule conflict detected',
+                      severity: 'error'
+                    },
+                    {
                       condition: isSubmitting,
                       message: 'Request is being sent...',
                       severity: 'warning'
@@ -319,7 +341,12 @@ export function RequestToJoinDialog({ topicId, onSuccess, children }: RequestToJ
                 >
                   <Button 
                     type="submit" 
-                    disabled={isSubmitting || !!validationError}
+                    disabled={
+                      isSubmitting || 
+                      !!validationError || 
+                      conflictResult?.hasConflict ||
+                      isCheckingConflicts
+                    }
                     className="px-6"
                   >
                     {isSubmitting ? (

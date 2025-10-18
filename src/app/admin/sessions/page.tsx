@@ -69,7 +69,6 @@ export default function SessionManagementPage() {
       setIsAdmin(true);
       await loadSessions();
     } catch (error) {
-      console.error('Error checking admin status:', error);
       toast({
         title: 'Error',
         description: 'Failed to load admin data.',
@@ -92,7 +91,6 @@ export default function SessionManagementPage() {
       setSessions(allSessions);
       setActiveSessions(activeSessionsData);
     } catch (error) {
-      console.error('Error loading sessions:', error);
       toast({
         title: 'Error',
         description: 'Failed to load sessions.',
@@ -115,7 +113,6 @@ export default function SessionManagementPage() {
       setSessions(allSessions);
       setActiveSessions(activeSessionsData);
     } catch (error) {
-      console.error('Error applying filters:', error);
       toast({
         title: 'Error',
         description: 'Failed to apply filters.',
@@ -150,7 +147,7 @@ export default function SessionManagementPage() {
   };
 
   const getSessionDetails = (session: TopicWithDetails) => {
-    const details = [];
+    const details: string[] = [];
     
     // Join requests info
     if (session.join_requests && session.join_requests.length > 0) {
@@ -226,6 +223,12 @@ export default function SessionManagementPage() {
         title="Session Management"
         actions={[
           {
+            label: 'Server Status',
+            onClick: () => router.push('/debug/servers'),
+            variant: 'outline',
+            icon: <Settings className="h-4 w-4" />
+          },
+          {
             label: 'Refresh',
             onClick: loadSessions,
             variant: 'outline'
@@ -234,6 +237,74 @@ export default function SessionManagementPage() {
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Debug Tools */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-blue-600" />
+              Debug & Testing Tools
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/debug/servers')}
+                className="flex items-center justify-start gap-2 h-auto p-4"
+              >
+                <Settings className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">Server Status</div>
+                  <div className="text-sm text-gray-500">Check TURN/STUN servers</div>
+                </div>
+              </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const testMessage = `Test message at ${new Date().toLocaleTimeString()}`;
+                  console.log('Debug test:', testMessage);
+                  toast({
+                    title: 'Debug Test',
+                    description: testMessage,
+                  });
+                }}
+                className="flex items-center justify-start gap-2 h-auto p-4"
+              >
+                <MessageSquare className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">Test Messaging</div>
+                  <div className="text-sm text-gray-500">Debug message system</div>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const info = {
+                    userAgent: navigator.userAgent,
+                    screen: `${screen.width}x${screen.height}`,
+                    viewport: `${window.innerWidth}x${window.innerHeight}`,
+                    connection: (navigator as any).connection?.effectiveType || 'unknown'
+                  };
+                  console.log('Browser Debug Info:', info);
+                  toast({
+                    title: 'Debug Info Logged',
+                    description: 'Check browser console for details',
+                  });
+                }}
+                className="flex items-center justify-start gap-2 h-auto p-4"
+              >
+                <Eye className="h-5 w-5" />
+                <div className="text-left">
+                  <div className="font-medium">Browser Info</div>
+                  <div className="text-sm text-gray-500">Log system details</div>
+                </div>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card>

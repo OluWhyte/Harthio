@@ -175,6 +175,14 @@ function RequestsPageContent() {
         throw new Error("Request not found - it may have already been processed");
       }
 
+      // Check for schedule conflicts first
+      const { checkScheduleConflict } = await import('@/lib/schedule-conflict-detector');
+      const conflictCheck = await checkScheduleConflict(validTopicId, validRequesterId);
+      
+      if (!conflictCheck.canApprove) {
+        throw new Error(conflictCheck.reason || 'Schedule conflict detected');
+      }
+
       // Run comprehensive pre-flight checks
       const validationContext = createValidationContext(user, request.topic, request);
       const preflightChecks = [

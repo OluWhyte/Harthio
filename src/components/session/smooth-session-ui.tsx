@@ -173,7 +173,7 @@ export function SmoothSessionUI({
       </div>
 
       {/* Local Video (Picture-in-Picture) */}
-      <div className="absolute top-4 right-4 w-48 h-36 rounded-lg overflow-hidden bg-gray-900 border-2 border-white/20 shadow-lg">
+      <div className="absolute top-4 right-4 w-64 h-48 rounded-lg overflow-hidden bg-gray-900 border-2 border-white/20 shadow-lg">
         <video
           ref={localVideoRef}
           autoPlay
@@ -195,7 +195,7 @@ export function SmoothSessionUI({
 
       {/* Top Bar */}
       <div className={cn(
-        "absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/50 to-transparent transition-opacity duration-300",
+        "absolute top-0 left-0 right-0 p-4 transition-opacity duration-300",
         showControls ? "opacity-100" : "opacity-0"
       )}>
         <div className="flex items-center justify-between">
@@ -286,7 +286,7 @@ export function SmoothSessionUI({
 
       {/* Bottom Controls */}
       <div className={cn(
-        "absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/50 to-transparent transition-opacity duration-300",
+        "absolute bottom-0 left-0 right-0 p-6 transition-opacity duration-300",
         showControls ? "opacity-100" : "opacity-0"
       )}>
         <div className="flex items-center justify-center space-x-4">

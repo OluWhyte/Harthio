@@ -25,14 +25,15 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
     retryCount: 0
   });
 
-  const handleError = useCallback((error: unknown, additionalData?: Record<string, any>) => {
+  const handleError = useCallback((error: unknown, additionalData?: Record<string, any> & { silent?: boolean }) => {
     const errorDetails = parseError(error);
+    const isSilent = additionalData?.silent === true;
     
     if (logErrors) {
       logError(context, error, additionalData);
     }
     
-    if (showToast) {
+    if (showToast && !isSilent) {
       toast({
         title: errorDetails.title,
         description: errorDetails.message,
@@ -125,7 +126,7 @@ export function useRequestErrorHandler() {
 export function useTopicErrorHandler() {
   return useErrorHandler({
     context: 'Topic Management',
-    showToast: true,
+    showToast: false, // Silent by default for timeline
     logErrors: true
   });
 }

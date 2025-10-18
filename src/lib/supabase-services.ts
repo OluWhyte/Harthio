@@ -54,7 +54,7 @@ export const topicService = {
           )
           .order("start_time", { ascending: true }),
         DB_TIMEOUTS.COMPLEX_QUERY
-      );
+      ) as any;
 
       if (error) {
         logError("getAllTopics", error);
@@ -73,7 +73,9 @@ export const topicService = {
     } catch (error: any) {
       if (error.name === 'TimeoutError') {
         logError("getAllTopics", error);
-        throw new Error("Loading topics timed out. Please try again.");
+        // Return empty array instead of throwing error to prevent UI breakage
+        console.warn("Topics loading timed out, returning empty array");
+        return [];
       }
       logError("getAllTopics", error);
       throw error;
@@ -165,6 +167,19 @@ export const topicService = {
   async createTopic(
     topicData: Omit<TopicInsert, "id" | "created_at">
   ): Promise<Topic> {
+    // Check for schedule conflicts before creating
+    // Authors cannot schedule sessions that overlap with their sessions that have approved participants
+    const { checkNewSessionConflict } = await import('./schedule-conflict-detector');
+    const conflictCheck = await checkNewSessionConflict(
+      topicData.author_id,
+      new Date(topicData.start_time),
+      new Date(topicData.end_time)
+    );
+    
+    if (!conflictCheck.canApprove) {
+      throw new Error(conflictCheck.reason || 'Schedule conflict detected');
+    }
+    
     const insertData = {
       title: topicData.title,
       description: topicData.description,
@@ -279,6 +294,14 @@ export const topicService = {
 
       if (topic.participants && topic.participants.includes(requesterId)) {
         throw new Error("You are already a participant in this session");
+      }
+
+      // Check for participant request conflicts
+      const { checkJoinRequestConflict } = await import('./schedule-conflict-detector');
+      const conflictCheck = await checkJoinRequestConflict(topicId, requesterId);
+      
+      if (!conflictCheck.canApprove) {
+        throw new Error(conflictCheck.reason || 'You cannot request to join overlapping sessions');
       }
 
       // Create requester name with fallback logic
@@ -786,6 +809,14 @@ export const topicService = {
       // Validate input parameters
       if (!topicId || !requesterId) {
         throw new Error("Topic ID and requester ID are required");
+      }
+
+      // Check for schedule conflicts before approving
+      const { checkScheduleConflict } = await import('./schedule-conflict-detector');
+      const conflictCheck = await checkScheduleConflict(topicId, requesterId);
+      
+      if (!conflictCheck.canApprove) {
+        throw new Error(conflictCheck.reason || 'Schedule conflict detected');
       }
 
       // Get the topic info (with RLS ensuring only author can access)
