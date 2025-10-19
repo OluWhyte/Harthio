@@ -72,17 +72,23 @@ npm run dev
 
 ## 📚 Documentation
 
-Complete documentation is available in the `docs/` folder:
+### 🆕 2025 Platform Documentation
+- **[Platform Enhancements 2025](PLATFORM_ENHANCEMENTS_2025.md)** - Complete overview of new features
+- **[API Reference 2025](API_REFERENCE_2025.md)** - Comprehensive API documentation
+- **[Component Documentation 2025](COMPONENT_DOCUMENTATION_2025.md)** - Detailed component reference
 
+### 📖 Setup & Configuration
 - **[Setup Instructions](docs/SETUP_INSTRUCTIONS.md)** - Complete project setup guide
 - **[Database Setup](docs/DATABASE_SETUP.md)** - Database configuration and schema
 - **[Email Setup](docs/EMAIL_SETUP.md)** - Email notification configuration  
 - **[Domain Setup](docs/DOMAIN_SETUP.md)** - Custom domain configuration
 - **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Vercel deployment instructions
+
+### 🔧 Technical Documentation
 - **[WebRTC Implementation](docs/WEBRTC_IMPLEMENTATION.md)** - Video calling setup
-- **[Mobile User Guide](docs/MOBILE_USER_GUIDE.md)** - Mobile usage instructions
 - **[Session System](docs/SESSION_SYSTEM.md)** - 3-state session management
 - **[Security Fixes](docs/SECURITY_FIXES.md)** - Security improvements
+- **[Mobile User Guide](docs/MOBILE_USER_GUIDE.md)** - Mobile usage instructions
 
 ## 📁 Project Structure
 
