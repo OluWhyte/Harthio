@@ -5,7 +5,7 @@
 // Integrates with admin dashboard for security awareness
 // ============================================================================
 
-import { supabase } from './supabase';
+import { supabaseAny as supabase } from './supabase';
 
 export interface SecurityIncident {
   id: string;

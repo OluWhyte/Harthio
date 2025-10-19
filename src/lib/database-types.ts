@@ -516,6 +516,166 @@ export interface Database {
           notes?: string | null;
         };
       };
+      user_roles: {
+        Row: {
+          id: string; // UUID, auto-generated
+          user_id: string; // UUID, references auth.users(id), NOT NULL
+          role: "admin" | "user" | "moderator" | "suspended" | "banned"; // NOT NULL
+          granted_by: string; // UUID, references auth.users(id), NOT NULL
+          granted_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          expires_at: string | null; // TIMESTAMP WITH TIME ZONE
+          is_active: boolean; // DEFAULT TRUE
+          notes: string | null;
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          user_id: string; // Required
+          role: "admin" | "user" | "moderator" | "suspended" | "banned"; // Required
+          granted_by: string; // Required
+          granted_at?: string; // Auto-generated if not provided
+          expires_at?: string | null;
+          is_active?: boolean; // Defaults to true
+          notes?: string | null;
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          user_id?: string; // Should not be updated
+          role?: "admin" | "user" | "moderator" | "suspended" | "banned";
+          granted_by?: string; // Should not be updated
+          granted_at?: string; // Should not be updated
+          expires_at?: string | null;
+          is_active?: boolean;
+          notes?: string | null;
+        };
+      };
+      user_permissions: {
+        Row: {
+          id: string; // UUID, auto-generated
+          user_id: string; // UUID, references auth.users(id), NOT NULL
+          permission: "create_sessions" | "join_sessions" | "moderate_content" | "admin_access"; // NOT NULL
+          granted_by: string; // UUID, references auth.users(id), NOT NULL
+          granted_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          expires_at: string | null; // TIMESTAMP WITH TIME ZONE
+          is_active: boolean; // DEFAULT TRUE
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          user_id: string; // Required
+          permission: "create_sessions" | "join_sessions" | "moderate_content" | "admin_access"; // Required
+          granted_by: string; // Required
+          granted_at?: string; // Auto-generated if not provided
+          expires_at?: string | null;
+          is_active?: boolean; // Defaults to true
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          user_id?: string; // Should not be updated
+          permission?: "create_sessions" | "join_sessions" | "moderate_content" | "admin_access";
+          granted_by?: string; // Should not be updated
+          granted_at?: string; // Should not be updated
+          expires_at?: string | null;
+          is_active?: boolean;
+        };
+      };
+      user_status: {
+        Row: {
+          id: string; // UUID, auto-generated
+          user_id: string; // UUID, references auth.users(id), UNIQUE, NOT NULL
+          status: "active" | "suspended" | "banned" | "pending_verification"; // DEFAULT 'active'
+          reason: string | null;
+          changed_by: string; // UUID, references auth.users(id), NOT NULL
+          changed_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          expires_at: string | null; // TIMESTAMP WITH TIME ZONE
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          user_id: string; // Required, must be unique
+          status?: "active" | "suspended" | "banned" | "pending_verification"; // Defaults to 'active'
+          reason?: string | null;
+          changed_by: string; // Required
+          changed_at?: string; // Auto-generated if not provided
+          expires_at?: string | null;
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          user_id?: string; // Should not be updated
+          status?: "active" | "suspended" | "banned" | "pending_verification";
+          reason?: string | null;
+          changed_by?: string;
+          changed_at?: string; // Auto-updated
+          expires_at?: string | null;
+        };
+      };
+      admin_actions: {
+        Row: {
+          id: string; // UUID, auto-generated
+          admin_id: string; // UUID, references auth.users(id), NOT NULL
+          target_user_id: string | null; // UUID, references auth.users(id)
+          action_type: "user_created" | "user_suspended" | "user_banned" | "user_role_changed" | "content_moderated" | "system_config_changed"; // NOT NULL
+          action_details: Record<string, any>; // JSONB, NOT NULL
+          reason: string | null;
+          ip_address: string | null; // INET
+          user_agent: string | null;
+          created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          admin_id: string; // Required
+          target_user_id?: string | null;
+          action_type: "user_created" | "user_suspended" | "user_banned" | "user_role_changed" | "content_moderated" | "system_config_changed"; // Required
+          action_details: Record<string, any>; // Required
+          reason?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string; // Auto-generated if not provided
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          admin_id?: string; // Should not be updated
+          target_user_id?: string | null;
+          action_type?: "user_created" | "user_suspended" | "user_banned" | "user_role_changed" | "content_moderated" | "system_config_changed";
+          action_details?: Record<string, any>;
+          reason?: string | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string; // Should not be updated
+        };
+      };
+      admin_notifications: {
+        Row: {
+          id: string; // UUID, auto-generated
+          title: string; // NOT NULL
+          message: string; // NOT NULL
+          type: string; // NOT NULL
+          severity: "low" | "medium" | "high" | "critical"; // DEFAULT 'medium'
+          metadata: Record<string, any>; // JSONB, DEFAULT '{}'
+          is_read: boolean; // DEFAULT FALSE
+          created_at: string; // TIMESTAMP WITH TIME ZONE, auto-generated
+          read_at: string | null; // TIMESTAMP WITH TIME ZONE
+        };
+        Insert: {
+          id?: string; // Auto-generated if not provided
+          title: string; // Required
+          message: string; // Required
+          type: string; // Required
+          severity?: "low" | "medium" | "high" | "critical"; // Defaults to 'medium'
+          metadata?: Record<string, any>; // Defaults to '{}'
+          is_read?: boolean; // Defaults to false
+          created_at?: string; // Auto-generated if not provided
+          read_at?: string | null;
+        };
+        Update: {
+          id?: string; // Cannot be updated
+          title?: string;
+          message?: string;
+          type?: string;
+          severity?: "low" | "medium" | "high" | "critical";
+          metadata?: Record<string, any>;
+          is_read?: boolean;
+          created_at?: string; // Should not be updated
+          read_at?: string | null;
+        };
+      };
     };
     Views: {
       user_footprints: {
@@ -549,6 +709,26 @@ export interface Database {
           avg_session_duration: number | null;
           sessions_last_7_days: number;
           sessions_last_30_days: number;
+        };
+      };
+      user_management_view: {
+        Row: {
+          user_id: string;
+          email: string;
+          display_name: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          user_created_at: string;
+          user_updated_at: string;
+          current_role: "admin" | "user" | "moderator" | "suspended" | "banned" | null;
+          role_granted_at: string | null;
+          role_expires_at: string | null;
+          current_status: "active" | "suspended" | "banned" | "pending_verification";
+          status_reason: string | null;
+          status_changed_at: string;
+          total_sessions: number;
+          last_login: string | null;
+          is_admin: boolean;
         };
       };
     };
@@ -690,6 +870,26 @@ export type DeviceFingerprint = Tables<"device_fingerprints">;
 export type DeviceFingerprintInsert = TablesInsert<"device_fingerprints">;
 export type DeviceFingerprintUpdate = TablesUpdate<"device_fingerprints">;
 
+export type UserRole = Tables<"user_roles">;
+export type UserRoleInsert = TablesInsert<"user_roles">;
+export type UserRoleUpdate = TablesUpdate<"user_roles">;
+
+export type UserPermission = Tables<"user_permissions">;
+export type UserPermissionInsert = TablesInsert<"user_permissions">;
+export type UserPermissionUpdate = TablesUpdate<"user_permissions">;
+
+export type UserStatus = Tables<"user_status">;
+export type UserStatusInsert = TablesInsert<"user_status">;
+export type UserStatusUpdate = TablesUpdate<"user_status">;
+
+export type AdminAction = Tables<"admin_actions">;
+export type AdminActionInsert = TablesInsert<"admin_actions">;
+export type AdminActionUpdate = TablesUpdate<"admin_actions">;
+
+export type AdminNotification = Tables<"admin_notifications">;
+export type AdminNotificationInsert = TablesInsert<"admin_notifications">;
+export type AdminNotificationUpdate = TablesUpdate<"admin_notifications">;
+
 // ============================================================================
 // EXTENDED TYPES WITH RELATIONS
 // ============================================================================
@@ -802,8 +1002,8 @@ export interface RatingDistribution {
 // ============================================================================
 
 export interface ApiResponse<T = any> {
-  data?: T;
-  error?: string;
+  data?: T | null;
+  error?: string | null;
   message?: string;
   success: boolean;
 }
@@ -845,14 +1045,81 @@ export interface UserFilters {
 
 export interface RealtimePayload<T = any> {
   eventType: 'INSERT' | 'UPDATE' | 'DELETE';
-  new?: T;
-  old?: T;
+  new?: T | null;
+  old?: T | null;
   errors?: string[];
 }
 
 export interface TopicSubscriptionPayload extends RealtimePayload<Topic> {}
 export interface MessageSubscriptionPayload extends RealtimePayload<Message> {}
 export interface PresenceSubscriptionPayload extends RealtimePayload<SessionPresence> {}
+
+// Callback function type for real-time subscriptions
+export type SubscriptionCallback<T = any> = (payload: RealtimePayload<T>) => void;
+
+// ============================================================================
+// USER MANAGEMENT TYPES
+// ============================================================================
+
+export type UserRoleType = "admin" | "user" | "moderator" | "suspended" | "banned";
+export type UserStatusType = "active" | "suspended" | "banned" | "pending_verification";
+export type UserPermissionType = "create_sessions" | "join_sessions" | "moderate_content" | "admin_access";
+export type AdminActionType = "user_created" | "user_suspended" | "user_banned" | "user_role_changed" | "content_moderated" | "system_config_changed";
+
+export interface UserManagementData {
+  user_id: string;
+  email: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  user_created_at: string;
+  user_updated_at: string;
+  current_role: UserRoleType | null;
+  role_granted_at: string | null;
+  role_expires_at: string | null;
+  current_status: UserStatusType;
+  status_reason: string | null;
+  status_changed_at: string;
+  total_sessions: number;
+  last_login: string | null;
+  is_admin: boolean;
+}
+
+// Analytics types
+export interface UserAnalytics {
+  total_users: number;
+  active_users: number;
+  new_users_today: number;
+  user_growth_rate: number;
+  average_rating?: number;
+}
+
+export interface TopicAnalytics {
+  total_topics: number;
+  active_topics: number;
+  completed_topics: number;
+  topic_completion_rate: number;
+  total_participants?: number;
+}
+
+export interface MessageAnalytics {
+  total_messages: number;
+  messages_today: number;
+  average_messages_per_topic: number;
+  message_growth_rate: number;
+  most_active_topics?: Array<{ topic_id: string; message_count: number; }>;
+}
+
+export interface AnalyticsFilters {
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  userType?: 'all' | 'new' | 'active' | 'inactive';
+  topicStatus?: 'all' | 'active' | 'completed' | 'cancelled';
+}
+
+// SessionStatus is already defined above
 
 // ============================================================================
 // EXPORT ALL TYPES

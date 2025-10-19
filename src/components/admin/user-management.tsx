@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,28 @@ import {
   type AdminAction
 } from '@/lib/services/user-management-service';
 
+// Simple fallback component for when the main component fails
+function UserManagementFallback() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          User Management
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-center py-8">
+          <p className="text-gray-600 mb-4">User management is temporarily unavailable.</p>
+          <Button onClick={() => window.location.reload()}>
+            Refresh Page
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function UserManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,6 +64,7 @@ export function UserManagement() {
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
   const [quickViewUser, setQuickViewUser] = useState<UserManagementData | null>(null);
   const [actionType, setActionType] = useState<'role' | 'status' | 'permission'>('role');
+  const [hasError, setHasError] = useState(false);
 
 
   useEffect(() => {
@@ -51,13 +75,27 @@ export function UserManagement() {
   const loadUsers = async () => {
     try {
       const data = await UserManagementService.getAllUsers();
-      setUsers(data);
+      // Ensure data is always an array with safe defaults
+      const safeData = Array.isArray(data) ? data.map(user => ({
+        ...user,
+        email: user.email || '',
+        display_name: user.display_name || '',
+        user_id: user.user_id || '',
+        status: user.status || 'active',
+        roles: Array.isArray(user.roles) ? user.roles : [],
+        permissions: Array.isArray(user.permissions) ? user.permissions : []
+      })) : [];
+      setUsers(safeData);
+      setHasError(false);
     } catch (error) {
+      console.error('Error loading users:', error);
+      setHasError(true);
       toast({
         title: 'Error',
         description: 'Failed to load users',
         variant: 'destructive',
       });
+      setUsers([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -66,9 +104,19 @@ export function UserManagement() {
   const loadAdminActions = async () => {
     try {
       const actions = await UserManagementService.getAdminActions(20);
-      setAdminActions(actions);
+      // Ensure actions is always an array with safe defaults
+      const safeActions = Array.isArray(actions) ? actions.map(action => ({
+        ...action,
+        action_type: action.action_type || '',
+        admin_id: action.admin_id || '',
+        target_user_id: action.target_user_id || '',
+        reason: action.reason || ''
+      })) : [];
+      setAdminActions(safeActions);
     } catch (error) {
       console.error('Failed to load admin actions:', error);
+      setHasError(true);
+      setAdminActions([]); // Set empty array on error
     }
   };
 
@@ -142,42 +190,82 @@ export function UserManagement() {
     }
   };
 
-  // Enhanced search that works across all user data
-  const filteredUsers = users.filter(userData => {
-    const searchLower = searchTerm.toLowerCase();
-    
-    // Search in basic user info
-    const matchesBasicInfo = 
-      userData.email.toLowerCase().includes(searchLower) ||
-      userData.display_name?.toLowerCase().includes(searchLower) ||
-      userData.user_id.toLowerCase().includes(searchLower);
-    
-    // Search in roles
-    const matchesRoles = userData.roles.some(roleData => 
-      roleData.role.toLowerCase().includes(searchLower)
-    );
-    
-    // Search in permissions
-    const matchesPermissions = userData.permissions.some(permission => 
-      permission.toLowerCase().includes(searchLower)
-    );
-    
-    // Search in status
-    const matchesStatus = userData.status.toLowerCase().includes(searchLower);
-    
-    return matchesBasicInfo || matchesRoles || matchesPermissions || matchesStatus;
-  });
+  // Enhanced search that works across all user data with comprehensive error handling
+  const filteredUsers = React.useMemo(() => {
+    try {
+      if (!Array.isArray(users)) return [];
+      
+      return users.filter(userData => {
+        try {
+          if (!userData) return false;
+          
+          const searchLower = (searchTerm || '').toLowerCase();
+          
+          // Search in basic user info - add null safety
+          const matchesBasicInfo = 
+            (userData.email || '').toLowerCase().includes(searchLower) ||
+            (userData.display_name || '').toLowerCase().includes(searchLower) ||
+            (userData.user_id || '').toLowerCase().includes(searchLower);
+          
+          // Search in roles - add null safety
+          const matchesRoles = userData.roles?.some(roleData => {
+            try {
+              return (roleData?.role || '').toLowerCase().includes(searchLower);
+            } catch {
+              return false;
+            }
+          }) || false;
+          
+          // Search in permissions - add null safety
+          const matchesPermissions = userData.permissions?.some(permission => {
+            try {
+              return (permission || '').toLowerCase().includes(searchLower);
+            } catch {
+              return false;
+            }
+          }) || false;
+          
+          // Search in status - add null safety
+          const matchesStatus = (userData.status || '').toLowerCase().includes(searchLower);
+          
+          return matchesBasicInfo || matchesRoles || matchesPermissions || matchesStatus;
+        } catch (error) {
+          console.error('Error filtering user:', error, userData);
+          return false;
+        }
+      });
+    } catch (error) {
+      console.error('Error in user filtering:', error);
+      return [];
+    }
+  }, [users, searchTerm]);
 
-  // Also filter admin actions for search
-  const filteredAdminActions = adminActions.filter(action => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      action.action_type.toLowerCase().includes(searchLower) ||
-      action.admin_id.toLowerCase().includes(searchLower) ||
-      action.target_user_id?.toLowerCase().includes(searchLower) ||
-      action.reason?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Also filter admin actions for search with comprehensive error handling
+  const filteredAdminActions = React.useMemo(() => {
+    try {
+      if (!Array.isArray(adminActions)) return [];
+      
+      return adminActions.filter(action => {
+        try {
+          if (!action) return false;
+          
+          const searchLower = (searchTerm || '').toLowerCase();
+          return (
+            (action.action_type || '').toLowerCase().includes(searchLower) ||
+            (action.admin_id || '').toLowerCase().includes(searchLower) ||
+            (action.target_user_id || '').toLowerCase().includes(searchLower) ||
+            (action.reason || '').toLowerCase().includes(searchLower)
+          );
+        } catch (error) {
+          console.error('Error filtering admin action:', error, action);
+          return false;
+        }
+      });
+    } catch (error) {
+      console.error('Error in admin actions filtering:', error);
+      return [];
+    }
+  }, [adminActions, searchTerm]);
 
   const availableRoles = UserManagementService.getAvailableRoles();
   const availablePermissions = UserManagementService.getAvailablePermissions();
@@ -202,8 +290,14 @@ export function UserManagement() {
     );
   }
 
-  return (
-    <div className="space-y-6">
+  if (hasError) {
+    return <UserManagementFallback />;
+  }
+
+  // Additional safety check for render
+  try {
+    return (
+      <div className="space-y-6">
 
       
       <Card>
@@ -241,7 +335,7 @@ export function UserManagement() {
                       <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
                         {/* Avatar */}
                         <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                          {userData.display_name?.charAt(0)?.toUpperCase() || userData.email.charAt(0).toUpperCase()}
+                          {userData.display_name?.charAt(0)?.toUpperCase() || userData.email?.charAt(0)?.toUpperCase() || '?'}
                         </div>
                         
                         {/* User Info */}
@@ -252,14 +346,14 @@ export function UserManagement() {
                               {userData.status}
                             </Badge>
                           </div>
-                          <p className="text-xs sm:text-sm text-gray-500 truncate mb-2">{userData.email}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 truncate mb-2">{userData.email || 'No email'}</p>
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                            {userData.roles.map((roleData, index) => (
+                            {userData.roles?.map((roleData, index) => (
                               <Badge key={index} variant="outline" className="flex items-center gap-1 text-xs">
                                 {getRoleIcon(roleData.role)}
-                                <span className="hidden xs:inline">{roleData.role}</span>
+                                <span className="hidden xs:inline">{roleData.role || 'Unknown'}</span>
                               </Badge>
-                            ))}
+                            )) || <Badge variant="outline" className="text-xs">No roles</Badge>}
                           </div>
                         </div>
                       </div>
@@ -464,7 +558,11 @@ export function UserManagement() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+    );
+  } catch (error) {
+    console.error('Error rendering UserManagement component:', error);
+    return <UserManagementFallback />;
+  }
 }
 
 // User Action Form Component

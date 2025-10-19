@@ -275,7 +275,7 @@ export function FormValidationSummary({
             {Object.entries(errors).map(([field, error]) => (
               <li key={field} className="flex items-start gap-2">
                 <span className="font-medium capitalize min-w-0 flex-shrink-0">
-                  {field.replace(/([A-Z])/g, ' $1').toLowerCase()}:
+                  {(field || '').replace(/([A-Z])/g, ' $1').toLowerCase()}:
                 </span>
                 <span className="min-w-0">{error}</span>
               </li>
@@ -296,7 +296,7 @@ export function FormValidationSummary({
             {Object.entries(warnings).map(([field, warning]) => (
               <li key={field} className="flex items-start gap-2">
                 <span className="font-medium capitalize min-w-0 flex-shrink-0">
-                  {field.replace(/([A-Z])/g, ' $1').toLowerCase()}:
+                  {(field || '').replace(/([A-Z])/g, ' $1').toLowerCase()}:
                 </span>
                 <span className="min-w-0">{warning}</span>
               </li>

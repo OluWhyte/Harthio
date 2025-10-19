@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Shield, Eye, EyeOff, Clock, MapPin } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabaseAny as supabase } from '@/lib/supabase';
 
 interface AdminNotification {
   id: string;
@@ -37,7 +37,7 @@ export function SecurityNotifications() {
       .channel('admin_notifications')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'admin_notifications' },
-        (payload) => {
+        (payload: any) => {
           setNotifications(prev => [payload.new as AdminNotification, ...prev]);
         }
       )

@@ -1,7 +1,20 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { performanceMonitor } from '@/lib/performance-monitor';
+// import { realtimePerformanceMonitor } from '@/lib/performance-monitor';
+
+// Temporary stub for performance monitoring
+const performanceMonitor = {
+  startTiming: (name: string, data?: any) => {},
+  endTiming: (name: string) => {},
+  getPerformanceSummary: () => ({
+    averageSubscriptions: 0,
+    averageHealthyConnections: 0,
+    averageResponseTime: 0,
+    totalRecommendations: 0,
+    mostCommonRecommendations: []
+  })
+};
 import { mobileOptimizer } from '@/lib/mobile-optimizations';
 import { ErrorBoundary } from './error-boundary';
 

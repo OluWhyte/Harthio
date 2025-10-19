@@ -154,7 +154,7 @@ export class RealtimeManager {
       return existingChannelId;
     }
     
-    const debounceMs = options?.debounceMs ?? 800; // Increased default debounce to prevent rapid updates
+    const debounceMs = options?.debounceMs ?? 2000; // Increased to 2s to reduce server load and improve performance
     
     // Create debounced callback to prevent excessive updates
     const debouncedCallback = this.createDebouncedCallback(channelId, callback, debounceMs);
@@ -520,37 +520,7 @@ export class RealtimeManager {
     this.debouncedCallbacks.clear();
   }
 
-  // Handle subscription errors with retry logic
-  private handleSubscriptionError(channelId: string, retryFn: () => string): void {
-    const currentRetries = this.retryAttempts.get(channelId) || 0;
-    
-    if (currentRetries < this.maxRetries) {
-      const nextRetryCount = currentRetries + 1;
-      const delay = this.retryDelay * Math.pow(2, currentRetries); // Exponential backoff
-      
-      console.log(`Retrying subscription ${channelId} in ${delay}ms (attempt ${nextRetryCount}/${this.maxRetries})`);
-      
-      this.retryAttempts.set(channelId, nextRetryCount);
-      
-      setTimeout(() => {
-        // Clean up the failed channel first
-        this.unsubscribe(channelId);
-        
-        // Retry the subscription
-        try {
-          const newChannelId = retryFn();
-          console.log(`Retry successful, new channel ID: ${newChannelId}`);
-        } catch (error) {
-          console.error(`Retry failed for ${channelId}:`, error);
-        }
-      }, delay);
-    } else {
-      console.error(`Max retries (${this.maxRetries}) exceeded for subscription ${channelId}`);
-      this.retryAttempts.delete(channelId);
-      // Clean up the failed channel
-      this.unsubscribe(channelId);
-    }
-  }
+  // Duplicate function removed - using the first implementation above
 
   // Check if a channel is in error state and needs retry
   isChannelHealthy(channelId: string): boolean {
@@ -558,7 +528,10 @@ export class RealtimeManager {
     if (!channel) return false;
     
     const state = channel.state;
-    return state === 'joined' || state === 'joining';
+    const retryCount = this.retryAttempts.get(channelId) || 0;
+    
+    // Consider channel healthy if it's connected or connecting, and not in excessive retry state
+    return (state === 'joined' || state === 'joining') && retryCount < 2;
   }
 
   // Get retry information for debugging
@@ -605,8 +578,8 @@ export class RealtimeManager {
     const channelId = `request-updates-${Date.now()}-${Math.random()}`;
     const immediateUpdates = options?.immediateUpdates ?? true;
     
-    // Use minimal debounce for request updates
-    const debounceMs = immediateUpdates ? 50 : 200;
+    // Use optimized debounce for request updates - increased for better performance
+    const debounceMs = immediateUpdates ? 200 : 500;
     
     const debouncedCallback = immediateUpdates 
       ? callback // No debouncing for immediate updates

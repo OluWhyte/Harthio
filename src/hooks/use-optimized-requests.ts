@@ -116,7 +116,7 @@ export function useOptimizedRequests(options: UseOptimizedRequestsOptions = {}) 
     console.log('Setting up optimized requests real-time subscription');
     
     const channelId = realtimeManager.subscribeToTopics(handleTopicChange, {
-      debounceMs: 1000, // Increased debounce for requests
+      debounceMs: 1500, // Increased debounce from 1s to 1.5s for better performance
       userId: user.uid, // Only subscribe to user-relevant topics
     });
     

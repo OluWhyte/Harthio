@@ -132,3 +132,69 @@ fix-*.sql
 
 # Platform handbook (internal documentation)
 HARTHIO_PLATFORM_HANDBOOK.md
+
+# Additional security-sensitive files
+# API keys and secrets
+*.secret
+*.secrets
+secrets/
+.secrets/
+
+# Configuration files with sensitive data
+config/production.json
+config/staging.json
+config/local.json
+*-config.json
+*-secrets.json
+
+# Authentication and session files
+auth-config.*
+session-config.*
+jwt-secrets.*
+
+# Database credentials and connection strings
+db-config.*
+database-url.*
+connection-strings.*
+
+# Server and deployment configurations
+server-config.*
+deployment-config.*
+infrastructure/
+
+# Admin and debug tools (keep in development only)
+admin-tools/
+debug-tools/
+testing-tools/
+
+# Sensitive documentation and guides
+SECURITY_*.md
+DEPLOYMENT_*.md
+ADMIN_*.md
+*_SECURITY_*.md
+*_DEPLOYMENT_*.md
+
+# Backup and migration files
+migrations/backup/
+database/backups/
+*.sql.backup
+*.dump
+
+# Monitoring and analytics configurations
+analytics-config.*
+monitoring-config.*
+metrics-config.*
+
+# Third-party service configurations
+supabase-config.*
+jitsi-config.*
+turn-server-config.*
+
+# Development and testing credentials
+test-credentials.*
+dev-credentials.*
+staging-credentials.*
+
+# Build artifacts with potential sensitive data
+build-info.json
+deployment-info.json

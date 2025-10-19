@@ -141,7 +141,7 @@ export function useRealtimeTopics(options: UseRealtimeTopicsOptions = {}) {
 
     // Subscribe to topic changes with user filtering
     const topicsChannelId = realtimeManager.subscribeToTopics(handleTopicChange, {
-      debounceMs: Math.max(debounceMs, 800), // Increased minimum debounce
+      debounceMs: Math.max(debounceMs, 2000), // Increased minimum debounce to 2s for better performance
       userId: user.uid
     });
     subscriptionRefs.current.topicsChannelId = topicsChannelId;
@@ -150,7 +150,7 @@ export function useRealtimeTopics(options: UseRealtimeTopicsOptions = {}) {
     let usersChannelId: string | undefined;
     if (enableUserUpdates && !subscriptionRefs.current.usersChannelId) {
       usersChannelId = realtimeManager.subscribeToUsers(handleUserChange, {
-        debounceMs: Math.max(debounceMs * 2, 1500) // Longer debounce for user updates
+        debounceMs: Math.max(debounceMs * 2, 3000) // Longer debounce for user updates (3s)
       });
       subscriptionRefs.current.usersChannelId = usersChannelId;
     }

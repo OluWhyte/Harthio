@@ -326,7 +326,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
             <div className="flex items-center space-x-4">
               <Badge variant="secondary" className="bg-black/50 text-white border-rose-400/30">
                 <Clock className="w-3 h-3 mr-1" />
-                {timeRemaining !== null ? (
+                {timeRemaining !== null && timeRemaining !== undefined ? (
                   <span className={timeRemaining < 300 ? 'text-red-300' : ''}>
                     {formatTimeRemaining(timeRemaining)} left
                   </span>

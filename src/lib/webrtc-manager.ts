@@ -1,7 +1,10 @@
 // ============================================================================
 // WEBRTC CONNECTION MANAGER
 // ============================================================================
-// Handles peer-to-peer video calling with multiple TURN server fallbacks
+// Handles peer-to-peer video calling with prioritized server infrastructure:
+// 1. PRIMARY: Jitsi Meet (session.harthio.com) - Main video calling platform
+// 2. SECONDARY: Coturn (EC2) - Your dedicated TURN server for WebRTC fallback
+// 3. FALLBACK: Public TURN servers - Backup connectivity options
 // Uses Supabase real-time for signaling between participants
 // ============================================================================
 
@@ -21,7 +24,7 @@ function isMobileDevice(): boolean {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
-// ICE server configuration optimized for mobile localhost testing
+// ICE server configuration prioritizing Jitsi infrastructure
 async function getIceServers(userId: string, sessionId: string): Promise<RTCIceServer[]> {
   const config = validateWebRTCConfig();
   const turnCreds = config.coturnSecret ? 
@@ -136,14 +139,15 @@ async function getIceServers(userId: string, sessionId: string): Promise<RTCIceS
     );
   }
 
-  // Add your COTURN server if configured (works for both localhost and production)
+  // Priority 1: Your EC2 Coturn server (primary TURN server)
   if (config.coturnServer && turnCreds) {
     // Parse server to handle cases where port is already included
     const serverParts = config.coturnServer.split(':');
     const serverHost = serverParts[0];
     const serverPort = serverParts[1] || '3478'; // Default to 3478 if no port specified
     
-    servers.push(
+    // Add your Coturn server first (highest priority)
+    servers.unshift(
       {
         urls: `turn:${serverHost}:${serverPort}`,
         username: turnCreds.username,
@@ -672,7 +676,7 @@ export class WebRTCManager {
     }
     
     // Parallel cleanup for better performance
-    const cleanupPromises = [];
+    const cleanupPromises: Promise<any>[] = [];
     
     // Non-blocking user notification
     if (this.signalingService) {

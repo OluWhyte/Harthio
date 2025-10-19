@@ -28,7 +28,7 @@ export class BlogService {
     if (error) throw error;
     
     // Return posts with basic author info
-    return (data || []).map(post => ({
+    return (data || []).map((post: any) => ({
       ...post,
       author: { id: post.author_id, email: 'Unknown', full_name: 'Harthio Team' },
       like_count: 0
@@ -68,7 +68,7 @@ export class BlogService {
 
     if (error) throw error;
     
-    return (data || []).map(post => ({
+    return (data || []).map((post: any) => ({
       ...post,
       author: { id: post.author_id, email: 'Unknown', full_name: 'Harthio Team' },
       like_count: 0
@@ -148,8 +148,12 @@ export class BlogService {
     if (error) throw error;
     
     // For now, return posts without author info to avoid the join issue
-    return (data || []).map(post => ({
+    // Add null safety for all fields
+    return (data || []).map((post: any) => ({
       ...post,
+      title: post.title || 'Untitled',
+      content: post.content || '',
+      status: post.status || 'draft',
       author: { id: post.author_id, email: 'Unknown', full_name: 'Harthio Team' },
       like_count: 0
     }));

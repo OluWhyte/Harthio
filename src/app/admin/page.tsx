@@ -1,9 +1,12 @@
 'use client';
 
-import dynamic from 'next/dynamic';
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
+import dynamicImport from 'next/dynamic';
 
 // Dynamically import the entire admin dashboard with no SSR
-const AdminDashboardContent = dynamic(() => import('./admin-dashboard-content'), {
+const AdminDashboardContent = dynamicImport(() => import('./admin-dashboard-content'), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center min-h-screen">

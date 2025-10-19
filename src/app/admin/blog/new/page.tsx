@@ -71,8 +71,8 @@ export default function NewBlogPost() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent, saveAs: 'draft' | 'published' = formData.status as 'draft' | 'published') => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent, saveAs: 'draft' | 'published' = formData.status as 'draft' | 'published') => {
+    e?.preventDefault();
     
     if (!user) {
       router.push('/admin/login?redirect=' + encodeURIComponent('/admin/blog/new'));
@@ -148,14 +148,14 @@ export default function NewBlogPost() {
           {
             label: 'Save Draft',
             icon: <Save className="h-4 w-4" />,
-            onClick: (e) => handleSubmit(e, 'draft'),
+            onClick: () => handleSubmit(undefined, 'draft'),
             disabled: saving || !formData.title || !formData.content,
             variant: 'outline'
           },
           {
             label: 'Publish',
             icon: <Eye className="h-4 w-4" />,
-            onClick: (e) => handleSubmit(e, 'published'),
+            onClick: () => handleSubmit(undefined, 'published'),
             disabled: saving || !formData.title || !formData.content,
             variant: 'default',
             className: 'bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90'

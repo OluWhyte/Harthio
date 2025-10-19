@@ -66,7 +66,7 @@ export function ContactUsDialog({ children }: { children: React.ReactNode }) {
                     `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 
                     userProfile.display_name || 
                     user.email?.split('@')[0] || 'User'
-                    : user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
+                    : (user as any).user_metadata?.display_name || user.email?.split('@')[0] || 'User',
                 userEmail: user.email,
                 topic: data.topic,
                 message: data.message,

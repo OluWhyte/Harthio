@@ -42,6 +42,15 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   const { user, userProfile, loading, logOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+
+  const handleLogout = async () => {
+    try {
+      await logOut();
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
   const [isSheetOpen, setSheetOpen] = useState(false);
   const [hasRedirected, setHasRedirected] = useState(false);
   const [profileLoadDelay, setProfileLoadDelay] = useState(true);
@@ -116,7 +125,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-col items-center justify-center min-h-screen bg-background">
         <div className="text-center max-w-md">
           <p className="mb-4 text-muted-foreground">Could not load user profile. Please try logging out and back in.</p>
-          <Button onClick={logOut}>Log Out</Button>
+          <Button onClick={handleLogout}>Log Out</Button>
         </div>
       </div>
     );
@@ -180,7 +189,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
         </nav>
       </div>
         <div className="mt-auto p-4">
-            <Button size="sm" className="w-full" onClick={logOut}>
+            <Button size="sm" className="w-full" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4"/>
                 Log Out
             </Button>
@@ -215,7 +224,12 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                 <div className="flex-1">
                     <div className="relative w-full max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input placeholder="Search Harthio..." className="pl-10" />
+                        <Input 
+                            id="dashboard-search"
+                            name="search"
+                            placeholder="Search Harthio..." 
+                            className="pl-10" 
+                        />
                     </div>
                 </div>
                 <div className="flex items-center gap-4">

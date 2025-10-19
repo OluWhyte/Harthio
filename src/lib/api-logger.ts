@@ -365,14 +365,14 @@ class APILogger {
     if (statusCode && statusCode >= 400) color = '\x1b[31m'; // Red
     else if (statusCode && statusCode >= 300) color = '\x1b[33m'; // Yellow
     
-    const securityFlag = securityScan.riskScore > 50 ? ' 🚨' : '';
+    const securityFlag = (securityScan?.riskScore || 0) > 50 ? ' 🚨' : '';
     
     console.log(
       `${color}[API]${securityFlag} ${method} ${endpoint} - ${statusCode} (${responseTime}ms)\x1b[0m`
     );
     
-    if (securityScan.issues > 0) {
-      console.warn(`  Security issues: ${securityScan.issues}, Risk score: ${securityScan.riskScore}`);
+    if ((securityScan?.issues || 0) > 0) {
+      console.warn(`  Security issues: ${securityScan?.issues || 0}, Risk score: ${securityScan?.riskScore || 0}`);
     }
   }
 
@@ -486,8 +486,8 @@ class APILogger {
       .slice(0, 10)
       .map(([userAgent, count]) => ({ userAgent, count }));
 
-    const securityEvents = recentLogs.filter(log => log.securityScan.riskScore > 50).length;
-    const blockedRequests = recentLogs.filter(log => log.securityScan.blocked).length;
+    const securityEvents = recentLogs.filter(log => (log.securityScan?.riskScore || 0) > 50).length;
+    const blockedRequests = recentLogs.filter(log => log.securityScan?.blocked || false).length;
 
     return {
       totalRequests: recentLogs.length,
@@ -535,7 +535,7 @@ class APILogger {
     }
 
     if (query.endpoint) {
-      filteredLogs = filteredLogs.filter(log => log.endpoint.includes(query.endpoint));
+      filteredLogs = filteredLogs.filter(log => log.endpoint?.includes(query.endpoint!));
     }
 
     if (query.ip) {

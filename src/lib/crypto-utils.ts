@@ -71,7 +71,7 @@ export function validateWebRTCConfig() {
     coturnRealm: process.env.NEXT_PUBLIC_COTURN_REALM || 'harthio.com'
   };
   
-  const missing = [];
+  const missing: string[] = [];
   if (!config.coturnServer) missing.push('NEXT_PUBLIC_COTURN_SERVER');
   if (!config.coturnSecret) missing.push('NEXT_PUBLIC_COTURN_SECRET');
   
@@ -81,4 +81,47 @@ export function validateWebRTCConfig() {
   }
   
   return config;
+}/**
+
+ * Generate a simple JWT-like token for Jitsi
+ * Note: This is a simplified implementation for development
+ * In production, use a proper JWT library
+ */
+export function generateJitsiJWT(options: {
+  appId: string;
+  userId: string;
+  userName: string;
+  roomName: string;
+  expiresIn?: number;
+}): string {
+  const { appId, userId, userName, roomName, expiresIn = 3600 } = options;
+  
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT'
+  };
+  
+  const payload = {
+    iss: appId,
+    sub: userId,
+    aud: 'jitsi',
+    exp: Math.floor(Date.now() / 1000) + expiresIn,
+    iat: Math.floor(Date.now() / 1000),
+    context: {
+      user: {
+        id: userId,
+        name: userName
+      }
+    },
+    room: roomName
+  };
+  
+  // Simple base64 encoding (not secure, for development only)
+  const encodedHeader = btoa(JSON.stringify(header));
+  const encodedPayload = btoa(JSON.stringify(payload));
+  
+  // Simple signature (not secure, for development only)
+  const signature = btoa(`${encodedHeader}.${encodedPayload}.dev-signature`);
+  
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
 }

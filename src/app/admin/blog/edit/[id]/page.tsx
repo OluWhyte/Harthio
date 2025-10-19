@@ -101,7 +101,7 @@ export default function EditBlogPost() {
         content: foundPost.content,
         featured_image_url: foundPost.featured_image_url || '',
         category: foundPost.category,
-        status: foundPost.status
+        status: (foundPost.status === 'archived' ? 'draft' : foundPost.status) as 'draft' | 'published'
       });
     } catch (error) {
       console.error('Error loading post:', error);

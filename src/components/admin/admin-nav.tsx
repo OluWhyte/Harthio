@@ -9,7 +9,9 @@ import {
   Settings as SettingsIcon, 
   MessageSquare,
   Shield,
-  LogOut
+  LogOut,
+  TestTube,
+  Search
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,9 +40,19 @@ const adminNavItems = [
     icon: BarChart3
   },
   {
+    name: 'SEO',
+    href: '/admin/seo',
+    icon: Search
+  },
+  {
     name: 'Blog',
     href: '/admin/blog',
     icon: FileText
+  },
+  {
+    name: 'Testing',
+    href: '/admin/testing',
+    icon: TestTube
   },
   {
     name: 'Settings',

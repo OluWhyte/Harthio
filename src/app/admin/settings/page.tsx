@@ -325,6 +325,8 @@ export default function PlatformSettingsPage() {
                     Platform Name
                   </label>
                   <input
+                    id="platform-name"
+                    name="platform-name"
                     type="text"
                     defaultValue="Harthio"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -347,6 +349,8 @@ export default function PlatformSettingsPage() {
                     Contact Email
                   </label>
                   <input
+                    id="contact-email"
+                    name="contact-email"
                     type="email"
                     defaultValue="hello@harthio.com"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -360,6 +364,8 @@ export default function PlatformSettingsPage() {
                     Max Session Duration (minutes)
                   </label>
                   <input
+                    id="max-session-duration"
+                    name="max-session-duration"
                     type="number"
                     defaultValue="120"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -371,6 +377,8 @@ export default function PlatformSettingsPage() {
                     Max Participants per Session
                   </label>
                   <input
+                    id="max-participants"
+                    name="max-participants"
                     type="number"
                     defaultValue="8"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -381,6 +389,7 @@ export default function PlatformSettingsPage() {
                   <input
                     type="checkbox"
                     id="registration-enabled"
+                    name="registration-enabled"
                     defaultChecked
                     className="rounded border-gray-300 text-primary focus:ring-primary"
                   />
@@ -393,6 +402,7 @@ export default function PlatformSettingsPage() {
                   <input
                     type="checkbox"
                     id="email-verification"
+                    name="email-verification"
                     defaultChecked
                     className="rounded border-gray-300 text-primary focus:ring-primary"
                   />

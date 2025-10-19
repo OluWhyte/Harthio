@@ -5,7 +5,7 @@
 // Provides seamless switching between video calling methods
 // ============================================================================
 
-import { JitsiService, createJitsiConfig, type JitsiConnectionState } from './jitsi-service';
+import { JitsiService, type JitsiConfig, type JitsiCallbacks } from './jitsi-service';
 import { WebRTCManager, type ConnectionState } from './webrtc-manager';
 
 export type VideoProvider = 'jitsi' | 'webrtc';
@@ -17,6 +17,7 @@ export interface HybridVideoCallbacks {
   onError: (error: string) => void;
   onUserNotification?: (message: string) => void;
   onRemoteStream?: (stream: MediaStream) => void;
+  onMessage?: (message: { id: string; userId: string; userName: string; content: string; timestamp: Date; type: 'text' | 'system' }) => void;
 }
 
 export interface VideoParticipant {
@@ -63,7 +64,7 @@ export class HybridVideoService {
       this.updateConnectionState('connecting');
 
       // Try Jitsi Meet first
-      const jitsiAvailable = await JitsiService.checkAvailability();
+      const jitsiAvailable = this.jitsiContainer !== null;
       
       if (jitsiAvailable && this.jitsiContainer) {
         console.log('Attempting to connect via Jitsi Meet...');
@@ -86,15 +87,12 @@ export class HybridVideoService {
       }
 
       // Create Jitsi configuration
-      const jitsiConfig = await createJitsiConfig(
-        this.sessionId,
-        this.currentUser.userId,
-        {
-          displayName: this.currentUser.displayName,
-          email: this.currentUser.email,
-          avatarURL: this.currentUser.avatarURL
-        }
-      );
+      const jitsiConfig: JitsiConfig = {
+        roomName: `harthio-${this.sessionId}`,
+        displayName: this.currentUser.displayName,
+        email: this.currentUser.email,
+        avatarUrl: this.currentUser.avatarURL
+      };
 
       // Initialize Jitsi service
       this.jitsiService = new JitsiService(jitsiConfig, {
@@ -116,21 +114,20 @@ export class HybridVideoService {
           console.error('Jitsi error:', error);
           this.handleJitsiFailure(error);
         },
-        onConnectionFailed: () => {
-          console.error('Jitsi connection failed');
-          this.handleJitsiFailure(new Error('Jitsi connection failed'));
-        },
-        onParticipantJoined: (participant) => {
-          console.log('Participant joined Jitsi:', participant);
-          this.callbacks.onUserNotification?.(`${participant.displayName || 'Participant'} joined the call`);
-        },
-        onParticipantLeft: (participant) => {
-          console.log('Participant left Jitsi:', participant);
-          this.callbacks.onUserNotification?.(`${participant.displayName || 'Participant'} left the call`);
+        onMessage: (message) => {
+          console.log('Jitsi message:', message);
+          this.callbacks.onMessage?.({
+            id: Date.now().toString(),
+            userId: message.from,
+            userName: message.from,
+            content: message.message,
+            timestamp: new Date(),
+            type: 'text'
+          });
         }
       });
 
-      await this.jitsiService.initialize(this.jitsiContainer);
+      await this.jitsiService.initialize(this.jitsiContainer.id || 'jitsi-container');
       
     } catch (error) {
       console.error('Failed to initialize Jitsi:', error);
@@ -322,9 +319,15 @@ export class HybridVideoService {
   }
 
   // Get participant count (for Jitsi)
-  getParticipantCount(): number {
+  async getParticipantCount(): Promise<number> {
     if (this.currentProvider === 'jitsi' && this.jitsiService) {
-      return this.jitsiService.getParticipantCount();
+      try {
+        const participants = await this.jitsiService.getParticipants();
+        return participants.length;
+      } catch (error) {
+        console.warn('Failed to get participant count from Jitsi:', error);
+        return 1;
+      }
     }
     return this.connectionState === 'connected' ? 2 : 1; // For WebRTC, assume 2 when connected
   }

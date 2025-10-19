@@ -4,7 +4,7 @@
 // Comprehensive user management with roles, permissions, and audit logging
 // ============================================================================
 
-import { supabase } from '../supabase';
+import { supabaseAny as supabase } from '../supabase';
 import { smartSecurityNotifier } from '../smart-security-notifier';
 
 export type UserRole = 'user' | 'admin' | 'therapist' | 'moderator' | 'suspended' | 'banned';
@@ -64,7 +64,15 @@ export class UserManagementService {
       throw new Error('Failed to fetch users');
     }
 
-    return data || [];
+    // Add null safety to all returned data
+    return (data || []).map(user => ({
+      ...user,
+      email: user.email || '',
+      display_name: user.display_name || '',
+      status: user.status || 'active',
+      roles: Array.isArray(user.roles) ? user.roles : [],
+      permissions: Array.isArray(user.permissions) ? user.permissions : []
+    }));
   }
 
   /**
@@ -82,7 +90,17 @@ export class UserManagementService {
       return null;
     }
 
-    return data;
+    if (!data) return null;
+
+    // Add null safety to returned data
+    return {
+      ...data,
+      email: data.email || '',
+      display_name: data.display_name || '',
+      status: data.status || 'active',
+      roles: Array.isArray(data.roles) ? data.roles : [],
+      permissions: Array.isArray(data.permissions) ? data.permissions : []
+    };
   }
 
   /**
@@ -343,18 +361,30 @@ export class UserManagementService {
    * Get admin actions (audit log)
    */
   static async getAdminActions(limit: number = 50): Promise<AdminAction[]> {
-    const { data, error } = await supabase
-      .from('admin_actions')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
+    try {
+      const { data, error } = await supabase
+        .from('admin_actions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-    if (error) {
-      console.error('Error fetching admin actions:', error);
-      throw new Error('Failed to fetch admin actions');
+      if (error) {
+        console.error('Error fetching admin actions:', error);
+        return []; // Return empty array instead of throwing
+      }
+
+      // Ensure all returned data has safe defaults
+      return (data || []).map(action => ({
+        ...action,
+        action_type: action.action_type || '',
+        admin_id: action.admin_id || '',
+        target_user_id: action.target_user_id || '',
+        reason: action.reason || ''
+      }));
+    } catch (error) {
+      console.error('Unexpected error fetching admin actions:', error);
+      return []; // Always return empty array on any error
     }
-
-    return data || [];
   }
 
   /**

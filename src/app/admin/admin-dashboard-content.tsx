@@ -41,7 +41,12 @@ export default function AdminDashboardContent() {
     totalSessions: 0,
     activeSessions: 0
   });
-  const [chartData, setChartData] = useState({
+  const [chartData, setChartData] = useState<{
+    userGrowth: any[];
+    sessionActivity: any[];
+    engagementMetrics: any[];
+    topicCategories: any[];
+  }>({
     userGrowth: [],
     sessionActivity: [],
     engagementMetrics: [],
@@ -81,7 +86,7 @@ export default function AdminDashboardContent() {
       console.error('Error checking admin status:', error);
       toast({
         title: 'Error',
-        description: `Failed to verify admin access: ${error.message}`,
+        description: `Failed to verify admin access: ${(error as any)?.message || 'Unknown error'}`,
         variant: 'destructive'
       });
       setTimeout(() => router.push('/'), 3000);
@@ -100,7 +105,7 @@ export default function AdminDashboardContent() {
         sessionActivityData, 
         engagementData, 
         categoriesData
-      ] = await Promise.all([
+      ]: [any, any, any, any[], any[], any[], any[]] = await Promise.all([
         BlogService.getAllPosts(100),
         AdminService.getUserAnalytics(),
         AdminService.getTopicAnalytics(),
@@ -110,26 +115,28 @@ export default function AdminDashboardContent() {
         AdminService.getTopicCategoriesData()
       ]);
 
-      const published = posts.filter(p => p.status === 'published');
-      const drafts = posts.filter(p => p.status === 'draft');
-      const totalLikes = posts.reduce((sum, post) => sum + (post.like_count || 0), 0);
+      // Ensure posts is an array and filter safely
+      const postsArray = Array.isArray(posts) ? posts : [];
+      const published = postsArray.filter((p: any) => p && p.status === 'published');
+      const drafts = postsArray.filter((p: any) => p && p.status === 'draft');
+      const totalLikes = postsArray.reduce((sum: any, post: any) => sum + (post?.like_count || 0), 0);
 
       setStats({
-        totalPosts: posts.length,
+        totalPosts: postsArray.length,
         publishedPosts: published.length,
         draftPosts: drafts.length,
         totalLikes,
-        totalUsers: userAnalytics.total_users,
-        activeUsers: userAnalytics.active_users,
-        totalSessions: topicAnalytics.total_topics,
-        activeSessions: topicAnalytics.active_topics
+        totalUsers: userAnalytics?.total_users || 0,
+        activeUsers: userAnalytics?.active_users || 0,
+        totalSessions: topicAnalytics?.total_topics || 0,
+        activeSessions: topicAnalytics?.active_topics || 0
       });
 
       setChartData({
-        userGrowth: userGrowthData,
-        sessionActivity: sessionActivityData,
-        engagementMetrics: engagementData,
-        topicCategories: categoriesData
+        userGrowth: Array.isArray(userGrowthData) ? userGrowthData : [],
+        sessionActivity: Array.isArray(sessionActivityData) ? sessionActivityData : [],
+        engagementMetrics: Array.isArray(engagementData) ? engagementData : [],
+        topicCategories: Array.isArray(categoriesData) ? categoriesData : []
       });
     } catch (error) {
       console.error('Error loading stats:', error);

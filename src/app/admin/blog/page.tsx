@@ -156,7 +156,7 @@ export default function AdminBlogManagement() {
             <CardContent className="p-6">
               <div className="text-center">
                 <p className="text-3xl font-bold text-green-600">
-                  {blogPosts.filter(p => p.status === 'published').length}
+                  {blogPosts.filter(p => p && p.status === 'published').length}
                 </p>
                 <p className="text-sm text-gray-600">Published</p>
               </div>
@@ -166,7 +166,7 @@ export default function AdminBlogManagement() {
             <CardContent className="p-6">
               <div className="text-center">
                 <p className="text-3xl font-bold text-yellow-600">
-                  {blogPosts.filter(p => p.status === 'draft').length}
+                  {blogPosts.filter(p => p && p.status === 'draft').length}
                 </p>
                 <p className="text-sm text-gray-600">Drafts</p>
               </div>

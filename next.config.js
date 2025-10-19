@@ -7,6 +7,19 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Simplified webpack configuration
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      };
+    }
+    return config;
+  },
   // Ensure proper asset loading for mobile/ngrok
   generateEtags: false,
   experimental: {
@@ -71,11 +84,44 @@ const nextConfig = {
   },
   // Security and mobile support headers
   async headers() {
-    return [
+    return process.env.NODE_ENV === 'development' ? [
       {
         source: '/(.*)',
         headers: [
-          // Enhanced security headers
+          // Basic security headers for development
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          // Relaxed CSP for development
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self' 'unsafe-eval' 'unsafe-inline' data: blob:",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://*.google-analytics.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "img-src 'self' data: blob: https: http:",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              "connect-src 'self' https: wss: ws: https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
+              "media-src 'self' blob: data: https://session.harthio.com",
+              "frame-src 'self' https://session.harthio.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'"
+            ].join('; '),
+          },
+          // Allow camera/microphone access
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=*, microphone=*, display-capture=*',
+          },
+        ],
+      },
+    ] : [
+      {
+        source: '/(.*)',
+        headers: [
+          // Enhanced security headers for production
           {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN',
@@ -97,19 +143,16 @@ const nextConfig = {
             value: 'max-age=63072000; includeSubDomains; preload',
           },
           {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
-          },
-          {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self' https://*.ngrok-free.app https://*.ngrok.io",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://js.stripe.com https://*.ngrok-free.app https://*.ngrok.io",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://js.stripe.com https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://*.google-analytics.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.ngrok-free.app https://*.ngrok.io",
               "img-src 'self' data: https://images.unsplash.com https://res.cloudinary.com https://i.imgur.com https://raw.githubusercontent.com https://placehold.co https://*.supabase.co",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live https://api.resend.com https://*.ngrok-free.app https://*.ngrok.io",
-              "media-src 'self' blob:",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live https://api.resend.com https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
+              "media-src 'self' blob: https://session.harthio.com",
+              "frame-src 'self' https://session.harthio.com",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

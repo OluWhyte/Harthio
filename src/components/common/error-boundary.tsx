@@ -4,7 +4,13 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
-import { performanceMonitor } from '@/lib/performance-monitor';
+// import { realtimePerformanceMonitor } from '@/lib/performance-monitor';
+
+// Temporary stub for performance monitoring
+const performanceMonitor = {
+  startTiming: (name: string, data?: any) => {},
+  endTiming: (name: string) => {}
+};
 
 interface Props {
   children: ReactNode;

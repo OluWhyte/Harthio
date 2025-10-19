@@ -9,12 +9,13 @@ export interface SanitizedError {
 }
 
 export interface SecurityEvent {
-  type: 'auth_failure' | 'access_denied' | 'rate_limit' | 'suspicious_activity' | 'validation_error';
+  type: 'auth_failure' | 'access_denied' | 'rate_limit' | 'suspicious_activity' | 'validation_error' | 'api_error' | 'security_scan';
   userId?: string;
   ip?: string;
   userAgent?: string;
   endpoint?: string;
   details?: any;
+  timestamp?: string;
 }
 
 /**

@@ -1,373 +1,287 @@
-// ============================================================================
-// JITSI MEET SERVICE
-// ============================================================================
-// Handles Jitsi Meet integration for video calling
-// Provides primary video calling functionality with WebRTC as fallback
-// ============================================================================
+/**
+ * Jitsi Meet Integration Service
+ * Fallback video calling solution
+ */
 
-import { generateJitsiJWT } from './crypto-utils';
+declare global {
+  interface Window {
+    JitsiMeetExternalAPI: any;
+  }
+}
 
 export interface JitsiConfig {
-  domain: string;
   roomName: string;
-  jwt?: string;
-  userInfo: {
-    displayName: string;
-    email?: string;
-    avatarURL?: string;
-  };
-  configOverwrite?: Record<string, any>;
-  interfaceConfigOverwrite?: Record<string, any>;
+  displayName: string;
+  email?: string;
+  avatarUrl?: string;
 }
 
 export interface JitsiCallbacks {
-  onReady?: () => void;
-  onJoined?: () => void;
-  onLeft?: () => void;
-  onError?: (error: any) => void;
-  onParticipantJoined?: (participant: any) => void;
-  onParticipantLeft?: (participant: any) => void;
-  onConnectionFailed?: () => void;
-}
-
-export type JitsiConnectionState = 
-  | 'initializing' 
-  | 'connecting' 
-  | 'connected' 
-  | 'disconnected' 
-  | 'failed';
-
-// Validate Jitsi configuration from environment
-function validateJitsiConfig() {
-  const domain = process.env.NEXT_PUBLIC_JITSI_DOMAIN;
-  const jwtAppId = process.env.NEXT_PUBLIC_JITSI_JWT_APP_ID;
-  const jwtSecret = process.env.NEXT_PUBLIC_JITSI_JWT_SECRET;
-
-  if (!domain) {
-    throw new Error('NEXT_PUBLIC_JITSI_DOMAIN is required');
-  }
-
-  return {
-    domain,
-    jwtAppId,
-    jwtSecret,
-    useJWT: !!(jwtAppId && jwtSecret)
-  };
+  onReady: () => void;
+  onJoined: () => void;
+  onLeft: () => void;
+  onError: (error: any) => void;
+  onMessage: (message: { from: string; message: string }) => void;
 }
 
 export class JitsiService {
   private api: any = null;
-  private config: JitsiConfig;
-  private callbacks: JitsiCallbacks;
-  private connectionState: JitsiConnectionState = 'initializing';
   private container: HTMLElement | null = null;
+  private callbacks: JitsiCallbacks;
+  private config: JitsiConfig;
 
-  constructor(config: JitsiConfig, callbacks: JitsiCallbacks = {}) {
+  constructor(config: JitsiConfig, callbacks: JitsiCallbacks) {
     this.config = config;
     this.callbacks = callbacks;
   }
 
-  // Initialize Jitsi Meet
-  async initialize(containerElement: HTMLElement): Promise<void> {
+  async initialize(containerId: string): Promise<void> {
     try {
-      this.container = containerElement;
-      this.connectionState = 'connecting';
-
       // Load Jitsi Meet API if not already loaded
       await this.loadJitsiAPI();
 
-      // Create Jitsi configuration
-      const jitsiConfig = this.createJitsiConfig();
+      this.container = document.getElementById(containerId);
+      if (!this.container) {
+        throw new Error(`Container with id ${containerId} not found`);
+      }
 
-      // Initialize Jitsi Meet API
-      this.api = new (window as any).JitsiMeetExternalAPI(
-        this.config.domain,
-        {
-          roomName: this.config.roomName,
-          parentNode: containerElement,
-          jwt: this.config.jwt,
-          configOverwrite: jitsiConfig.configOverwrite,
-          interfaceConfigOverwrite: jitsiConfig.interfaceConfigOverwrite,
-          userInfo: this.config.userInfo
+      // Configure Jitsi options
+      const options = {
+        roomName: this.config.roomName,
+        width: '100%',
+        height: '100%',
+        parentNode: this.container,
+        configOverwrite: {
+          startWithAudioMuted: false,
+          startWithVideoMuted: false,
+          enableWelcomePage: false,
+          enableClosePage: false,
+          prejoinPageEnabled: false,
+          disableInviteFunctions: true,
+          doNotStoreRoom: true,
+          disableDeepLinking: true,
+          disableShortcuts: true,
+          disableLocalVideoFlip: false,
+          remoteVideoMenu: {
+            disableKick: true,
+            disableGrantModerator: true,
+            disablePrivateChat: true,
+          },
+          toolbarButtons: [
+            'microphone',
+            'camera',
+            'hangup',
+            'chat',
+            'settings',
+            'fullscreen'
+          ],
+          // Brand colors
+          brandingRoomAlias: 'Harthio Session',
+          defaultRemoteDisplayName: 'Participant',
+        },
+        interfaceConfigOverwrite: {
+          SHOW_JITSI_WATERMARK: false,
+          SHOW_WATERMARK_FOR_GUESTS: false,
+          SHOW_BRAND_WATERMARK: false,
+          BRAND_WATERMARK_LINK: '',
+          SHOW_POWERED_BY: false,
+          DISPLAY_WELCOME_PAGE_CONTENT: false,
+          DISPLAY_WELCOME_PAGE_TOOLBAR_ADDITIONAL_CONTENT: false,
+          SHOW_CHROME_EXTENSION_BANNER: false,
+          MOBILE_APP_PROMO: false,
+          NATIVE_APP_NAME: 'Harthio',
+          PROVIDER_NAME: 'Harthio',
+          // Customize toolbar
+          TOOLBAR_BUTTONS: [
+            'microphone',
+            'camera',
+            'hangup',
+            'chat',
+            'settings',
+            'fullscreen'
+          ],
+          // Hide unnecessary elements
+          SETTINGS_SECTIONS: ['devices', 'language'],
+          VIDEO_LAYOUT_FIT: 'both',
+          filmStripOnly: false,
+          VERTICAL_FILMSTRIP: true,
+        },
+        userInfo: {
+          displayName: this.config.displayName,
+          email: this.config.email,
+          avatarUrl: this.config.avatarUrl,
         }
-      );
+      };
+
+      // Create Jitsi Meet API instance - use your custom domain
+      const jitsiDomain = process.env.NEXT_PUBLIC_JITSI_DOMAIN || 'meet.jit.si';
+      this.api = new window.JitsiMeetExternalAPI(jitsiDomain, options);
 
       // Setup event listeners
       this.setupEventListeners();
 
-      console.log('Jitsi Meet initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize Jitsi Meet:', error);
-      this.connectionState = 'failed';
-      this.callbacks.onError?.(error);
-      throw error;
+      console.error('Failed to initialize Jitsi:', error);
+      this.callbacks.onError(error);
     }
   }
 
-  // Load Jitsi Meet External API
   private async loadJitsiAPI(): Promise<void> {
     return new Promise((resolve, reject) => {
       // Check if already loaded
-      if ((window as any).JitsiMeetExternalAPI) {
+      if (window.JitsiMeetExternalAPI) {
         resolve();
         return;
       }
 
-      // Create script element
+      // Create script element - use your custom domain
       const script = document.createElement('script');
-      script.src = `https://${this.config.domain}/external_api.js`;
+      const jitsiDomain = process.env.NEXT_PUBLIC_JITSI_DOMAIN || 'meet.jit.si';
+      script.src = `https://${jitsiDomain}/external_api.js`;
       script.async = true;
       
       script.onload = () => {
-        console.log('Jitsi Meet API loaded');
-        resolve();
+        if (window.JitsiMeetExternalAPI) {
+          resolve();
+        } else {
+          reject(new Error('Failed to load Jitsi API'));
+        }
       };
       
-      script.onerror = (error) => {
-        console.error('Failed to load Jitsi Meet API:', error);
-        reject(new Error('Failed to load Jitsi Meet API'));
+      script.onerror = () => {
+        reject(new Error('Failed to load Jitsi API script'));
       };
 
       document.head.appendChild(script);
     });
   }
 
-  // Create Jitsi configuration
-  private createJitsiConfig() {
-    const baseConfig = {
-      configOverwrite: {
-        // Audio/Video settings
-        startWithAudioMuted: false,
-        startWithVideoMuted: false,
-        
-        // UI customization
-        prejoinPageEnabled: false,
-        disableInviteFunctions: true,
-        
-        // Mobile optimizations
-        disableDeepLinking: true,
-        enableWelcomePage: false,
-        
-        // Security
-        enableLobbyChat: false,
-        
-        // Performance
-        resolution: 720,
-        constraints: {
-          video: {
-            height: { ideal: 720, max: 1080, min: 240 },
-            width: { ideal: 1280, max: 1920, min: 320 }
-          }
-        },
-        
-        // Disable features not needed
-        disableRemoteMute: true,
-        remoteVideoMenu: {
-          disableKick: true,
-          disableGrantModerator: true
-        },
-        
-        ...this.config.configOverwrite
-      },
-      
-      interfaceConfigOverwrite: {
-        // Toolbar customization
-        TOOLBAR_BUTTONS: [
-          'microphone', 'camera', 'hangup', 'chat', 'settings'
-        ],
-        
-        // Hide elements
-        SHOW_JITSI_WATERMARK: false,
-        SHOW_WATERMARK_FOR_GUESTS: false,
-        SHOW_BRAND_WATERMARK: false,
-        BRAND_WATERMARK_LINK: '',
-        
-        // Mobile UI
-        MOBILE_APP_PROMO: false,
-        
-        ...this.config.interfaceConfigOverwrite
-      }
-    };
-
-    return baseConfig;
-  }
-
-  // Setup Jitsi event listeners
   private setupEventListeners(): void {
     if (!this.api) return;
 
     // Ready event
     this.api.addEventListener('videoConferenceJoined', () => {
-      console.log('Jitsi: Conference joined');
-      this.connectionState = 'connected';
-      this.callbacks.onReady?.();
-      this.callbacks.onJoined?.();
+      console.log('Jitsi conference joined');
+      this.callbacks.onJoined();
     });
 
     // Left event
     this.api.addEventListener('videoConferenceLeft', () => {
-      console.log('Jitsi: Conference left');
-      this.connectionState = 'disconnected';
-      this.callbacks.onLeft?.();
+      console.log('Jitsi conference left');
+      this.callbacks.onLeft();
+    });
+
+    // Ready event
+    this.api.addEventListener('readyToClose', () => {
+      console.log('Jitsi ready to close');
+      this.callbacks.onReady();
+    });
+
+    // Error events
+    this.api.addEventListener('errorOccurred', (error: any) => {
+      console.error('Jitsi error:', error);
+      this.callbacks.onError(error);
+    });
+
+    // Chat message events
+    this.api.addEventListener('incomingMessage', (message: any) => {
+      this.callbacks.onMessage({
+        from: message.from,
+        message: message.message
+      });
     });
 
     // Participant events
     this.api.addEventListener('participantJoined', (participant: any) => {
-      console.log('Jitsi: Participant joined', participant);
-      this.callbacks.onParticipantJoined?.(participant);
+      console.log('Participant joined:', participant);
     });
 
     this.api.addEventListener('participantLeft', (participant: any) => {
-      console.log('Jitsi: Participant left', participant);
-      this.callbacks.onParticipantLeft?.(participant);
-    });
-
-    // Error events
-    this.api.addEventListener('connectionFailed', () => {
-      console.error('Jitsi: Connection failed');
-      this.connectionState = 'failed';
-      this.callbacks.onConnectionFailed?.();
-    });
-
-    // Ready state
-    this.api.addEventListener('readyToClose', () => {
-      console.log('Jitsi: Ready to close');
+      console.log('Participant left:', participant);
     });
   }
 
-  // Generate room name for session
-  static generateRoomName(sessionId: string): string {
-    // Create a clean room name from session ID
-    return `harthio-session-${sessionId}`;
-  }
-
-  // Generate JWT token for authenticated Jitsi
-  static async generateJWT(
-    sessionId: string, 
-    userId: string, 
-    userInfo: { displayName: string; email?: string }
-  ): Promise<string | undefined> {
-    try {
-      const config = validateJitsiConfig();
-      
-      if (!config.useJWT) {
-        return undefined;
-      }
-
-      const roomName = JitsiService.generateRoomName(sessionId);
-      
-      return await generateJitsiJWT({
-        appId: config.jwtAppId!,
-        secret: config.jwtSecret!,
-        roomName,
-        userId,
-        userInfo
-      });
-    } catch (error) {
-      console.warn('Failed to generate Jitsi JWT:', error);
-      return undefined;
+  // Public methods
+  sendMessage(message: string): void {
+    if (this.api) {
+      this.api.executeCommand('sendChatMessage', message);
     }
   }
 
-  // Check if Jitsi is available
-  static async checkAvailability(domain?: string): Promise<boolean> {
-    try {
-      const testDomain = domain || process.env.NEXT_PUBLIC_JITSI_DOMAIN || 'meet.jit.si';
-      
-      // Try to fetch the Jitsi domain
-      const response = await fetch(`https://${testDomain}/config.js`, {
-        method: 'HEAD',
-        mode: 'no-cors'
-      });
-      
-      return true; // If no error, Jitsi is available
-    } catch (error) {
-      console.warn('Jitsi availability check failed:', error);
-      return false;
-    }
-  }
-
-  // Control methods
   toggleAudio(): void {
-    this.api?.executeCommand('toggleAudio');
+    if (this.api) {
+      this.api.executeCommand('toggleAudio');
+    }
   }
 
   toggleVideo(): void {
-    this.api?.executeCommand('toggleVideo');
+    if (this.api) {
+      this.api.executeCommand('toggleVideo');
+    }
   }
 
   hangup(): void {
-    this.api?.executeCommand('hangup');
+    if (this.api) {
+      this.api.executeCommand('hangup');
+    }
   }
 
-  // Get connection state
-  getConnectionState(): JitsiConnectionState {
-    return this.connectionState;
+  setDisplayName(name: string): void {
+    if (this.api) {
+      this.api.executeCommand('displayName', name);
+    }
   }
 
-  // Get participant count
-  getParticipantCount(): number {
-    return this.api?.getNumberOfParticipants() || 0;
+  getParticipants(): Promise<any[]> {
+    return new Promise((resolve) => {
+      if (this.api) {
+        this.api.getParticipantsInfo().then((participants: any[]) => {
+          resolve(participants);
+        });
+      } else {
+        resolve([]);
+      }
+    });
   }
 
-  // Cleanup
   dispose(): void {
     if (this.api) {
       this.api.dispose();
       this.api = null;
     }
-    this.connectionState = 'disconnected';
     
-    // Clean up container
     if (this.container) {
       this.container.innerHTML = '';
     }
   }
-}
 
-// Create Jitsi configuration for a session
-export async function createJitsiConfig(
-  sessionId: string,
-  userId: string,
-  userInfo: { displayName: string; email?: string; avatarURL?: string }
-): Promise<JitsiConfig> {
-  const config = validateJitsiConfig();
-  const roomName = JitsiService.generateRoomName(sessionId);
-  
-  // Generate JWT if configured
-  const jwt = await JitsiService.generateJWT(sessionId, userId, userInfo);
+  isConnected(): boolean {
+    return this.api !== null;
+  }
 
-  return {
-    domain: config.domain,
-    roomName,
-    jwt,
-    userInfo,
-    configOverwrite: {
-      // Harthio-specific configuration
-      startWithAudioMuted: false,
-      startWithVideoMuted: false,
-      prejoinPageEnabled: false,
-      disableInviteFunctions: true,
-      enableLobbyChat: false,
-      
-      // Branding
-      defaultLocalDisplayName: userInfo.displayName,
-      defaultRemoteDisplayName: 'Participant',
-      
-      // Security for private sessions
-      enableLobby: false, // Direct join for approved participants
-      requireDisplayName: true
-    },
-    interfaceConfigOverwrite: {
-      SHOW_JITSI_WATERMARK: false,
-      SHOW_WATERMARK_FOR_GUESTS: false,
-      SHOW_BRAND_WATERMARK: false,
-      MOBILE_APP_PROMO: false,
-      
-      // Simplified toolbar for Harthio
-      TOOLBAR_BUTTONS: [
-        'microphone', 'camera', 'hangup', 'chat', 'settings'
-      ]
-    }
-  };
+  // Get connection quality (simplified for Jitsi)
+  getConnectionStats(): Promise<any> {
+    return new Promise((resolve) => {
+      if (this.api) {
+        // Jitsi doesn't expose detailed stats easily, return mock data
+        resolve({
+          bandwidth: 1000,
+          latency: 50,
+          packetLoss: 0,
+          quality: 'good',
+          resolution: '720p',
+          frameRate: 30
+        });
+      } else {
+        resolve({
+          bandwidth: 0,
+          latency: 0,
+          packetLoss: 0,
+          quality: 'failed',
+          resolution: 'unknown',
+          frameRate: 0
+        });
+      }
+    });
+  }
 }

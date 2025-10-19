@@ -103,11 +103,11 @@ export async function fetchWithTimeout(
  * Database operation timeout configurations
  */
 export const DB_TIMEOUTS = {
-  SELECT: { operation: 'database_select', baseTimeout: 8000 },
-  INSERT: { operation: 'database_insert', baseTimeout: 10000 },
-  UPDATE: { operation: 'database_update', baseTimeout: 12000 },
-  DELETE: { operation: 'database_delete', baseTimeout: 8000 },
-  COMPLEX_QUERY: { operation: 'database_complex', baseTimeout: 15000 },
+  SELECT: { operation: 'database_select', baseTimeout: 12000 },
+  INSERT: { operation: 'database_insert', baseTimeout: 15000 },
+  UPDATE: { operation: 'database_update', baseTimeout: 18000 },
+  DELETE: { operation: 'database_delete', baseTimeout: 12000 },
+  COMPLEX_QUERY: { operation: 'database_complex', baseTimeout: 30000 }, // Increased for better reliability
 } as const;
 
 /**

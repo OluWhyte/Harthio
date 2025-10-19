@@ -428,7 +428,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       throw new Error(error.message);
     }
-    router.push("/login");
+    // Don't redirect here - let the calling component handle the redirect
   };
 
   const signUp = async (data: SignUpData) => {
