@@ -103,16 +103,22 @@ export function AppPerformanceProvider({ children }: AppPerformanceProviderProps
           observer.observe({ entryTypes: ['navigation'] });
         }
 
-        // Set up memory monitoring with realistic thresholds
-        if ('memory' in performance) {
+        // Set up memory monitoring with realistic thresholds (only in production)
+        if ('memory' in performance && process.env.NODE_ENV === 'production') {
+          let lastWarningTime = 0;
+          const WARNING_COOLDOWN = 300000; // 5 minutes between warnings
+
           const checkMemory = () => {
             const memory = (performance as any).memory;
             if (memory) {
               const usedMB = memory.usedJSHeapSize / 1024 / 1024;
-              const threshold = deviceCapabilities.isMobile ? 150 : 300; // 150MB mobile, 300MB desktop
+              // Much higher realistic thresholds for modern web apps with video capabilities
+              const threshold = deviceCapabilities.isMobile ? 300 : 500; // 300MB mobile, 500MB desktop
+              const now = Date.now();
               
-              if (usedMB > threshold) {
+              if (usedMB > threshold && (now - lastWarningTime) > WARNING_COOLDOWN) {
                 console.warn(`High memory usage detected: ${usedMB.toFixed(2)}MB (threshold: ${threshold}MB)`);
+                lastWarningTime = now;
                 
                 // Trigger garbage collection if available
                 if ('gc' in window && typeof (window as any).gc === 'function') {
@@ -126,7 +132,7 @@ export function AppPerformanceProvider({ children }: AppPerformanceProviderProps
             }
           };
 
-          const memoryInterval = setInterval(checkMemory, 120000); // Check every 2 minutes (even less frequent)
+          const memoryInterval = setInterval(checkMemory, 300000); // Check every 5 minutes
           return () => clearInterval(memoryInterval);
         }
 

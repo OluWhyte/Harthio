@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { moderateRateLimit } from '@/lib/rate-limit';
-import { sanitizeError, logSecurityEvent, getSecurityHeaders, isValidEmail } from '@/lib/security-utils';
+import { getSecurityHeaders, isValidEmail } from '@/lib/security-utils';
 
 // Initialize Resend client only if API key is available
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(request: NextRequest) {
-  // Apply rate limiting
-  const rateLimitResult = moderateRateLimit(request);
-  if (rateLimitResult) {
-    logSecurityEvent({
-      type: 'rate_limit',
-      ip: request.ip || 'unknown',
-      endpoint: '/api/send-email',
-      details: { reason: 'Email API rate limit exceeded' }
-    });
-    return rateLimitResult;
+  // Simplified rate limiting check
+  const userAgent = request.headers.get('user-agent') || '';
+  if (userAgent.includes('bot') || userAgent.includes('crawler')) {
+    return NextResponse.json(
+      { success: false, error: 'Rate limited' },
+      { status: 429, headers: getSecurityHeaders() }
+    );
   }
 
   try {
@@ -24,13 +20,6 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!to || !subject || (!html && !text)) {
-      logSecurityEvent({
-        type: 'validation_error',
-        ip: request.ip || 'unknown',
-        endpoint: '/api/send-email',
-        details: { reason: 'Missing required fields' }
-      });
-      
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { 
@@ -42,13 +31,6 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     if (!isValidEmail(to)) {
-      logSecurityEvent({
-        type: 'validation_error',
-        ip: request.ip || 'unknown',
-        endpoint: '/api/send-email',
-        details: { reason: 'Invalid email format', email: to }
-      });
-      
       return NextResponse.json(
         { success: false, error: 'Invalid email format' },
         { 
@@ -117,21 +99,9 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    const sanitized = sanitizeError(error);
-    
-    logSecurityEvent({
-      type: 'suspicious_activity',
-      ip: request.ip || 'unknown',
-      endpoint: '/api/send-email',
-      details: { 
-        error: sanitized.message,
-        reason: 'Email API processing failed'
-      }
-    });
-    
     console.error('Email API error:', error);
     return NextResponse.json(
-      { success: false, error: sanitized.message },
+      { success: false, error: 'Internal server error' },
       { 
         status: 500,
         headers: getSecurityHeaders()

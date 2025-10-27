@@ -99,13 +99,13 @@ class MobileOptimizer {
   private calculateOptimizations() {
     const { isMobile, isIOS, memoryLimit, connectionType } = this.capabilities;
 
-    // Base settings
+    // Base settings with realistic memory thresholds
     let settings = {
       maxConcurrentConnections: 3,
       debounceDelay: 300,
       timeoutDuration: 10000,
       retryAttempts: 3,
-      memoryThreshold: 100 // MB
+      memoryThreshold: 300 // MB - realistic for modern web apps
     };
 
     // Mobile optimizations
@@ -114,7 +114,7 @@ class MobileOptimizer {
       settings.debounceDelay = 500;
       settings.timeoutDuration = 15000;
       settings.retryAttempts = 2;
-      settings.memoryThreshold = 150; // Increased from 100MB
+      settings.memoryThreshold = 250; // Realistic mobile threshold
     }
 
     // iOS-specific optimizations
@@ -123,14 +123,14 @@ class MobileOptimizer {
       settings.debounceDelay = 800;
       settings.timeoutDuration = 20000;
       settings.retryAttempts = 1;
-      settings.memoryThreshold = 120; // Increased from 50MB
+      settings.memoryThreshold = 200; // iOS can handle more than 120MB
     }
 
     // Memory-constrained devices
     if (memoryLimit === 'low') {
       settings.maxConcurrentConnections = 1;
       settings.debounceDelay = 1000;
-      settings.memoryThreshold = 80; // Increased from 30MB
+      settings.memoryThreshold = 150; // Still conservative but realistic
     }
 
     // Slow connections
@@ -158,8 +158,8 @@ class MobileOptimizer {
       }
     }
 
-    // Setup memory monitoring for mobile
-    if (this.capabilities.isMobile) {
+    // Setup memory monitoring for mobile (only in production)
+    if (this.capabilities.isMobile && process.env.NODE_ENV === 'production') {
       this.setupMobileMemoryMonitoring();
     }
 
@@ -170,21 +170,27 @@ class MobileOptimizer {
   private setupMobileMemoryMonitoring(): void {
     if (typeof window === 'undefined' || typeof performance === 'undefined' || !('memory' in performance)) return;
 
+    let lastWarningTime = 0;
+    const WARNING_COOLDOWN = 300000; // 5 minutes between warnings
+
     const checkMemory = () => {
       const memory = (performance as any).memory;
       if (memory) {
         const usedMB = memory.usedJSHeapSize / 1024 / 1024;
-        // Use realistic thresholds - modern web apps use more memory
-        const threshold = this.capabilities.isMobile ? 150 : 300;
-        if (usedMB > threshold) {
+        // Use much higher realistic thresholds for modern web apps
+        const threshold = this.capabilities.isMobile ? 250 : 500; // Increased thresholds
+        const now = Date.now();
+        
+        if (usedMB > threshold && (now - lastWarningTime) > WARNING_COOLDOWN) {
           console.warn(`High memory usage detected: ${usedMB.toFixed(2)}MB (threshold: ${threshold}MB)`);
+          lastWarningTime = now;
           this.triggerMemoryCleanup();
         }
       }
     };
 
-    // Check memory less frequently to reduce console spam
-    setInterval(checkMemory, 60000); // Every minute instead of 15 seconds
+    // Check memory much less frequently to reduce performance impact
+    setInterval(checkMemory, 300000); // Every 5 minutes
   }
 
   private setupMobileEventListeners(): void {
@@ -255,17 +261,22 @@ class MobileOptimizer {
   }
 
   private triggerMemoryCleanup(): void {
-    // Trigger garbage collection if available
+    // Only trigger cleanup in production and when really needed
+    if (process.env.NODE_ENV !== 'production') return;
+
+    // Trigger garbage collection if available (only in Chrome with --enable-precise-memory-info)
     if ('gc' in window && typeof (window as any).gc === 'function') {
       try {
         (window as any).gc();
       } catch (e) {
-        // Ignore errors
+        // Ignore errors - gc() is not always available
       }
     }
 
-    // Dispatch cleanup event
-    document.dispatchEvent(new CustomEvent('harthio:memory-cleanup'));
+    // Dispatch cleanup event for app components to clean up
+    if (typeof document !== 'undefined') {
+      document.dispatchEvent(new CustomEvent('harthio:memory-cleanup'));
+    }
   }
 
   // Public API

@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/components/harthio/auth-provider';
 import { AppPerformanceProvider } from '@/components/common/app-performance-provider';
 import { Analytics } from '@/components/seo/analytics';
+import '@/lib/console-cleanup'; // Clean up console spam
 
 const inter = Inter({
   subsets: ['latin'],

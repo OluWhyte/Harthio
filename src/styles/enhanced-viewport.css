@@ -1,0 +1,212 @@
+/**
+ * Enhanced Viewport CSS
+ * Support for dynamic viewport units and safe areas
+ */
+
+/* Dynamic viewport height units */
+:root {
+  --vh: 1vh;
+  --available-vh: 1vh;
+  --viewport-width: 100vw;
+  --viewport-height: 100vh;
+  --available-height: 100vh;
+  --safe-area-top: 0px;
+  --safe-area-bottom: 0px;
+  --safe-area-left: 0px;
+  --safe-area-right: 0px;
+  --browser-ui-height: 0px;
+}
+
+/* Orientation-aware classes */
+.orientation-portrait {
+  --orientation: portrait;
+}
+
+.orientation-landscape {
+  --orientation: landscape;
+}
+
+.device-mobile {
+  --device-type: mobile;
+}
+
+.device-tablet {
+  --device-type: tablet;
+}
+
+.device-desktop {
+  --device-type: desktop;
+}
+
+.viewport-small {
+  --viewport-size: small;
+}
+
+.viewport-medium {
+  --viewport-size: medium;
+}
+
+.viewport-large {
+  --viewport-size: large;
+}
+
+/* Smooth orientation transitions */
+.orientation-transitioning {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Safe area utilities */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+  padding-top: var(--safe-area-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: var(--safe-area-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+  padding-left: var(--safe-area-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+  padding-right: var(--safe-area-right);
+}
+
+.safe-area-inset {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+/* Enhanced touch targets */
+.touch-target-large {
+  min-width: 56px;
+  min-height: 56px;
+}
+
+.touch-target-medium {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.touch-target-compact {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Viewport-aware containers */
+.viewport-container {
+  width: 100vw;
+  width: var(--viewport-width);
+  height: 100vh;
+  height: var(--viewport-height);
+}
+
+.available-container {
+  width: 100vw;
+  width: var(--viewport-width);
+  height: var(--available-height);
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  .mobile-optimized {
+    /* Prevent zoom on input focus */
+    font-size: 16px;
+  }
+  
+  .mobile-button {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+/* Tablet-specific optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .tablet-optimized {
+    /* Larger touch targets for tablet */
+  }
+  
+  .tablet-button {
+    min-height: 52px;
+    min-width: 52px;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1025px) {
+  .desktop-optimized {
+    /* Standard desktop interactions */
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .high-dpi {
+    /* Crisp rendering on high DPI displays */
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .orientation-transitioning {
+    transition: none;
+  }
+  
+  .smooth-transition {
+    transition: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .auto-dark {
+    /* Automatic dark mode styles */
+  }
+}
+
+/* Landscape orientation specific */
+@media (orientation: landscape) {
+  .landscape-only {
+    display: block;
+  }
+  
+  .portrait-only {
+    display: none;
+  }
+}
+
+/* Portrait orientation specific */
+@media (orientation: portrait) {
+  .portrait-only {
+    display: block;
+  }
+  
+  .landscape-only {
+    display: none;
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .ios-safari-fix {
+    /* iOS Safari specific styles */
+    height: -webkit-fill-available;
+  }
+}
+
+/* Chrome mobile specific fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  .chrome-mobile-fix {
+    /* Chrome mobile specific styles */
+  }
+}

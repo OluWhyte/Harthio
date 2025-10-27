@@ -112,7 +112,7 @@ export function UserManagement() {
         target_user_id: action.target_user_id || '',
         reason: action.reason || ''
       })) : [];
-      setAdminActions(safeActions);
+      setAdminActions(safeActions as any);
     } catch (error) {
       console.error('Failed to load admin actions:', error);
       setHasError(true);

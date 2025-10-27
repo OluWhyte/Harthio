@@ -32,6 +32,8 @@ export interface SessionSettings {
   echoCancellation: boolean;
   noiseSuppression: boolean;
   autoGainControl: boolean;
+  defaultAudioMuted: boolean;
+  defaultVideoOff: boolean;
 }
 
 export function SessionSettingsModal({
@@ -46,7 +48,9 @@ export function SessionSettingsModal({
     videoQuality: 'auto',
     echoCancellation: true,
     noiseSuppression: true,
-    autoGainControl: true
+    autoGainControl: true,
+    defaultAudioMuted: false,
+    defaultVideoOff: false
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -99,7 +103,9 @@ export function SessionSettingsModal({
       videoQuality: 'auto',
       echoCancellation: true,
       noiseSuppression: true,
-      autoGainControl: true
+      autoGainControl: true,
+      defaultAudioMuted: false,
+      defaultVideoOff: false
     });
   };
 
@@ -115,165 +121,204 @@ export function SessionSettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" />
-            Session Settings
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col w-[95vw] sm:w-full">
+        <DialogHeader className="flex-shrink-0 px-4 sm:px-6 pt-4 sm:pt-6">
+          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <Settings className="w-4 w-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span className="truncate">Session Settings</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Audio Settings */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Mic className="w-4 h-4" />
-              <Label className="text-sm font-medium">Audio</Label>
-            </div>
-
-            {/* Microphone Selection */}
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-600">Microphone</Label>
-              <Select
-                value={settings.audioDeviceId}
-                onValueChange={(value) => setSettings(prev => ({ ...prev, audioDeviceId: value }))}
-                disabled={isLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select microphone" />
-                </SelectTrigger>
-                <SelectContent>
-                  {audioDevices.map((device) => (
-                    <SelectItem key={device.deviceId} value={device.deviceId}>
-                      {device.label || `Microphone ${device.deviceId.slice(0, 8)}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Audio Volume */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600">Volume</Label>
-                <span className="text-xs text-gray-500">{settings.audioVolume}%</span>
+        <div className="flex-grow overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6">
+          <div className="space-y-4 sm:space-y-6">
+            {/* Audio Settings */}
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center gap-2">
+                <Mic className="w-4 h-4 flex-shrink-0" />
+                <Label className="text-sm font-medium">Audio</Label>
               </div>
-              <Slider
-                value={[settings.audioVolume]}
-                onValueChange={([value]) => setSettings(prev => ({ ...prev, audioVolume: value }))}
-                max={100}
-                step={5}
-                className="w-full"
-              />
-            </div>
 
-            {/* Audio Processing */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600">Echo Cancellation</Label>
-                <Switch
-                  checked={settings.echoCancellation}
-                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, echoCancellation: checked }))}
+              {/* Microphone Selection */}
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-600">Microphone</Label>
+                <Select
+                  value={settings.audioDeviceId}
+                  onValueChange={(value) => setSettings(prev => ({ ...prev, audioDeviceId: value }))}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="Select microphone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {audioDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId} className="text-sm">
+                        <span className="truncate">{device.label || `Microphone ${device.deviceId.slice(0, 8)}`}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Audio Volume */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-gray-600">Volume</Label>
+                  <span className="text-xs text-gray-500 flex-shrink-0">{settings.audioVolume}%</span>
+                </div>
+                <Slider
+                  value={[settings.audioVolume]}
+                  onValueChange={([value]) => setSettings(prev => ({ ...prev, audioVolume: value }))}
+                  max={100}
+                  step={5}
+                  className="w-full"
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600">Noise Suppression</Label>
-                <Switch
-                  checked={settings.noiseSuppression}
-                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, noiseSuppression: checked }))}
-                />
+
+              {/* Audio Processing */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-xs text-gray-600 flex-1">Echo Cancellation</Label>
+                  <Switch
+                    checked={settings.echoCancellation}
+                    onCheckedChange={(checked) => setSettings(prev => ({ ...prev, echoCancellation: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-xs text-gray-600 flex-1">Noise Suppression</Label>
+                  <Switch
+                    checked={settings.noiseSuppression}
+                    onCheckedChange={(checked) => setSettings(prev => ({ ...prev, noiseSuppression: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-xs text-gray-600 flex-1">Auto Gain Control</Label>
+                  <Switch
+                    checked={settings.autoGainControl}
+                    onCheckedChange={(checked) => setSettings(prev => ({ ...prev, autoGainControl: checked }))}
+                  />
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-gray-600">Auto Gain Control</Label>
-                <Switch
-                  checked={settings.autoGainControl}
-                  onCheckedChange={(checked) => setSettings(prev => ({ ...prev, autoGainControl: checked }))}
-                />
+            </div>
+
+            <Separator />
+
+            {/* Default States */}
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center gap-2">
+                <Monitor className="w-4 h-4 flex-shrink-0" />
+                <Label className="text-sm font-medium">Default States</Label>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <Label className="text-xs text-gray-600 break-words">Start with microphone muted</Label>
+                    <p className="text-xs text-gray-500 break-words">Microphone will be muted when joining sessions</p>
+                  </div>
+                  <Switch
+                    checked={settings.defaultAudioMuted}
+                    onCheckedChange={(checked) => setSettings(prev => ({ ...prev, defaultAudioMuted: checked }))}
+                    className="flex-shrink-0"
+                  />
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <Label className="text-xs text-gray-600 break-words">Start with camera off</Label>
+                    <p className="text-xs text-gray-500 break-words">Camera will be off when joining sessions</p>
+                  </div>
+                  <Switch
+                    checked={settings.defaultVideoOff}
+                    onCheckedChange={(checked) => setSettings(prev => ({ ...prev, defaultVideoOff: checked }))}
+                    className="flex-shrink-0"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Video Settings */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Video className="w-4 h-4" />
-              <Label className="text-sm font-medium">Video</Label>
+            {/* Video Settings */}
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center gap-2">
+                <Video className="w-4 h-4 flex-shrink-0" />
+                <Label className="text-sm font-medium">Video</Label>
+              </div>
+
+              {/* Camera Selection */}
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-600">Camera</Label>
+                <Select
+                  value={settings.videoDeviceId}
+                  onValueChange={(value) => setSettings(prev => ({ ...prev, videoDeviceId: value }))}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="text-sm">
+                    <SelectValue placeholder="Select camera" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {videoDevices.map((device) => (
+                      <SelectItem key={device.deviceId} value={device.deviceId} className="text-sm">
+                        <span className="truncate">{device.label || `Camera ${device.deviceId.slice(0, 8)}`}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Video Quality */}
+              <div className="space-y-2">
+                <Label className="text-xs text-gray-600">Quality</Label>
+                <Select
+                  value={settings.videoQuality}
+                  onValueChange={(value: any) => setSettings(prev => ({ ...prev, videoQuality: value }))}
+                >
+                  <SelectTrigger className="text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto" className="text-sm">Auto</SelectItem>
+                    <SelectItem value="high" className="text-sm">High (1080p)</SelectItem>
+                    <SelectItem value="medium" className="text-sm">Medium (720p)</SelectItem>
+                    <SelectItem value="low" className="text-sm">Low (480p)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 break-words leading-relaxed">
+                  {getQualityDescription(settings.videoQuality)}
+                </p>
+              </div>
             </div>
 
-            {/* Camera Selection */}
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-600">Camera</Label>
-              <Select
-                value={settings.videoDeviceId}
-                onValueChange={(value) => setSettings(prev => ({ ...prev, videoDeviceId: value }))}
-                disabled={isLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select camera" />
-                </SelectTrigger>
-                <SelectContent>
-                  {videoDevices.map((device) => (
-                    <SelectItem key={device.deviceId} value={device.deviceId}>
-                      {device.label || `Camera ${device.deviceId.slice(0, 8)}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Video Quality */}
-            <div className="space-y-2">
-              <Label className="text-xs text-gray-600">Quality</Label>
-              <Select
-                value={settings.videoQuality}
-                onValueChange={(value: any) => setSettings(prev => ({ ...prev, videoQuality: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="auto">Auto</SelectItem>
-                  <SelectItem value="high">High (1080p)</SelectItem>
-                  <SelectItem value="medium">Medium (720p)</SelectItem>
-                  <SelectItem value="low">Low (480p)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-gray-500">
-                {getQualityDescription(settings.videoQuality)}
-              </p>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleReset}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className="w-3 h-3" />
-              Reset
-            </Button>
-
-            <div className="flex items-center gap-2">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 pt-3 sm:pt-4 border-t">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={onClose}
+                onClick={handleReset}
+                className="flex items-center gap-2 w-full sm:w-auto text-sm"
               >
-                Cancel
+                <RefreshCw className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">Reset</span>
               </Button>
-              <Button
-                size="sm"
-                onClick={handleApply}
-                disabled={isLoading}
-              >
-                <Check className="w-3 h-3 mr-1" />
-                Apply
-              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onClose}
+                  className="flex-1 sm:flex-none text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleApply}
+                  disabled={isLoading}
+                  className="flex-1 sm:flex-none text-sm"
+                >
+                  <Check className="w-3 h-3 mr-1 flex-shrink-0" />
+                  <span className="truncate">Apply</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

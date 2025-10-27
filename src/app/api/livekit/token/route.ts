@@ -93,7 +93,13 @@ export async function POST(request: NextRequest) {
     const jwt = token.toJwt();
 
     // Get LiveKit server URL
-    const serverUrl = process.env.LIVEKIT_SERVER_URL || process.env.NEXT_PUBLIC_LIVEKIT_SERVER_URL;
+    let serverUrl = process.env.LIVEKIT_SERVER_URL || process.env.NEXT_PUBLIC_LIVEKIT_SERVER_URL;
+
+    // In development, provide a mock URL if not configured
+    if (!serverUrl && process.env.NODE_ENV === 'development') {
+      serverUrl = 'ws://localhost:7880'; // Mock URL for development
+      console.log('🧪 Using mock LiveKit server URL for development');
+    }
 
     if (!serverUrl) {
       console.error('LiveKit server URL not configured');

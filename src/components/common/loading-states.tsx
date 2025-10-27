@@ -4,25 +4,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Loader2, Wifi, WifiOff, AlertTriangle, RefreshCw } from 'lucide-react';
+import { getSpinnerClass, textSizes } from '@/lib/design-system';
 
 interface LoadingSpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   text?: string;
   className?: string;
 }
 
 export function LoadingSpinner({ size = 'md', text, className = '' }: LoadingSpinnerProps) {
-  const sizeClasses = {
-    sm: 'h-4 w-4',
-    md: 'h-6 w-6',
-    lg: 'h-8 w-8'
-  };
-
   return (
     <div className={`flex items-center justify-center ${className}`}>
       <div className="text-center">
-        <Loader2 className={`${sizeClasses[size]} animate-spin mx-auto mb-2`} />
-        {text && <p className="text-sm text-muted-foreground">{text}</p>}
+        <Loader2 className={`${getSpinnerClass(size)} mx-auto mb-2`} />
+        {text && <p className={`${textSizes.meta} text-muted-foreground`}>{text}</p>}
       </div>
     </div>
   );
@@ -86,7 +81,7 @@ interface ConnectionStatusProps {
 
 export function ConnectionStatus({ isOnline, className = '' }: ConnectionStatusProps) {
   return (
-    <div className={`flex items-center gap-2 text-sm ${className}`}>
+    <div className={`flex items-center gap-2 ${textSizes.meta} ${className}`}>
       {isOnline ? (
         <>
           <Wifi className="h-4 w-4 text-green-500" />
@@ -118,8 +113,8 @@ export function RetryIndicator({
   if (!isRetrying && retryCount === 0) return null;
 
   return (
-    <div className={`flex items-center gap-2 text-sm text-muted-foreground ${className}`}>
-      {isRetrying && <Loader2 className="h-4 w-4 animate-spin" />}
+    <div className={`flex items-center gap-2 ${textSizes.meta} text-muted-foreground ${className}`}>
+      {isRetrying && <Loader2 className={getSpinnerClass('sm')} />}
       <span>
         {isRetrying 
           ? `Retrying... (${retryCount}/${maxRetries})`

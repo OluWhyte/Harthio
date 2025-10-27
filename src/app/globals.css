@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Enhanced Viewport Support */
+@import '../styles/enhanced-viewport.css';
+
 /* Viewport fixes for mobile and responsive design */
 html, body {
   overflow-x: hidden;
@@ -39,6 +42,28 @@ html, body {
 .session-controls {
   /* Use safe area insets when available */
   padding-bottom: max(20px, env(safe-area-inset-bottom));
+}
+
+/* Simple mobile layout that actually works */
+@media (max-width: 768px) {
+  .mobile-session-container {
+    height: 100vh;
+    overflow-y: auto; /* Allow scrolling if needed */
+  }
+  
+  /* Ensure camera preview is smaller on mobile */
+  .mobile-camera-preview {
+    max-width: 200px;
+    max-height: 300px;
+  }
+}
+
+/* Very small screens - make everything even smaller */
+@media (max-height: 600px) {
+  .mobile-camera-preview {
+    max-width: 160px;
+    max-height: 240px;
+  }
 }
 
 @layer base {

@@ -53,30 +53,30 @@ export default function LandingPage() {
             <Button
               variant="ghost"
               asChild
-              className="hidden lg:inline-flex text-sm"
+              className="hidden lg:inline-flex text-base"
             >
               <Link href="/features">Features</Link>
             </Button>
             <Button
               variant="ghost"
               asChild
-              className="hidden lg:inline-flex text-sm"
+              className="hidden lg:inline-flex text-base"
             >
               <Link href="/pricing">Pricing</Link>
             </Button>
             <Button
               variant="ghost"
               asChild
-              className="hidden md:inline-flex text-sm"
+              className="hidden md:inline-flex text-base"
             >
               <Link href="/blog">Blog</Link>
             </Button>
-            <Button variant="ghost" asChild className="text-sm px-2 sm:px-4">
+            <Button variant="ghost" asChild className="text-base px-2 sm:px-4">
               <Link href="/login">Log In</Link>
             </Button>
             <Button
               asChild
-              className="bg-primary hover:bg-primary/90 text-sm px-3 sm:px-4"
+              className="bg-primary hover:bg-primary/90 text-base px-3 sm:px-4"
               size="sm"
             >
               <Link href="/signup">
@@ -98,10 +98,10 @@ export default function LandingPage() {
               <div className="grid gap-6 sm:gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16 items-center">
                 <div className="flex flex-col justify-center space-y-4 sm:space-y-6 order-2 lg:order-1">
                   <div className="space-y-3 sm:space-y-4">
-                    <div className="inline-block px-3 py-1 text-xs sm:text-sm bg-primary/10 text-primary rounded-full font-medium">
+                    <div className="inline-block px-3 py-1 text-sm sm:text-base bg-primary/10 text-primary rounded-full font-medium">
                       ✨ Never feel alone with your struggle again
                     </div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
                       Find Someone Who Truly Gets It
                     </h1>
                     <p className="text-base sm:text-lg md:text-xl text-gray-600 leading-relaxed max-w-[600px]">
@@ -113,17 +113,17 @@ export default function LandingPage() {
                       matches who&apos;ve walked your path, not random
                       strangers.
                     </p>
-                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
+                    <div className="flex items-center gap-2 text-sm sm:text-base text-gray-500">
                       <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
                       <span>
                         Get connected to listeners for free emotional support.
                       </span>
                     </div>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                     <Button
-                      size="lg"
-                      className="bg-primary hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 w-full sm:w-auto"
+                      size="default"
+                      className="bg-primary hover:bg-primary/90 text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto"
                     >
                       <Link
                         href="/signup"
@@ -138,7 +138,7 @@ export default function LandingPage() {
 
                 {/* Hero Image */}
                 <div className="relative order-1 lg:order-2">
-                  <div className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl h-[320px] sm:h-[380px] md:h-[420px] lg:h-[480px]">
+                  <div className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl h-[240px] sm:h-[300px] md:h-[360px] lg:h-[420px]">
                     <Image
                       src="https://images.unsplash.com/photo-1759593047536-5258c3c6a527?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
                       fill
@@ -172,10 +172,10 @@ export default function LandingPage() {
           </section>
 
           {/* Value Proposition Grid */}
-          <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24">
+          <section className="w-full py-6 sm:py-10 md:py-14 lg:py-18">
             <div className="container px-4 sm:px-6 md:px-8">
-              <div className="text-center mb-8 sm:mb-12">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
+              <div className="text-center mb-4 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3">
                   Why Harthio Heals Loneliness
                 </h2>
                 <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto px-4">
@@ -184,7 +184,7 @@ export default function LandingPage() {
                 </p>
               </div>
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                 <Card className="border-2 hover:border-primary/20 transition-colors sm:col-span-2 lg:col-span-1">
                   <CardContent className="p-4 sm:p-6 text-center">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
@@ -240,10 +240,10 @@ export default function LandingPage() {
           </section>
 
           {/* How It Works */}
-          <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24 bg-gray-50">
+          <section className="w-full py-6 sm:py-10 md:py-14 lg:py-18 bg-gray-50">
             <div className="container px-4 sm:px-6 md:px-8">
-              <div className="text-center mb-8 sm:mb-12">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
+              <div className="text-center mb-4 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3">
                   How It Works
                 </h2>
                 <p className="text-base sm:text-lg md:text-xl text-gray-600">
@@ -251,7 +251,7 @@ export default function LandingPage() {
                 </p>
               </div>
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 max-w-5xl mx-auto">
                 <div className="text-center sm:col-span-2 lg:col-span-1">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 text-white text-lg sm:text-2xl font-bold">
                     1
@@ -294,10 +294,10 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="text-center mt-8 sm:mt-12">
+              <div className="text-center mt-4 sm:mt-8">
                 <Button
-                  size="lg"
-                  className="bg-primary hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 w-full sm:w-auto"
+                  size="default"
+                  className="bg-primary hover:bg-primary/90 text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto"
                 >
                   <Link
                     href="/signup"
@@ -312,10 +312,10 @@ export default function LandingPage() {
           </section>
 
           {/* Social Proof */}
-          <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24">
+          <section className="w-full py-6 sm:py-10 md:py-14 lg:py-18">
             <div className="container px-4 sm:px-6 md:px-8">
-              <div className="text-center mb-8 sm:mb-12">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
+              <div className="text-center mb-4 sm:mb-8">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-3">
                   Stories of Connection
                 </h2>
                 <p className="text-base sm:text-lg md:text-xl text-gray-600">
@@ -323,26 +323,26 @@ export default function LandingPage() {
                 </p>
               </div>
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                <Card className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                     <Image
                       src="https://images.unsplash.com/photo-1759855698735-2b0fe3d25990?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                      width="40"
-                      height="40"
+                      width="32"
+                      height="32"
                       alt="Marcus T."
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
+                      className="rounded-full w-8 h-8 sm:w-10 sm:h-10 object-cover"
                     />
                     <div>
-                      <p className="font-semibold text-sm sm:text-base">
+                      <p className="font-semibold text-xs sm:text-sm">
                         Bode Uche
                       </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
+                      <p className="text-xs text-gray-500">
                         Single Dad, 42
                       </p>
                     </div>
                   </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
+                  <p className="text-xs sm:text-sm text-gray-600 italic leading-relaxed">
                     &quot;After my divorce, I found someone who truly understood
                     my situation and put me through what to do and this fix my
                     life as a black divorcee and single dad living in the
@@ -350,25 +350,25 @@ export default function LandingPage() {
                   </p>
                 </Card>
 
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                <Card className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                     <Image
                       src="https://images.unsplash.com/photo-1530785602389-07594beb8b73?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YWZyaWNhbiUyMHdvbWFufGVufDB8fDB8fHww=80"
-                      width="40"
-                      height="40"
+                      width="32"
+                      height="32"
                       alt="Angela Haruna"
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
+                      className="rounded-full w-8 h-8 sm:w-10 sm:h-10 object-cover"
                     />
                     <div>
-                      <p className="font-semibold text-sm sm:text-base">
+                      <p className="font-semibold text-xs sm:text-sm">
                         Angela Haruna
                       </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
+                      <p className="text-xs text-gray-500">
                         Entrepreneur, 29
                       </p>
                     </div>
                   </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
+                  <p className="text-xs sm:text-sm text-gray-600 italic leading-relaxed">
                     &quot;Building a startup felt impossibly lonely. I scheduled
                     a session about founder burnout and connected with someone
                     who had built and sold two companies. That conversation
@@ -376,25 +376,25 @@ export default function LandingPage() {
                   </p>
                 </Card>
 
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                <Card className="p-3 sm:p-4">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                     <Image
                       src="https://images.unsplash.com/photo-1573497019418-b400bb3ab074?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
-                      width="40"
-                      height="40"
+                      width="32"
+                      height="32"
                       alt="Kemi Badmus"
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
+                      className="rounded-full w-8 h-8 sm:w-10 sm:h-10 object-cover"
                     />
                     <div>
-                      <p className="font-semibold text-sm sm:text-base">
+                      <p className="font-semibold text-xs sm:text-sm">
                         Kemi Badmus
                       </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
+                      <p className="text-xs text-gray-500">
                         Working Mom, 34
                       </p>
                     </div>
                   </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
+                  <p className="text-xs sm:text-sm text-gray-600 italic leading-relaxed">
                     &quot;Balancing motherhood and my career felt overwhelming.
                     I connected with another working mom who shared practical
                     strategies that transformed how I manage both. I finally
@@ -485,18 +485,18 @@ export default function LandingPage() {
           </section>
 
           {/* Final CTA */}
-          <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-r from-primary via-accent to-primary text-white">
+          <section className="w-full py-6 sm:py-10 md:py-14 lg:py-18 bg-gradient-to-r from-primary via-accent to-primary text-white">
             <div className="container px-4 sm:px-6 md:px-8 text-center">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 leading-tight">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 leading-tight">
                 There&apos;s Always Someone Who Gets It
               </h2>
-              <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 max-w-2xl mx-auto opacity-90 px-4">
+              <p className="text-sm sm:text-base md:text-lg mb-4 sm:mb-6 max-w-2xl mx-auto opacity-90 px-4">
                 Your perfect conversation partner is waiting. Start your first
                 meaningful connection today.
               </p>
               <Button
-                size="lg"
-                className="bg-white text-primary hover:bg-gray-100 text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 mb-3 sm:mb-4 w-full sm:w-auto"
+                size="default"
+                className="bg-white text-primary hover:bg-gray-100 text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3 mb-2 sm:mb-3 w-full sm:w-auto"
               >
                 <Link
                   href="/signup"
@@ -514,9 +514,9 @@ export default function LandingPage() {
         </main>
 
         {/* Enhanced Footer */}
-        <footer className="bg-gray-900 text-white py-8 sm:py-12">
+        <footer className="bg-gray-900 text-white py-4 sm:py-8">
           <div className="container px-4 sm:px-6 md:px-8">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {/* Company Info */}
               <div className="space-y-3 sm:space-y-4 sm:col-span-2 lg:col-span-1">
                 <div className="text-white">
@@ -690,7 +690,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="border-t border-gray-800 mt-6 sm:mt-8 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
+            <div className="border-t border-gray-800 mt-4 sm:mt-6 pt-4 sm:pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
               <p className="text-xs text-gray-400 text-center sm:text-left">
                 &copy; 2025 Stria Technologies All rights reserved.
               </p>

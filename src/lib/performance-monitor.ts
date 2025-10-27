@@ -1,252 +1,280 @@
 /**
  * Performance Monitor
- * Tracks real-time subscription performance and provides optimization insights
+ * Tracks and optimizes session initialization performance
  */
 
-import { realtimeManager } from './realtime-manager';
-import { connectionHealthMonitor } from './connection-health-monitor';
-
-export interface PerformanceMetrics {
-  subscriptionCount: number;
-  healthyConnections: number;
-  unhealthyConnections: number;
-  averageResponseTime: number;
-  memoryUsage: number;
-  recommendations: string[];
-  lastCheck: Date;
+export interface PerformanceMetric {
+  name: string;
+  startTime: number;
+  endTime?: number;
+  duration?: number;
+  metadata?: Record<string, any>;
 }
 
-export class RealtimePerformanceMonitor {
-  private static instance: RealtimePerformanceMonitor | null = null;
-  private metrics: PerformanceMetrics[] = [];
-  private maxMetricsHistory = 10; // Keep last 10 measurements
-  private monitoringInterval: NodeJS.Timeout | null = null;
+export interface PerformanceReport {
+  sessionId: string;
+  userId: string;
+  totalTime: number;
+  metrics: PerformanceMetric[];
+  optimizations: string[];
+  recommendations: string[];
+  timestamp: number;
+}
 
-  static getInstance(): RealtimePerformanceMonitor {
-    if (!RealtimePerformanceMonitor.instance) {
-      RealtimePerformanceMonitor.instance = new RealtimePerformanceMonitor();
+export class PerformanceMonitor {
+  private static instance: PerformanceMonitor | null = null;
+  private metrics: Map<string, PerformanceMetric> = new Map();
+  private reports: PerformanceReport[] = [];
+  private optimizations: string[] = [];
+  
+  static getInstance(): PerformanceMonitor {
+    if (!this.instance) {
+      this.instance = new PerformanceMonitor();
     }
-    return RealtimePerformanceMonitor.instance;
+    return this.instance;
   }
-
-  startMonitoring(intervalMs: number = 60000): void {
-    if (this.monitoringInterval) {
-      return; // Already monitoring
-    }
-
-    console.log('Starting performance monitoring');
-    
-    // Initial measurement
-    this.measurePerformance();
-    
-    // Set up periodic measurements
-    this.monitoringInterval = setInterval(() => {
-      this.measurePerformance();
-    }, intervalMs);
-  }
-
-  stopMonitoring(): void {
-    if (this.monitoringInterval) {
-      clearInterval(this.monitoringInterval);
-      this.monitoringInterval = null;
-      console.log('Stopped performance monitoring');
-    }
-  }
-
-  private measurePerformance(): void {
-    const subscriptionInfo = realtimeManager.getSubscriptionInfo();
-    const healthInfo = realtimeManager.monitorSubscriptionHealth();
-    
-    // Calculate memory usage (if available)
-    let memoryUsage = 0;
-    if ('memory' in performance && (performance as any).memory) {
-      memoryUsage = (performance as any).memory.usedJSHeapSize / 1024 / 1024; // MB
-    }
-
-    // Generate recommendations based on current state
-    const recommendations = this.generateRecommendations(subscriptionInfo, healthInfo);
-
-    const metrics: PerformanceMetrics = {
-      subscriptionCount: subscriptionInfo.activeChannels,
-      healthyConnections: healthInfo.healthy,
-      unhealthyConnections: healthInfo.unhealthy,
-      averageResponseTime: this.calculateAverageResponseTime(),
-      memoryUsage,
-      recommendations,
-      lastCheck: new Date()
+  
+  /**
+   * Start tracking a performance metric
+   */
+  startMetric(name: string, metadata?: Record<string, any>): void {
+    const metric: PerformanceMetric = {
+      name,
+      startTime: performance.now(),
+      metadata
     };
-
-    // Add to history
-    this.metrics.push(metrics);
     
-    // Keep only recent metrics
-    if (this.metrics.length > this.maxMetricsHistory) {
-      this.metrics = this.metrics.slice(-this.maxMetricsHistory);
-    }
-
-    // Log performance issues
-    if (recommendations.length > 0) {
-      console.warn('Performance recommendations:', recommendations);
-    }
+    this.metrics.set(name, metric);
+    console.log(`📊 Performance: Started tracking "${name}"`);
   }
-
-  private generateRecommendations(subscriptionInfo: any, healthInfo: any): string[] {
+  
+  /**
+   * End tracking a performance metric
+   */
+  endMetric(name: string, metadata?: Record<string, any>): number {
+    const metric = this.metrics.get(name);
+    if (!metric) {
+      console.warn(`📊 Performance: Metric "${name}" not found`);
+      return 0;
+    }
+    
+    const endTime = performance.now();
+    const duration = endTime - metric.startTime;
+    
+    metric.endTime = endTime;
+    metric.duration = duration;
+    if (metadata) {
+      metric.metadata = { ...metric.metadata, ...metadata };
+    }
+    
+    console.log(`📊 Performance: "${name}" completed in ${duration.toFixed(2)}ms`);
+    return duration;
+  }
+  
+  /**
+   * Record an optimization that was applied
+   */
+  recordOptimization(optimization: string): void {
+    this.optimizations.push(optimization);
+    console.log(`⚡ Optimization applied: ${optimization}`);
+  }
+  
+  /**
+   * Generate performance report
+   */
+  generateReport(sessionId: string, userId: string): PerformanceReport {
+    const completedMetrics = Array.from(this.metrics.values())
+      .filter(metric => metric.duration !== undefined);
+    
+    const totalTime = completedMetrics.reduce((sum, metric) => sum + (metric.duration || 0), 0);
+    
+    const recommendations = this.generateRecommendations(completedMetrics);
+    
+    const report: PerformanceReport = {
+      sessionId,
+      userId,
+      totalTime,
+      metrics: completedMetrics,
+      optimizations: [...this.optimizations],
+      recommendations,
+      timestamp: Date.now()
+    };
+    
+    this.reports.push(report);
+    this.logReport(report);
+    
+    return report;
+  }
+  
+  /**
+   * Generate performance recommendations
+   */
+  private generateRecommendations(metrics: PerformanceMetric[]): string[] {
     const recommendations: string[] = [];
-
-    // Too many subscriptions
-    if (subscriptionInfo.activeChannels > 10) {
-      recommendations.push('Consider reducing the number of active subscriptions');
+    
+    // Check for slow camera initialization
+    const cameraMetric = metrics.find(m => m.name === 'camera_init');
+    if (cameraMetric && cameraMetric.duration! > 2000) {
+      recommendations.push('Camera initialization is slow - consider caching constraints');
     }
-
-    // Too many unhealthy connections
-    if (healthInfo.unhealthy > 2) {
-      recommendations.push('Multiple connection failures detected - check network stability');
+    
+    // Check for slow session data loading
+    const sessionDataMetric = metrics.find(m => m.name === 'session_data');
+    if (sessionDataMetric && sessionDataMetric.duration! > 1000) {
+      recommendations.push('Session data loading is slow - consider caching or pre-loading');
     }
-
-    // High memory usage
-    if (this.metrics.length > 0) {
-      const currentMemory = this.metrics[this.metrics.length - 1]?.memoryUsage || 0;
-      if (currentMemory > 100) { // 100MB
-        recommendations.push('High memory usage detected - consider optimizing subscriptions');
-      }
+    
+    // Check for slow provider testing
+    const providerTestMetric = metrics.find(m => m.name === 'provider_test');
+    if (providerTestMetric && providerTestMetric.duration! > 3000) {
+      recommendations.push('Provider testing is slow - consider caching results');
     }
-
-    // Pending callbacks accumulating
-    if (subscriptionInfo.pendingCallbacks > 5) {
-      recommendations.push('Many pending callbacks - consider increasing debounce times');
+    
+    // Check for sequential operations
+    const parallelizableMetrics = ['camera_init', 'session_data', 'provider_test', 'messaging_init'];
+    const hasSequentialOps = parallelizableMetrics.some(name => 
+      metrics.find(m => m.name === name && m.duration! > 500)
+    );
+    
+    if (hasSequentialOps) {
+      recommendations.push('Consider running initialization operations in parallel');
     }
-
-    // Connection health degrading over time
-    if (this.metrics.length >= 3) {
-      const recentMetrics = this.metrics.slice(-3);
-      const healthTrend = recentMetrics.map(m => m.healthyConnections);
-      const isDecreasing = healthTrend.every((val, i) => i === 0 || val <= healthTrend[i - 1]);
-      
-      if (isDecreasing && healthTrend[0] > healthTrend[healthTrend.length - 1]) {
-        recommendations.push('Connection health is degrading - consider refreshing the page');
-      }
+    
+    // Check total time
+    const totalTime = metrics.reduce((sum, m) => sum + (m.duration || 0), 0);
+    if (totalTime > 5000) {
+      recommendations.push('Total initialization time is high - enable fast-track mode');
     }
-
+    
     return recommendations;
   }
-
-  private calculateAverageResponseTime(): number {
-    // This is a placeholder - in a real implementation, you'd track actual response times
-    // For now, return a simulated value based on connection health
-    const healthInfo = realtimeManager.monitorSubscriptionHealth();
-    const healthRatio = healthInfo.healthy / (healthInfo.healthy + healthInfo.unhealthy || 1);
+  
+  /**
+   * Log performance report
+   */
+  private logReport(report: PerformanceReport): void {
+    console.group('📊 Performance Report');
+    console.log(`Session: ${report.sessionId}`);
+    console.log(`Total Time: ${report.totalTime.toFixed(2)}ms`);
     
-    // Simulate response time: healthy connections = ~100ms, unhealthy = ~1000ms
-    return Math.round(100 + (1 - healthRatio) * 900);
+    console.group('Metrics:');
+    report.metrics.forEach(metric => {
+      console.log(`  ${metric.name}: ${metric.duration?.toFixed(2)}ms`, metric.metadata);
+    });
+    console.groupEnd();
+    
+    if (report.optimizations.length > 0) {
+      console.group('Optimizations Applied:');
+      report.optimizations.forEach(opt => console.log(`  ⚡ ${opt}`));
+      console.groupEnd();
+    }
+    
+    if (report.recommendations.length > 0) {
+      console.group('Recommendations:');
+      report.recommendations.forEach(rec => console.log(`  💡 ${rec}`));
+      console.groupEnd();
+    }
+    
+    console.groupEnd();
   }
-
-  getCurrentMetrics(): PerformanceMetrics | null {
-    return this.metrics.length > 0 ? this.metrics[this.metrics.length - 1] : null;
-  }
-
-  getMetricsHistory(): PerformanceMetrics[] {
-    return [...this.metrics];
-  }
-
-  getPerformanceSummary(): {
-    averageSubscriptions: number;
-    averageHealthyConnections: number;
-    averageResponseTime: number;
-    totalRecommendations: number;
-    mostCommonRecommendations: string[];
+  
+  /**
+   * Get performance insights
+   */
+  getInsights(): {
+    averageInitTime: number;
+    fastestInit: number;
+    slowestInit: number;
+    commonOptimizations: string[];
+    topRecommendations: string[];
   } {
-    if (this.metrics.length === 0) {
+    if (this.reports.length === 0) {
       return {
-        averageSubscriptions: 0,
-        averageHealthyConnections: 0,
-        averageResponseTime: 0,
-        totalRecommendations: 0,
-        mostCommonRecommendations: []
+        averageInitTime: 0,
+        fastestInit: 0,
+        slowestInit: 0,
+        commonOptimizations: [],
+        topRecommendations: []
       };
     }
-
-    const averageSubscriptions = this.metrics.reduce((sum, m) => sum + m.subscriptionCount, 0) / this.metrics.length;
-    const averageHealthyConnections = this.metrics.reduce((sum, m) => sum + m.healthyConnections, 0) / this.metrics.length;
-    const averageResponseTime = this.metrics.reduce((sum, m) => sum + m.averageResponseTime, 0) / this.metrics.length;
     
-    // Count all recommendations
-    const allRecommendations = this.metrics.flatMap(m => m.recommendations);
-    const recommendationCounts = allRecommendations.reduce((counts, rec) => {
-      counts[rec] = (counts[rec] || 0) + 1;
-      return counts;
-    }, {} as Record<string, number>);
-
-    const mostCommonRecommendations = Object.entries(recommendationCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
+    const initTimes = this.reports.map(r => r.totalTime);
+    const averageInitTime = initTimes.reduce((sum, time) => sum + time, 0) / initTimes.length;
+    const fastestInit = Math.min(...initTimes);
+    const slowestInit = Math.max(...initTimes);
+    
+    // Count optimization frequency
+    const optimizationCounts = new Map<string, number>();
+    this.reports.forEach(report => {
+      report.optimizations.forEach(opt => {
+        optimizationCounts.set(opt, (optimizationCounts.get(opt) || 0) + 1);
+      });
+    });
+    
+    const commonOptimizations = Array.from(optimizationCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([opt]) => opt);
+    
+    // Count recommendation frequency
+    const recommendationCounts = new Map<string, number>();
+    this.reports.forEach(report => {
+      report.recommendations.forEach(rec => {
+        recommendationCounts.set(rec, (recommendationCounts.get(rec) || 0) + 1);
+      });
+    });
+    
+    const topRecommendations = Array.from(recommendationCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
       .map(([rec]) => rec);
-
+    
     return {
-      averageSubscriptions: Math.round(averageSubscriptions),
-      averageHealthyConnections: Math.round(averageHealthyConnections),
-      averageResponseTime: Math.round(averageResponseTime),
-      totalRecommendations: allRecommendations.length,
-      mostCommonRecommendations
+      averageInitTime,
+      fastestInit,
+      slowestInit,
+      commonOptimizations,
+      topRecommendations
     };
   }
-
-  // Force a performance measurement (useful for debugging)
-  forceCheck(): PerformanceMetrics {
-    this.measurePerformance();
-    return this.getCurrentMetrics()!;
+  
+  /**
+   * Clear metrics (for new session)
+   */
+  clearMetrics(): void {
+    this.metrics.clear();
+    this.optimizations = [];
   }
-
-  // Clear metrics history
-  clearHistory(): void {
-    this.metrics = [];
-    console.log('Performance metrics history cleared');
+  
+  /**
+   * Export performance data
+   */
+  exportData(): {
+    reports: PerformanceReport[];
+    insights: ReturnType<typeof this.getInsights>;
+  } {
+    return {
+      reports: [...this.reports],
+      insights: this.getInsights()
+    };
   }
 }
 
-// Export singleton instance
-export const realtimePerformanceMonitor = RealtimePerformanceMonitor.getInstance();
+// Global instance
+export const performanceMonitor = PerformanceMonitor.getInstance();
 
-// React hook for performance monitoring
-import React from 'react';
+// Convenience functions
+export const startMetric = (name: string, metadata?: Record<string, any>) => 
+  performanceMonitor.startMetric(name, metadata);
 
-export function usePerformanceMonitor(autoStart: boolean = true) {
-  const [metrics, setMetrics] = React.useState<PerformanceMetrics | null>(null);
-  const [isMonitoring, setIsMonitoring] = React.useState(false);
+export const endMetric = (name: string, metadata?: Record<string, any>) => 
+  performanceMonitor.endMetric(name, metadata);
 
-  React.useEffect(() => {
-    if (autoStart) {
-      realtimePerformanceMonitor.startMonitoring();
-      setIsMonitoring(true);
-    }
+export const recordOptimization = (optimization: string) => 
+  performanceMonitor.recordOptimization(optimization);
 
-    // Check for current metrics
-    const currentMetrics = realtimePerformanceMonitor.getCurrentMetrics();
-    if (currentMetrics) {
-      setMetrics(currentMetrics);
-    }
-
-    // Set up periodic updates
-    const interval = setInterval(() => {
-      const latestMetrics = realtimePerformanceMonitor.getCurrentMetrics();
-      if (latestMetrics) {
-        setMetrics(latestMetrics);
-      }
-    }, 5000); // Update every 5 seconds
-
-    return () => {
-      clearInterval(interval);
-      if (autoStart) {
-        realtimePerformanceMonitor.stopMonitoring();
-        setIsMonitoring(false);
-      }
-    };
-  }, [autoStart]);
-
-  return {
-    metrics,
-    isMonitoring,
-    summary: realtimePerformanceMonitor.getPerformanceSummary(),
-    forceCheck: realtimePerformanceMonitor.forceCheck.bind(realtimePerformanceMonitor),
-    clearHistory: realtimePerformanceMonitor.clearHistory.bind(realtimePerformanceMonitor)
-  };
+// Browser console integration
+if (typeof window !== 'undefined') {
+  (window as any).performanceMonitor = performanceMonitor;
+  console.log('📊 PerformanceMonitor available in browser console');
 }

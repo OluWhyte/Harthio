@@ -10,8 +10,7 @@ import {
   Mic, MicOff, Video, VideoOff, PhoneOff, Settings, 
   MessageSquare, MoreVertical, Maximize2, Minimize2,
   Users, Clock, Signal, WifiOff, Volume2, VolumeX,
-  Copy, Share2, Info, AlertTriangle,
-  Loader2, X
+  Copy, Share2, Info, AlertTriangle, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { LoadingSpinner } from '@/components/common/loading-states';
 import { cn } from '@/lib/utils';
 import { ZoomChatPanel } from './zoom-chat-panel';
 
@@ -292,7 +292,7 @@ export function ModernSessionUI({
                   <h2 className="text-lg sm:text-2xl font-semibold mb-2">{otherUserName}</h2>
                   <p className="text-white/80 text-sm sm:text-base">{getStateMessage(sessionState)}</p>
                   {sessionState === 'connecting' && (
-                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin mx-auto mt-4" />
+                    <LoadingSpinner size="md" className="mt-4" />
                   )}
                 </div>
               </div>
@@ -604,7 +604,7 @@ export function ModernSessionUI({
                       isMobile ? "w-12 h-12" : "w-14 h-14"
                     )}
                   >
-                    <Loader2 className={cn(isMobile ? "w-5 h-5" : "w-6 h-6", "animate-spin")} />
+                    <LoadingSpinner size={isMobile ? "sm" : "md"} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Reconnect</TooltipContent>

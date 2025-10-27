@@ -9,7 +9,7 @@ import {
   Mic, MicOff, Video, VideoOff, PhoneOff, Settings, 
   MessageSquare, Send, MoreVertical, Maximize2, Minimize2,
   Users, Clock, Signal, WifiOff, Copy, Info, AlertTriangle,
-  Loader2, X, Monitor
+  X, Monitor
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,11 +17,14 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { LoadingSpinner } from '@/components/common/loading-states';
 import { cn } from '@/lib/utils';
 import { SessionContainer } from '@/components/harthio/session-container';
 import { ModernChatPanel } from '@/components/harthio/modern-chat-panel';
 import { type Message as MessagePanelMessage } from '@/hooks/use-message-panel';
 import { useScreenDimensions } from '@/hooks/use-screen-dimensions';
+import { OrientationAdapter, type DeviceInfo } from '@/lib/migrate-to-simple-orientation';
+import { type VideoProvider } from '@/lib/video-service-manager';
 
 interface Message {
   id: string;
@@ -52,10 +55,12 @@ interface HarthioSessionUIProps {
   isRemoteAudioMuted?: boolean;
   isRemoteVideoOff?: boolean;
   currentUserName: string;
+  currentUserId?: string;
   otherUserName: string;
   sessionDuration: number;
   timeRemaining?: number | null;
   sessionId: string;
+  sessionTitle?: string;
   onToggleAudio: () => void;
   onToggleVideo: () => void;
   onEndCall: () => void;
@@ -66,6 +71,12 @@ interface HarthioSessionUIProps {
   notifications?: string[];
   onCopySessionLink?: () => void;
   onOpenSettings?: () => void;
+  currentProvider?: string | null;
+  onSwitchProvider?: (provider: VideoProvider) => void;
+  userStream?: MediaStream | null;
+  deviceInfo?: DeviceInfo | null;
+  remoteDeviceInfo?: DeviceInfo | null;
+  onSendDeviceInfo?: () => void;
 }
 
 export function HarthioSessionUI(props: HarthioSessionUIProps) {
@@ -80,10 +91,12 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
     isRemoteAudioMuted = false,
     isRemoteVideoOff = false,
     currentUserName,
+    currentUserId,
     otherUserName,
     sessionDuration,
     timeRemaining,
     sessionId,
+    sessionTitle,
     onToggleAudio,
     onToggleVideo,
     onEndCall,
@@ -93,7 +106,13 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
     messages,
     notifications = [],
     onCopySessionLink,
-    onOpenSettings
+    onOpenSettings,
+    currentProvider,
+    onSwitchProvider,
+    userStream,
+    deviceInfo: propDeviceInfo,
+    remoteDeviceInfo,
+    onSendDeviceInfo
   } = props;
 
   // UI State
@@ -102,6 +121,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
   const [showStats, setShowStats] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
   
   // Refs
   const controlsTimeoutRef = useRef<NodeJS.Timeout>();
@@ -109,14 +129,37 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
   // Get screen dimensions for responsive sizing
   const screen = useScreenDimensions();
 
+  // Initialize device info and listen for orientation changes
+  useEffect(() => {
+    // Use prop deviceInfo if available, otherwise get it ourselves
+    if (propDeviceInfo) {
+      setDeviceInfo(propDeviceInfo);
+    } else {
+      const initialDeviceInfo = OrientationAdapter.getDeviceInfo();
+      setDeviceInfo(initialDeviceInfo);
+    }
+    
+    const cleanup = OrientationAdapter.onOrientationChange((newDeviceInfo) => {
+      setDeviceInfo(newDeviceInfo);
+    });
+    
+    return cleanup;
+  }, [propDeviceInfo]);
+
   // Convert session messages to MessagePanel format
-  const convertedMessages: MessagePanelMessage[] = messages.map(msg => ({
-    id: msg.id,
-    content: msg.content,
-    sender: msg.type === 'system' ? 'System' : msg.userName,
-    timestamp: msg.timestamp,
-    isOwn: msg.userId === 'current-user' && msg.type !== 'system'
-  }));
+  const convertedMessages: MessagePanelMessage[] = messages.map(msg => {
+    const isOwn = (msg.userId === 'current-user' || msg.userId === currentUserId || msg.userName === currentUserName) && msg.type !== 'system';
+    
+    // Message conversion logic (debug logging removed to prevent console spam)
+    
+    return {
+      id: msg.id,
+      content: msg.content,
+      sender: msg.type === 'system' ? 'System' : msg.userName,
+      timestamp: msg.timestamp,
+      isOwn
+    };
+  });
 
   // Auto-hide controls - only on desktop
   useEffect(() => {
@@ -147,6 +190,13 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
       if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
     };
   }, [showChat, showStats, screen.deviceType]);
+
+  // Set user stream to local video element
+  useEffect(() => {
+    if (userStream && localVideoRef.current) {
+      localVideoRef.current.srcObject = userStream;
+    }
+  }, [userStream]);
 
   // Message handling
   useEffect(() => {
@@ -233,18 +283,42 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
       <SessionContainer>
         {/* Main Video Area - Takes full container */}
         <div className="flex-1 relative w-full h-full">
-          {/* Remote Video */}
-          <div className="absolute inset-0 w-full h-full">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-            />
+          {/* Remote Video - Adaptive layout based on remote user's device */}
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-black">
+            <div 
+              className={cn(
+                "relative",
+                remoteDeviceInfo ? 
+                  (() => {
+                    const layout = OrientationAdapter.getRemoteVideoLayout(remoteDeviceInfo, deviceInfo);
+                    console.log('📺 Remote video layout:', { remoteDeviceInfo, layout });
+                    return layout.containerClass;
+                  })() :
+                  "w-full" // Default fallback
+              )}
+              style={
+                remoteDeviceInfo ? 
+                  OrientationAdapter.getRemoteVideoLayout(remoteDeviceInfo, deviceInfo).style :
+                  { aspectRatio: '16/9' } // Default fallback
+              }
+            >
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className={cn(
+                  "rounded-lg",
+                  remoteDeviceInfo ? 
+                    OrientationAdapter.getRemoteVideoLayout(remoteDeviceInfo, deviceInfo).videoClass :
+                    "w-full h-full object-cover" // Default fallback
+                )}
+              />
+            </div>
+          </div>
             
-            {/* Remote user placeholder with brand colors */}
+          {/* Remote user placeholder with brand colors */}
             {(sessionState !== 'connected' || isRemoteVideoOff) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-rose-900 via-rose-800 to-teal-900">
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-rose-900 via-rose-800 to-teal-900 rounded-lg">
                 <div className="text-center text-white">
                   <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-rose-400/30">
                     {isRemoteVideoOff ? (
@@ -256,28 +330,83 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
                   <h2 className="text-lg sm:text-2xl font-semibold mb-2 text-rose-100">{otherUserName}</h2>
                   <p className="text-rose-200/80 text-sm sm:text-base">{getStateMessage(sessionState)}</p>
                   {sessionState === 'connecting' && (
-                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin mx-auto mt-4 text-rose-300" />
+                    <LoadingSpinner size="md" className="mt-4 text-rose-300" />
+                  )}
+                  {deviceInfo && (
+                    <p className="text-rose-300/60 text-xs mt-2">
+                      Your device: {OrientationAdapter.getDeviceDisplayName(deviceInfo)}
+                    </p>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Remote user audio indicator */}
-            {isRemoteAudioMuted && sessionState === 'connected' && (
-              <div className="absolute top-4 left-4">
-                <div className="bg-red-500 rounded-full p-2">
-                  <MicOff className="w-4 h-4 text-white" />
-                </div>
+          {/* Remote user audio indicator */}
+          {isRemoteAudioMuted && sessionState === 'connected' && (
+            <div className="absolute top-4 left-4">
+              <div className="bg-red-500 rounded-full p-2">
+                <MicOff className="w-4 h-4 text-white" />
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Local Video (Picture-in-Picture) */}
+          {/* Remote Device Info Debug (Development only) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="absolute top-16 left-4 space-y-2">
+              <div className="bg-blue-500/80 text-white px-2 py-1 rounded text-xs">
+                <div className="text-xs opacity-90 mb-1">
+                  Provider: {currentProvider || 'None'}
+                </div>
+                {remoteDeviceInfo ? (
+                  <>
+                    Remote: {OrientationAdapter.getDeviceDisplayName(remoteDeviceInfo)}
+                    <div className="text-xs opacity-90">
+                      Screen: {remoteDeviceInfo.screenWidth}×{remoteDeviceInfo.screenHeight} ({remoteDeviceInfo.orientation})
+                    </div>
+                    <div className="text-xs opacity-75">
+                      Aspect: {remoteDeviceInfo.screenWidth}/{remoteDeviceInfo.screenHeight} = {(remoteDeviceInfo.screenWidth / remoteDeviceInfo.screenHeight).toFixed(2)}
+                    </div>
+                    {remoteDeviceInfo.videoWidth && remoteDeviceInfo.videoHeight && (
+                      <div className="text-xs opacity-90">
+                        Video: {remoteDeviceInfo.videoWidth}×{remoteDeviceInfo.videoHeight}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-red-300">
+                    No remote device info received
+                  </div>
+                )}
+              </div>
+              
+              {/* Manual device info send button for testing */}
+              <button
+                onClick={() => {
+                  console.log('🧪 Manual device info send test triggered');
+                  onSendDeviceInfo?.();
+                }}
+                className="bg-green-500/80 text-white px-2 py-1 rounded text-xs hover:bg-green-600/80"
+              >
+                Test Send Device Info
+              </button>
+            </div>
+          )}
+
+          {/* Local Video (Picture-in-Picture) - Adaptive aspect ratio */}
           <div 
             className={cn(
               "absolute rounded-lg overflow-hidden bg-gray-900 border-2 border-rose-400/30 shadow-2xl transition-all duration-300",
-              screen.deviceType === 'phone' ? "bottom-20 right-4 w-32 h-40" : "top-4 right-4 w-64 h-48"
+              // Position based on device type
+              screen.deviceType === 'phone' ? "bottom-20 right-4" : "top-4 right-4",
+              // Size based on device type and orientation
+              screen.deviceType === 'phone' && deviceInfo?.orientation === 'portrait' ? "w-24" : 
+              screen.deviceType === 'phone' ? "w-32" : "w-64"
             )}
+            style={{
+              // Adaptive aspect ratio based on actual screen dimensions
+              aspectRatio: deviceInfo ? 
+                `${deviceInfo.screenWidth}/${deviceInfo.screenHeight}` : '16/9'
+            }}
           >
             <video
               ref={localVideoRef}
@@ -285,6 +414,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
               playsInline
               muted
               className="w-full h-full object-cover"
+              style={{ transform: 'scaleX(-1)' }} // Mirror effect for natural preview like camera preview
             />
             {isVideoOff && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
@@ -299,11 +429,33 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
               </div>
             )}
             
-            {/* Local video label */}
+            {/* Local video label with device info */}
             <div className="absolute bottom-1 left-1 right-1 bg-black/50 rounded text-white text-xs text-center py-1">
               You
+              {deviceInfo && (
+                <div className="text-xs opacity-75">
+                  {OrientationAdapter.getDeviceDisplayName(deviceInfo)}
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Local Device Info Debug (Development only) */}
+          {process.env.NODE_ENV === 'development' && deviceInfo && (
+            <div className="absolute bottom-4 left-4">
+              <div className="bg-green-500/80 text-white px-2 py-1 rounded text-xs">
+                Local: {OrientationAdapter.getDeviceDisplayName(deviceInfo)}
+                <div className="text-xs opacity-90">
+                  Screen: {deviceInfo.screenWidth}×{deviceInfo.screenHeight} ({deviceInfo.orientation})
+                </div>
+                {deviceInfo.videoWidth && deviceInfo.videoHeight && (
+                  <div className="text-xs opacity-90">
+                    Video: {deviceInfo.videoWidth}×{deviceInfo.videoHeight}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Modern Chat Panel */}
@@ -314,6 +466,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
           onSendMessage={onSendMessage}
           otherUserName={otherUserName}
           otherUserInitials={otherUserName.split(' ').map(n => n[0]).join('').toUpperCase()}
+          sessionTitle={sessionTitle}
         />
 
         {/* Top Bar */}
@@ -605,9 +758,9 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
                       minHeight: `${screen.buttonSize}px`
                     }}
                   >
-                    <Loader2 
-                      className="animate-spin"
-                      style={{ width: `${screen.iconSize}px`, height: `${screen.iconSize}px` }}
+                    <LoadingSpinner 
+                      size="md"
+                      className="text-white"
                     />
                   </Button>
                 </TooltipTrigger>

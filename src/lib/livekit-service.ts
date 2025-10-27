@@ -1,6 +1,7 @@
 /**
  * LiveKit Service
  * Clean, reliable video calling with LiveKit
+ * Uses mock service in development when LIVEKIT_SERVER_URL is not configured
  */
 
 import { 
@@ -17,6 +18,9 @@ import {
   VideoPresets,
   TrackPublication
 } from 'livekit-client';
+
+// Import mock service for development
+import { MockLiveKitService, type MockLiveKitConfig, type MockLiveKitCallbacks } from './mock-livekit-service';
 
 export interface LiveKitConfig {
   serverUrl: string;
@@ -43,16 +47,33 @@ export class LiveKitService {
   private localVideoTrack: Track | null = null;
   private localAudioTrack: Track | null = null;
   private isConnected = false;
+  private mockService: MockLiveKitService | null = null;
+  private useMock = false;
 
   constructor(config: LiveKitConfig, callbacks: LiveKitCallbacks) {
     this.config = config;
     this.callbacks = callbacks;
+    
+    // Use mock service in development if server URL is not properly configured
+    this.useMock = process.env.NODE_ENV === 'development' && 
+                   (config.serverUrl.includes('localhost') || 
+                    config.serverUrl.includes('your-app-name') ||
+                    !config.serverUrl.startsWith('http'));
+    
+    if (this.useMock) {
+      console.log('🧪 Using Mock LiveKit Service for development testing');
+      this.mockService = new MockLiveKitService(config as MockLiveKitConfig, callbacks as MockLiveKitCallbacks);
+    }
   }
 
   /**
    * Connect to the LiveKit room
    */
   async connect(): Promise<void> {
+    if (this.useMock && this.mockService) {
+      return await this.mockService.connect();
+    }
+
     try {
       this.room = new Room({
         // Optimize for 1-on-1 conversations
@@ -89,6 +110,10 @@ export class LiveKitService {
    * Enable camera and microphone
    */
   async enableCameraAndMicrophone(): Promise<void> {
+    if (this.useMock && this.mockService) {
+      return await this.mockService.enableCameraAndMicrophone();
+    }
+
     if (!this.room) {
       throw new Error('Room not connected');
     }
@@ -113,6 +138,10 @@ export class LiveKitService {
    * Toggle microphone mute
    */
   async toggleMicrophone(): Promise<boolean> {
+    if (this.useMock && this.mockService) {
+      return await this.mockService.toggleMicrophone();
+    }
+
     if (!this.room) return false;
 
     try {
@@ -133,6 +162,10 @@ export class LiveKitService {
    * Toggle camera on/off
    */
   async toggleCamera(): Promise<boolean> {
+    if (this.useMock && this.mockService) {
+      return await this.mockService.toggleCamera();
+    }
+
     if (!this.room) return false;
 
     try {
@@ -153,6 +186,10 @@ export class LiveKitService {
    * Get local video element
    */
   getLocalVideoElement(): HTMLVideoElement | null {
+    if (this.useMock && this.mockService) {
+      return this.mockService.getLocalVideoElement();
+    }
+
     if (!this.room) return null;
     
     const videoTrack = this.room.localParticipant.getTrack(Track.Source.Camera);
@@ -167,6 +204,10 @@ export class LiveKitService {
    * Get remote video element
    */
   getRemoteVideoElement(): HTMLVideoElement | null {
+    if (this.useMock && this.mockService) {
+      return this.mockService.getRemoteVideoElement();
+    }
+
     if (!this.room) return null;
     
     const remoteParticipants = Array.from(this.room.participants.values());

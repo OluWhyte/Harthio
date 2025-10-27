@@ -26,8 +26,8 @@ export function validateTopicTitle(title: unknown): ValidationResult {
     return { isValid: false, error: 'Title must be at least 3 characters long' };
   }
   
-  if (sanitized.length > 100) {
-    return { isValid: false, error: 'Title cannot exceed 100 characters' };
+  if (sanitized.length > 50) {
+    return { isValid: false, error: 'Title cannot exceed 50 characters' };
   }
   
   // Check for potentially harmful content
@@ -56,8 +56,8 @@ export function validateTopicDescription(description: unknown): ValidationResult
     return { isValid: false, error: 'Description must be at least 10 characters long' };
   }
   
-  if (sanitized.length > 500) {
-    return { isValid: false, error: 'Description cannot exceed 500 characters' };
+  if (sanitized.length > 250) {
+    return { isValid: false, error: 'Description cannot exceed 250 characters' };
   }
   
   // Check for potentially harmful content
@@ -412,7 +412,7 @@ export function validateTopicTitleEnhanced(title: unknown): EnhancedValidationRe
   const sanitized = basicResult.sanitized as string;
   
   // Add warnings for better UX
-  if (sanitized.length < 10) {
+  if (sanitized.length < 15) {
     return {
       ...basicResult,
       warning: 'Consider adding more detail to help others understand your topic'
@@ -442,7 +442,7 @@ export function validateTopicDescriptionEnhanced(description: unknown): Enhanced
   const sanitized = basicResult.sanitized as string;
   
   // Add warnings for better UX
-  if (sanitized.length < 50) {
+  if (sanitized.length < 30) {
     return {
       ...basicResult,
       warning: 'A more detailed description will help attract the right participants'

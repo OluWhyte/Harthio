@@ -20,7 +20,10 @@ import {
   Phone, 
   PhoneOff,
   Settings,
-  Users
+  Users,
+  MessageSquare,
+  Send,
+  X
 } from 'lucide-react';
 
 export default function CallPage() {
@@ -36,6 +39,18 @@ export default function CallPage() {
   const [participantCount, setParticipantCount] = useState(0);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Chat state
+  const [showChat, setShowChat] = useState(false);
+  const [messages, setMessages] = useState<Array<{
+    id: string;
+    userId: string;
+    userName: string;
+    content: string;
+    timestamp: Date;
+    type: 'text' | 'system';
+  }>>([]);
+  const [newMessage, setNewMessage] = useState('');
 
   // Refs
   const liveKitServiceRef = useRef<LiveKitService | null>(null);
@@ -211,6 +226,34 @@ export default function CallPage() {
     router.push('/dashboard');
   }, [router]);
 
+  // Send message
+  const sendMessage = useCallback(() => {
+    if (!newMessage.trim() || !user) return;
+
+    const message = {
+      id: Date.now().toString(),
+      userId: user.id,
+      userName: userProfile?.display_name || user.email || 'You',
+      content: newMessage.trim(),
+      timestamp: new Date(),
+      type: 'text' as const
+    };
+
+    setMessages(prev => [...prev, message]);
+    setNewMessage('');
+
+    // TODO: Send message through LiveKit data channel when implemented
+    console.log('Message sent:', message);
+  }, [newMessage, user, userProfile]);
+
+  // Handle Enter key in chat
+  const handleChatKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }, [sendMessage]);
+
   // Initialize on mount
   useEffect(() => {
     if (user && userProfile) {
@@ -352,6 +395,16 @@ export default function CallPage() {
             {isVideoOff ? <VideoOff className="h-6 w-6" /> : <Video className="h-6 w-6" />}
           </Button>
 
+          {/* Chat Toggle */}
+          <Button
+            onClick={() => setShowChat(!showChat)}
+            size="lg"
+            variant={showChat ? "default" : "secondary"}
+            className="rounded-full w-14 h-14"
+          >
+            <MessageSquare className="h-6 w-6" />
+          </Button>
+
           {/* End Call */}
           <Button
             onClick={endCall}
@@ -372,6 +425,83 @@ export default function CallPage() {
           )}
         </div>
       </div>
+
+      {/* Chat Panel */}
+      {showChat && (
+        <div className="absolute right-0 top-0 bottom-0 w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
+          {/* Chat Header */}
+          <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <h3 className="text-white font-semibold">Chat</h3>
+            <Button
+              onClick={() => setShowChat(false)}
+              variant="ghost"
+              size="sm"
+              className="text-gray-400 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {messages.length === 0 ? (
+              <div className="text-center text-gray-400 text-sm">
+                No messages yet. Start the conversation!
+              </div>
+            ) : (
+              messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.userId === user?.id ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
+                      message.userId === user?.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-100'
+                    }`}
+                  >
+                    {message.userId !== user?.id && (
+                      <div className="text-xs text-gray-300 mb-1">
+                        {message.userName}
+                      </div>
+                    )}
+                    <div>{message.content}</div>
+                    <div className="text-xs opacity-70 mt-1">
+                      {message.timestamp.toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Message Input */}
+          <div className="p-4 border-t border-gray-700">
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={handleChatKeyPress}
+                placeholder="Type a message..."
+                className="flex-1 px-3 py-2 bg-gray-700 text-white rounded-lg border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+              />
+              <Button
+                onClick={sendMessage}
+                disabled={!newMessage.trim()}
+                size="sm"
+                className="px-3"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

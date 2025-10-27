@@ -170,46 +170,46 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
   return (
     <Card className="hover:shadow-md transition-shadow w-full">
       <CardContent className="p-4 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <PublicProfileDialog userId={topic.author.userId}>
               <div className="cursor-pointer">
-                <Avatar className="h-10 w-10">
+                <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
                   <AvatarImage
                     src={topic.author.avatarUrl || undefined}
                     alt={topic.author.name}
                     data-ai-hint="person"
                   />
-                  <AvatarFallback>{topic.author.initials}</AvatarFallback>
+                  <AvatarFallback className="text-sm">{topic.author.initials}</AvatarFallback>
                 </Avatar>
               </div>
             </PublicProfileDialog>
-            <div>
+            <div className="min-w-0 flex-1">
               <PublicProfileDialog userId={topic.author.userId}>
-                <span className="font-semibold hover:underline cursor-pointer">
+                <span className="font-semibold hover:underline cursor-pointer text-sm sm:text-base truncate block">
                   {topic.author.name}
                 </span>
               </PublicProfileDialog>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                <span>
+              <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+                <Star className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 fill-yellow-500 flex-shrink-0" />
+                <span className="flex-shrink-0">
                   {topic.author.rating > 0
                     ? `${topic.author.rating.toFixed(1)}`
                     : "New"}
                 </span>
-                <span className="text-xs">
+                <span className="text-xs truncate">
                   ({topic.author.reviews} ratings)
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>posted {timeSinceCreation}</span>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
+            <Clock className="h-3 w-3 flex-shrink-0" />
+            <span className="whitespace-nowrap">posted {timeSinceCreation}</span>
           </div>
         </div>
 
-        <h3 className="text-lg font-semibold">{topic.title}</h3>
+        <h3 className="text-lg sm:text-xl font-semibold leading-tight break-words">{topic.title}</h3>
 
         {/* Enhanced operation feedback */}
         <OperationFeedback
@@ -222,30 +222,30 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
           onDismissSuccess={() => setActionSuccess(null)}
         />
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-x-4 text-sm sm:text-base text-muted-foreground">
           <div className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
-            <span>
+            <Users className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+            <span className="break-words">
               {totalParticipants} participant
               {totalParticipants !== 1 ? "s" : ""}
               {hasEnoughParticipants
                 ? " (ready)"
-                : " (waiting for 1 more participant)"}
+                : " (waiting for 1 more)"}
             </span>
           </div>
           <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            <span>{timeString}</span>
+            <Calendar className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+            <span className="break-words text-sm sm:text-base">{timeString}</span>
           </div>
         </div>
 
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1" className="border-b-0">
-            <AccordionTrigger className="p-0 text-sm hover:no-underline text-accent justify-start gap-1">
-              <Info className="w-4 h-4" />
+            <AccordionTrigger className="p-0 text-xs sm:text-sm hover:no-underline text-accent justify-start gap-1">
+              <Info className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
               <span>Read Description</span>
             </AccordionTrigger>
-            <AccordionContent className="pt-2 text-muted-foreground">
+            <AccordionContent className="pt-2 text-xs sm:text-sm text-muted-foreground leading-relaxed">
               {topic.description}
             </AccordionContent>
           </AccordionItem>
@@ -254,11 +254,11 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
         {isUserHost ? (
           // Host view - show "You are hosting this session" and pending request count
           <div className="mt-2 space-y-2">
-            <div className="text-sm text-green-600 font-semibold">
+            <div className="text-xs sm:text-sm text-green-600 font-semibold">
               You are hosting this session
             </div>
             {pendingRequestCount > 0 && (
-              <div className="text-sm text-primary font-semibold">
+              <div className="text-xs sm:text-sm text-primary font-semibold break-words">
                 You have {pendingRequestCount} pending request
                 {pendingRequestCount > 1 ? "s" : ""}.{" "}
                 <Link href="/requests" className="underline">
@@ -305,7 +305,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                 })()}
               </ActionLoading>
             ) : (
-              <div className="text-sm text-blue-600 font-medium">
+              <div className="text-xs sm:text-sm text-blue-600 font-medium break-words">
                 Session is open for requests - waiting for participants to join
               </div>
             )}
@@ -313,7 +313,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
         ) : isUserParticipant ? (
           // Participant view - show "You are confirmed for this session" with session buttons
           <div className="mt-2 space-y-2">
-            <div className="text-sm text-green-600 font-semibold">
+            <div className="text-xs sm:text-sm text-green-600 font-semibold">
               You are confirmed for this session
             </div>
             {hasEnoughParticipants ? (
@@ -343,7 +343,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                 })()}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-xs sm:text-sm text-muted-foreground">
                 Waiting for participants
               </div>
             )}
@@ -375,7 +375,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                     onSuccess={handleUpdateWithFeedback}
                   >
                     <Button
-                      className="flex-1"
+                      className="flex-1 text-xs sm:text-sm px-2 sm:px-4 py-2"
                       disabled={
                         isInOngoingSession ||
                         hasRequested ||
@@ -384,15 +384,21 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                       }
                       variant={hasRequested ? "outline" : "default"}
                     >
-                      {isUpdating && <Wifi className="mr-2 h-4 w-4 animate-pulse" />}
-                      {isSessionFull
-                        ? "Session Full"
-                        : hasRequested
-                        ? "Request Sent"
-                        : "Request to Join"}
+                      {isUpdating && <Wifi className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-pulse" />}
+                      <span className="truncate">
+                        {isSessionFull
+                          ? "Session Full"
+                          : hasRequested
+                          ? "Request Sent"
+                          : "Request to Join"}
+                      </span>
                     </Button>
                   </RequestToJoinDialog>
-                  <Button variant="outline" onClick={handleShareClick}>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleShareClick}
+                    className="text-xs sm:text-sm px-2 sm:px-4 py-2 flex-shrink-0"
+                  >
                     Share
                   </Button>
                 </>

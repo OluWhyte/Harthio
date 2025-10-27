@@ -492,20 +492,20 @@ function DashboardContent() {
         onRefresh={handleRefreshFromArrow}
       />
       
-      <div className="flex-1 p-4 sm:p-6 lg:p-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        <div className="md:col-span-2 lg:col-span-3 space-y-6">
+      <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+        <div className="md:col-span-2 lg:col-span-3 space-y-4 sm:space-y-6">
           {/* MY ACTIVE SESSION - Show prominently at the top when user has an active session */}
           {categorizedTopics.myActiveSession && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <Card className="border-primary/20 bg-primary/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center text-xl">
-                    <Radio className="mr-2 h-5 w-5 text-primary animate-pulse" />
-                    Your Active Session
+                <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                  <CardTitle className="flex items-center text-lg sm:text-xl">
+                    <Radio className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 text-primary animate-pulse flex-shrink-0" />
+                    <span className="truncate">Your Active Session</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-3 sm:px-6 pb-3 sm:pb-6">
                   <TopicCard
                     topic={categorizedTopics.myActiveSession}
                     onUpdateRequest={() => fetchTopics()}
@@ -518,7 +518,7 @@ function DashboardContent() {
 
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold">Timeline</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold">Timeline</h1>
               <div className="flex items-center gap-4 mt-2">
 
                 
@@ -526,7 +526,7 @@ function DashboardContent() {
               </div>
             </div>
             <ScheduleSessionDialog onSessionCreated={() => fetchTopics()}>
-              <Button disabled={isInOngoingSession}>
+              <Button disabled={isInOngoingSession} size="sm">
                 <Plus className="mr-2 h-4 w-4" /> Schedule Session
               </Button>
             </ScheduleSessionDialog>
@@ -535,22 +535,26 @@ function DashboardContent() {
           {/* OTHER ACTIVE SESSIONS - Public view (only show if user doesn't have their own active session) */}
           {categorizedTopics.otherActiveSessions.length > 0 &&
             !categorizedTopics.myActiveSession && (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center text-xl">
-                      <Radio className="mr-2 h-5 w-5 text-primary animate-pulse" />
-                      Active Now ({categorizedTopics.otherActiveSessions.length})
+                  <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                    <CardTitle className="flex items-center text-lg sm:text-xl">
+                      <Radio className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 text-primary animate-pulse flex-shrink-0" />
+                      <span className="truncate">
+                        Active Now ({categorizedTopics.otherActiveSessions.length})
+                      </span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-2 sm:space-y-3 px-3 sm:px-6 pb-3 sm:pb-6">
                     {categorizedTopics.otherActiveSessions.map((topic) => (
                       <div
                         key={topic.id}
-                        className="p-3 rounded-lg bg-background text-sm text-muted-foreground"
+                        className="p-2 sm:p-3 rounded-lg bg-background text-xs sm:text-sm text-muted-foreground"
                       >
-                        A session on &quot;{topic.title}&quot; is currently in
-                        progress.
+                        <span className="break-words">
+                          A session on &quot;{topic.title}&quot; is currently in
+                          progress.
+                        </span>
                       </div>
                     ))}
                   </CardContent>
@@ -570,15 +574,15 @@ function DashboardContent() {
             <>
               {/* MY UPCOMING SESSIONS */}
               {categorizedTopics.myUpcomingSessions.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3 sm:space-y-4">
                   <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center text-xl">
-                        <UserCheck className="mr-2 h-5 w-5 text-primary" /> My
-                        Upcoming Sessions
+                    <CardHeader className="pb-2 px-3 sm:px-6 pt-3 sm:pt-6">
+                      <CardTitle className="flex items-center text-lg sm:text-xl">
+                        <UserCheck className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" /> 
+                        <span className="truncate">My Upcoming Sessions</span>
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-2 sm:space-y-3 px-3 sm:px-6 pb-3 sm:pb-6">
                       {categorizedTopics.myUpcomingSessions.map((topic) => (
                         <TopicCard
                           key={topic.id}
@@ -593,7 +597,7 @@ function DashboardContent() {
               )}
 
               {/* OTHER SESSIONS ON TIMELINE */}
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {categorizedTopics.otherTimelineSessions.length > 0
                   ? categorizedTopics.otherTimelineSessions.map((topic) => (
                       <TopicCard
@@ -605,11 +609,11 @@ function DashboardContent() {
                   : categorizedTopics.myUpcomingSessions.length === 0 &&
                     categorizedTopics.otherActiveSessions.length === 0 &&
                     !categorizedTopics.myActiveSession && (
-                      <div className="text-center text-muted-foreground py-16">
-                        <p className="font-semibold text-lg">
+                      <div className="text-center text-muted-foreground py-8 sm:py-16 px-4">
+                        <p className="font-semibold text-lg sm:text-xl break-words">
                           No sessions available.
                         </p>
-                        <p>Schedule a session to get started!</p>
+                        <p className="text-base sm:text-lg break-words">Schedule a session to get started!</p>
                       </div>
                     )}
               </div>
@@ -618,22 +622,22 @@ function DashboardContent() {
 
           {/* Empty states - only show when no sessions at all (including no active session) */}
           {!isLoadingTopics && !hasError && filteredTopics.length === 0 && !categorizedTopics.myActiveSession && (
-            <div className="text-center text-muted-foreground py-16">
+            <div className="text-center text-muted-foreground py-8 sm:py-16 px-4">
               <div className="max-w-md mx-auto">
-                <div className="mb-4">
-                  <Radio className="h-12 w-12 mx-auto text-muted-foreground/50" />
+                <div className="mb-3 sm:mb-4">
+                  <Radio className="h-8 w-8 sm:h-12 sm:w-12 mx-auto text-muted-foreground/50" />
                 </div>
-                <p className="font-semibold text-lg mb-2">
+                <p className="font-semibold text-xl sm:text-2xl mb-2 break-words">
                   No sessions available
                 </p>
-                <p className="text-sm mb-4">
+                <p className="text-base sm:text-lg mb-3 sm:mb-4 break-words leading-relaxed">
                   There are no active or upcoming sessions right now. Be the
                   first to schedule a meaningful conversation!
                 </p>
                 <ScheduleSessionDialog onSessionCreated={() => fetchTopics()}>
-                  <Button disabled={isInOngoingSession}>
-                    <Plus className="mr-2 h-4 w-4" /> Schedule Your First
-                    Session
+                  <Button disabled={isInOngoingSession} className="w-full sm:w-auto text-sm sm:text-base">
+                    <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> 
+                    <span className="truncate">Schedule Your First Session</span>
                   </Button>
                 </ScheduleSessionDialog>
               </div>
@@ -644,22 +648,22 @@ function DashboardContent() {
         </div>
 
         {/* Sidebar */}
-        <aside className="space-y-6 md:col-start-3 lg:col-start-4">
+        <aside className="space-y-4 sm:space-y-6 md:col-start-3 lg:col-start-4">
           <Card>
-            <CardContent className="p-4 space-y-4">
-              <div className="flex items-center font-bold">
-                <Flame className="mr-2 h-5 w-5 text-primary" />
-                Trending Topics
+            <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+              <div className="flex items-center font-bold text-base sm:text-lg">
+                <Flame className="mr-1 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+                <span className="truncate">Trending Topics</span>
               </div>
               <Separator />
-              <ul className="space-y-3">
+              <ul className="space-y-2 sm:space-y-3">
                 {trendingTopics.map((item, index) => (
                   <li
                     key={index}
-                    className="text-sm text-muted-foreground hover:text-foreground cursor-pointer"
+                    className="text-sm sm:text-base text-muted-foreground hover:text-foreground cursor-pointer"
                   >
-                    <div>{item.title}</div>
-                    <div className="text-xs text-accent">#{item.tag}</div>
+                    <div className="break-words leading-tight">{item.title}</div>
+                    <div className="text-sm text-accent break-words">#{item.tag}</div>
                   </li>
                 ))}
               </ul>
@@ -667,16 +671,16 @@ function DashboardContent() {
           </Card>
 
           <Card>
-            <CardContent className="p-4 space-y-4">
-              <div className="font-bold">Popular Tags</div>
+            <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+              <div className="font-bold text-base sm:text-lg">Popular Tags</div>
               <Separator />
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1 sm:gap-2">
                 {popularTags.map((tag) => (
                   <Button
                     key={tag}
                     variant="outline"
                     size="sm"
-                    className="rounded-full"
+                    className="rounded-full text-sm sm:text-base px-2 sm:px-3 py-1 h-auto break-all"
                   >
                     {tag}
                   </Button>

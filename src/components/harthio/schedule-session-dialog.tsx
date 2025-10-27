@@ -90,11 +90,11 @@ const scheduleSessionSchema = z
     topic: z
       .string()
       .min(5, { message: "Topic must be at least 5 characters." })
-      .max(100, { message: "Topic must be less than 100 characters." }),
+      .max(50, { message: "Topic must be less than 50 characters." }),
     description: z
       .string()
       .min(10, { message: "Description must be at least 10 characters." })
-      .max(500, { message: "Description must be less than 500 characters." }),
+      .max(250, { message: "Description must be less than 250 characters." }),
     date: z.date({ required_error: "A date is required." }),
     startTime: z.string().min(1, { message: "Start time is required." }),
     endTime: z.string().min(1, { message: "End time is required." }),
@@ -249,42 +249,50 @@ export function ScheduleSessionDialog({
   const watchedEndTime = form.watch("endTime");
 
   // Parse watched values for conflict checking
-  const startDateTime = watchedDate && watchedStartTime 
-    ? (() => {
-        try {
-          const startTime24 = convertTo24Hour(watchedStartTime);
-          const [startHours, startMinutes] = startTime24.split(":").map(Number);
-          return setMilliseconds(
-            setSeconds(setMinutes(setHours(watchedDate, startHours), startMinutes), 0),
-            0
-          );
-        } catch {
-          return null;
-        }
-      })()
-    : null;
-  const endDateTime = watchedDate && watchedEndTime 
-    ? (() => {
-        try {
-          const endTime24 = convertTo24Hour(watchedEndTime);
-          const [endHours, endMinutes] = endTime24.split(":").map(Number);
-          return setMilliseconds(
-            setSeconds(setMinutes(setHours(watchedDate, endHours), endMinutes), 0),
-            0
-          );
-        } catch {
-          return null;
-        }
-      })()
-    : null;
+  const startDateTime =
+    watchedDate && watchedStartTime
+      ? (() => {
+          try {
+            const startTime24 = convertTo24Hour(watchedStartTime);
+            const [startHours, startMinutes] = startTime24
+              .split(":")
+              .map(Number);
+            return setMilliseconds(
+              setSeconds(
+                setMinutes(setHours(watchedDate, startHours), startMinutes),
+                0
+              ),
+              0
+            );
+          } catch {
+            return null;
+          }
+        })()
+      : null;
+  const endDateTime =
+    watchedDate && watchedEndTime
+      ? (() => {
+          try {
+            const endTime24 = convertTo24Hour(watchedEndTime);
+            const [endHours, endMinutes] = endTime24.split(":").map(Number);
+            return setMilliseconds(
+              setSeconds(
+                setMinutes(setHours(watchedDate, endHours), endMinutes),
+                0
+              ),
+              0
+            );
+          } catch {
+            return null;
+          }
+        })()
+      : null;
 
   // Check for schedule conflicts in real-time
-  const { conflictResult, isChecking: isCheckingConflicts } = useNewSessionConflictCheck(
-    user?.uid || null,
-    startDateTime,
-    endDateTime,
-    { enabled: open && !!user }
-  );
+  const { conflictResult, isChecking: isCheckingConflicts } =
+    useNewSessionConflictCheck(user?.uid || null, startDateTime, endDateTime, {
+      enabled: open && !!user,
+    });
 
   useEffect(() => {
     if (date && startTime && endTime) {
@@ -321,12 +329,37 @@ export function ScheduleSessionDialog({
 
   const onSubmit = async (data: SessionData) => {
     if (!user || !userProfile) {
-      handleError(new Error("You must be logged in to create a session."), {
-        context: "authentication",
-        operation: "createSession",
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "You must be logged in to create a session.",
       });
       return;
     }
+
+    // Check for validation errors
+    if (Object.keys(validationErrors).length > 0) {
+      toast({
+        variant: "destructive",
+        title: "Validation Errors",
+        description: "Please fix the validation errors before scheduling.",
+      });
+      return;
+    }
+
+    // Check for schedule conflicts (only if check is complete)
+    if (!isCheckingConflicts && conflictResult?.hasConflict) {
+      toast({
+        variant: "destructive",
+        title: "Schedule Conflict",
+        description:
+          "You have a conflicting session at this time. Please choose a different time.",
+      });
+      return;
+    }
+
+    // If still checking conflicts, proceed anyway - let backend handle conflicts
+    // This ensures the button always works and users don't see confusing states
 
     // Clear previous validation errors
     setValidationErrors({});
@@ -404,12 +437,15 @@ export function ScheduleSessionDialog({
         "createSession",
         ErrorType.NETWORK
       );
-      
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Session creation timeout')), 20000)
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Session creation timeout")), 20000)
       );
-      
-      const createdTopic = await Promise.race([createTopicPromise, timeoutPromise]);
+
+      const createdTopic = await Promise.race([
+        createTopicPromise,
+        timeoutPromise,
+      ]);
 
       // Show success toast and close dialog immediately
       showSessionCreatedSuccess(
@@ -482,7 +518,7 @@ export function ScheduleSessionDialog({
                       </p>
                     )}
                     <div className="text-xs text-muted-foreground">
-                      {field.value?.length || 0}/100 characters
+                      {field.value?.length || 0}/50 characters
                     </div>
                   </FormItem>
                 )}
@@ -508,7 +544,7 @@ export function ScheduleSessionDialog({
                       </p>
                     )}
                     <div className="text-xs text-muted-foreground">
-                      {field.value?.length || 0}/500 characters
+                      {field.value?.length || 0}/250 characters
                     </div>
                   </FormItem>
                 )}
@@ -872,7 +908,7 @@ export function ScheduleSessionDialog({
 
               {/* Schedule Conflict Warning */}
               {conflictResult?.hasConflict && (
-                <ScheduleConflictWarning 
+                <ScheduleConflictWarning
                   conflictResult={conflictResult}
                   className="mt-4"
                 />
@@ -888,16 +924,7 @@ export function ScheduleSessionDialog({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={
-                    form.formState.isSubmitting ||
-                    Object.keys(validationErrors).length > 0 ||
-                    conflictResult?.hasConflict ||
-                    isCheckingConflicts
-                  }
-                  className="px-6"
-                >
+                <Button type="submit" className="px-6">
                   {form.formState.isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

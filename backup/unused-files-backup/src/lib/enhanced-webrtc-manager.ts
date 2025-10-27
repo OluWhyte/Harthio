@@ -1,6 +1,6 @@
 /**
- * Fixed WebRTC Manager with Jitsi fallback
- * Addresses signaling errors and messaging issues
+ * Enhanced WebRTC Manager
+ * Improved video calling with messaging support
  */
 
 import { supabaseClient as supabase } from './supabase';
@@ -35,9 +35,10 @@ export interface WebRTCCallbacks {
   onError: (error: string) => void;
   onRemoteAudioToggle: (muted: boolean) => void;
   onRemoteVideoToggle: (enabled: boolean) => void;
+  onRemoteDeviceInfo?: (deviceInfo: any) => void;
 }
 
-export class FixedWebRTCManager {
+export class EnhancedWebRTCManager {
   private peerConnection: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
   private dataChannel: RTCDataChannel | null = null;
@@ -59,9 +60,6 @@ export class FixedWebRTCManager {
   private statsInterval: NodeJS.Timeout | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
-  private isInitiator = false;
-  private pendingCandidates: RTCIceCandidate[] = [];
-  private hasRemoteDescription = false;
 
   constructor(
     sessionId: string,
@@ -75,30 +73,23 @@ export class FixedWebRTCManager {
     this.userName = userName;
     this.otherUserId = otherUserId;
     this.callbacks = callbacks;
-    
-    // Determine who initiates the call (lexicographically first user ID)
-    this.isInitiator = userId < otherUserId;
   }
 
   async initialize(): Promise<void> {
     try {
       this.updateState('initializing');
       
-      // Get user media first
+      // Get user media
       await this.getUserMedia();
-      
-      // Setup signaling before peer connection
-      await this.setupSignaling();
       
       // Setup peer connection
       await this.setupPeerConnection();
       
-      // Wait a bit for signaling to be ready, then start connection
-      setTimeout(() => {
-        if (this.isInitiator) {
-          this.startConnection();
-        }
-      }, 1000);
+      // Setup signaling
+      await this.setupSignaling();
+      
+      // Start connection process
+      await this.startConnection();
       
     } catch (error) {
       console.error('Failed to initialize WebRTC:', error);
@@ -109,6 +100,24 @@ export class FixedWebRTCManager {
 
   private async getUserMedia(): Promise<void> {
     try {
+      // First, try to use the existing stream from mediaStreamController
+      const { mediaStreamController } = await import('./media-stream-controller');
+      const existingState = mediaStreamController.getState();
+      
+      // Check if we have an existing stream with both audio and video
+      if (existingState.hasAudio && existingState.hasVideo) {
+        // Get the stream from the controller
+        const existingStream = mediaStreamController.getCurrentStream();
+        if (existingStream) {
+          console.log('🎛️ Enhanced WebRTC: Using existing stream from mediaStreamController');
+          this.localStream = existingStream;
+          this.callbacks.onLocalStream(this.localStream);
+          return;
+        }
+      }
+      
+      // Fallback: create new stream if no existing stream available
+      console.log('🎛️ Enhanced WebRTC: Creating new stream (no existing stream available)');
       const constraints = {
         video: {
           width: { ideal: 1280, max: 1920 },
@@ -123,6 +132,10 @@ export class FixedWebRTCManager {
       };
 
       this.localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Update the mediaStreamController with the new stream
+      mediaStreamController.setStream(this.localStream);
+      
       this.callbacks.onLocalStream(this.localStream);
     } catch (error) {
       console.error('Failed to get user media:', error);
@@ -133,37 +146,15 @@ export class FixedWebRTCManager {
   private async setupPeerConnection(): Promise<void> {
     const configuration: RTCConfiguration = {
       iceServers: [
-        // Primary STUN servers
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        
-        // Primary TURN server - Your EC2 Coturn
-        ...(process.env.NEXT_PUBLIC_TURN_SERVER_URL ? [{
-          urls: [
-            `turn:${process.env.NEXT_PUBLIC_TURN_SERVER_URL}:3478`,
-            `turn:${process.env.NEXT_PUBLIC_TURN_SERVER_URL}:3478?transport=tcp`,
-            `turns:${process.env.NEXT_PUBLIC_TURN_SERVER_URL}:5349`,
-            `turns:${process.env.NEXT_PUBLIC_TURN_SERVER_URL}:5349?transport=tcp`
-          ],
-          username: process.env.NEXT_PUBLIC_TURN_USERNAME || 'harthio',
-          credential: process.env.NEXT_PUBLIC_TURN_PASSWORD || 'harthio123'
-        }] : []),
-        
-        // Secondary TURN servers
-        {
-          urls: 'turn:relay.backups.cz',
-          username: 'webrtc',
-          credential: 'webrtc'
-        },
-        {
-          urls: 'turn:relay.backups.cz:443',
-          username: 'webrtc',
-          credential: 'webrtc'
-        },
-        
-        // Fallback TURN servers
         {
           urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        },
+        {
+          urls: 'turn:openrelay.metered.ca:443',
           username: 'openrelayproject',
           credential: 'openrelayproject'
         }
@@ -173,7 +164,7 @@ export class FixedWebRTCManager {
 
     this.peerConnection = new RTCPeerConnection(configuration);
 
-    // Add local stream tracks
+    // Add local stream
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => {
         this.peerConnection!.addTrack(track, this.localStream!);
@@ -231,28 +222,16 @@ export class FixedWebRTCManager {
   private setupDataChannel(): void {
     if (!this.peerConnection) return;
 
-    if (this.isInitiator) {
-      // Create data channel if we're the initiator
-      this.dataChannel = this.peerConnection.createDataChannel('messages', {
-        ordered: true
-      });
-      this.setupDataChannelHandlers(this.dataChannel);
-    }
+    // Create data channel for messages
+    this.dataChannel = this.peerConnection.createDataChannel('messages', {
+      ordered: true
+    });
 
-    // Handle incoming data channel
-    this.peerConnection.ondatachannel = (event) => {
-      const channel = event.channel;
-      this.dataChannel = channel;
-      this.setupDataChannelHandlers(channel);
-    };
-  }
-
-  private setupDataChannelHandlers(channel: RTCDataChannel): void {
-    channel.onopen = () => {
+    this.dataChannel.onopen = () => {
       console.log('Data channel opened');
     };
 
-    channel.onmessage = (event) => {
+    this.dataChannel.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         this.handleDataChannelMessage(data);
@@ -261,8 +240,17 @@ export class FixedWebRTCManager {
       }
     };
 
-    channel.onerror = (error) => {
-      console.error('Data channel error:', error);
+    // Handle incoming data channel
+    this.peerConnection.ondatachannel = (event) => {
+      const channel = event.channel;
+      channel.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleDataChannelMessage(data);
+        } catch (error) {
+          console.error('Failed to parse incoming data channel message:', error);
+        }
+      };
     };
   }
 
@@ -287,6 +275,11 @@ export class FixedWebRTCManager {
       case 'video-toggle':
         this.callbacks.onRemoteVideoToggle(data.enabled);
         break;
+      
+      case 'device-info':
+        console.log('📱 Enhanced WebRTC: Received device info from remote user:', data.deviceInfo);
+        this.callbacks.onRemoteDeviceInfo?.(data.deviceInfo);
+        break;
     }
   }
 
@@ -294,102 +287,40 @@ export class FixedWebRTCManager {
     // Subscribe to signaling messages
     this.signalingChannel = supabase
       .channel(`session-${this.sessionId}`)
-      .on('broadcast', { event: 'webrtc-signal' }, (payload) => {
+      .on('broadcast', { event: 'signaling' }, (payload) => {
         if (payload.payload.from !== this.userId) {
           this.handleSignalingMessage(payload.payload);
         }
       })
       .subscribe();
-
-    // Wait for subscription to be ready
-    return new Promise((resolve) => {
-      setTimeout(resolve, 500);
-    });
   }
 
   private async handleSignalingMessage(message: any): Promise<void> {
     if (!this.peerConnection) return;
 
     try {
-      const currentState = this.peerConnection.signalingState;
-      console.log(`Handling ${message.type} in state: ${currentState}`);
-
       switch (message.type) {
         case 'offer':
-          // Only handle offer if we're in the right state
-          if (currentState === 'stable' || currentState === 'have-local-offer') {
-            console.log('Received offer, setting remote description');
-            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.offer));
-            this.hasRemoteDescription = true;
-            
-            // Process any pending ICE candidates
-            for (const candidate of this.pendingCandidates) {
-              try {
-                await this.peerConnection.addIceCandidate(candidate);
-              } catch (candidateError) {
-                console.warn('Failed to add pending candidate:', candidateError);
-              }
-            }
-            this.pendingCandidates = [];
-            
-            // Only create answer if we're in have-remote-offer state
-            if (this.peerConnection.signalingState === 'have-remote-offer') {
-              const answer = await this.peerConnection.createAnswer();
-              await this.peerConnection.setLocalDescription(answer);
-              this.sendSignalingMessage({
-                type: 'answer',
-                answer: answer
-              });
-            }
-          } else {
-            console.warn(`Cannot handle offer in state: ${currentState}`);
-          }
+          await this.peerConnection.setRemoteDescription(message.offer);
+          const answer = await this.peerConnection.createAnswer();
+          await this.peerConnection.setLocalDescription(answer);
+          this.sendSignalingMessage({
+            type: 'answer',
+            answer: answer
+          });
           break;
 
         case 'answer':
-          // Only handle answer if we're expecting it
-          if (currentState === 'have-local-offer') {
-            console.log('Received answer, setting remote description');
-            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-            this.hasRemoteDescription = true;
-            
-            // Process any pending ICE candidates
-            for (const candidate of this.pendingCandidates) {
-              try {
-                await this.peerConnection.addIceCandidate(candidate);
-              } catch (candidateError) {
-                console.warn('Failed to add pending candidate:', candidateError);
-              }
-            }
-            this.pendingCandidates = [];
-          } else {
-            console.warn(`Cannot handle answer in state: ${currentState}`);
-          }
+          await this.peerConnection.setRemoteDescription(message.answer);
           break;
 
         case 'ice-candidate':
-          if (this.hasRemoteDescription && this.peerConnection.remoteDescription) {
-            try {
-              await this.peerConnection.addIceCandidate(new RTCIceCandidate(message.candidate));
-            } catch (candidateError) {
-              console.warn('Failed to add ICE candidate:', candidateError);
-            }
-          } else {
-            // Queue the candidate until we have remote description
-            this.pendingCandidates.push(new RTCIceCandidate(message.candidate));
-            console.log('Queued ICE candidate, pending count:', this.pendingCandidates.length);
-          }
+          await this.peerConnection.addIceCandidate(message.candidate);
           break;
       }
     } catch (error) {
       console.error('Error handling signaling message:', error);
-      // Only show critical errors to user
-      const errorString = error instanceof Error ? error.message : String(error);
-      if (errorString.includes('InvalidStateError')) {
-        console.warn('WebRTC state error, connection will retry automatically');
-      } else if (!errorString.includes('setRemoteDescription')) {
-        this.callbacks.onError(`Connection error: Please try reconnecting`);
-      }
+      this.callbacks.onError(`Signaling error: ${error}`);
     }
   }
 
@@ -397,12 +328,11 @@ export class FixedWebRTCManager {
     if (this.signalingChannel) {
       this.signalingChannel.send({
         type: 'broadcast',
-        event: 'webrtc-signal',
+        event: 'signaling',
         payload: {
           ...message,
           from: this.userId,
-          to: this.otherUserId,
-          timestamp: Date.now()
+          to: this.otherUserId
         }
       });
     }
@@ -412,12 +342,8 @@ export class FixedWebRTCManager {
     if (!this.peerConnection) return;
 
     try {
-      console.log('Creating offer...');
-      const offer = await this.peerConnection.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true
-      });
-      
+      // Create and send offer
+      const offer = await this.peerConnection.createOffer();
       await this.peerConnection.setLocalDescription(offer);
       
       this.sendSignalingMessage({
@@ -444,7 +370,7 @@ export class FixedWebRTCManager {
           console.error('Failed to get stats:', error);
         }
       }
-    }, 2000); // Less frequent to reduce overhead
+    }, 1000);
   }
 
   private processStats(stats: RTCStatsReport): void {
@@ -456,7 +382,7 @@ export class FixedWebRTCManager {
 
     stats.forEach((report) => {
       if (report.type === 'inbound-rtp' && report.mediaType === 'video') {
-        bandwidth = Math.round((report.bytesReceived * 8) / 1000);
+        bandwidth = Math.round((report.bytesReceived * 8) / 1000); // kbps
         frameRate = report.framesPerSecond || 0;
         if (report.frameWidth && report.frameHeight) {
           resolution = `${report.frameWidth}x${report.frameHeight}`;
@@ -476,7 +402,7 @@ export class FixedWebRTCManager {
       }
     });
 
-    // Determine quality
+    // Determine quality based on stats
     let quality: ConnectionQuality = 'excellent';
     if (latency > 300 || packetLoss > 5) {
       quality = 'poor';
@@ -506,7 +432,7 @@ export class FixedWebRTCManager {
   private async attemptReconnect(): Promise<void> {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.updateState('failed');
-      this.callbacks.onError('Connection failed. Please try switching to Jitsi or refresh the page.');
+      this.callbacks.onError('Maximum reconnection attempts reached');
       return;
     }
 
@@ -515,22 +441,7 @@ export class FixedWebRTCManager {
 
     setTimeout(async () => {
       try {
-        // Clean up current connection
-        if (this.peerConnection) {
-          this.peerConnection.close();
-          this.peerConnection = null;
-        }
-        
-        // Reset state
-        this.hasRemoteDescription = false;
-        this.pendingCandidates = [];
-        
-        // Reinitialize
-        await this.setupPeerConnection();
-        
-        if (this.isInitiator) {
-          await this.startConnection();
-        }
+        await this.initialize();
       } catch (error) {
         console.error('Reconnection failed:', error);
         this.attemptReconnect();
@@ -539,40 +450,40 @@ export class FixedWebRTCManager {
   }
 
   // Public methods
-  toggleAudio(): boolean {
-    if (this.localStream) {
-      const audioTrack = this.localStream.getAudioTracks()[0];
-      if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        
-        // Notify remote peer
-        this.sendDataChannelMessage({
-          type: 'audio-toggle',
-          muted: !audioTrack.enabled
-        });
-        
-        return !audioTrack.enabled;
-      }
+  async toggleAudio(): Promise<boolean> {
+    try {
+      const { mediaStreamController } = await import('./media-stream-controller');
+      const isMuted = mediaStreamController.toggleAudio();
+      
+      // Notify remote peer
+      this.sendDataChannelMessage({
+        type: 'audio-toggle',
+        muted: isMuted
+      });
+      
+      return isMuted;
+    } catch (error) {
+      console.error('🎤 Failed to toggle audio:', error);
+      return false;
     }
-    return false;
   }
 
-  toggleVideo(): boolean {
-    if (this.localStream) {
-      const videoTrack = this.localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        
-        // Notify remote peer
-        this.sendDataChannelMessage({
-          type: 'video-toggle',
-          enabled: videoTrack.enabled
-        });
-        
-        return !videoTrack.enabled;
-      }
+  async toggleVideo(): Promise<boolean> {
+    try {
+      const { mediaStreamController } = await import('./media-stream-controller');
+      const isVideoOff = mediaStreamController.toggleVideo();
+      
+      // Notify remote peer
+      this.sendDataChannelMessage({
+        type: 'video-toggle',
+        enabled: !isVideoOff
+      });
+      
+      return isVideoOff;
+    } catch (error) {
+      console.error('📹 Failed to toggle video:', error);
+      return false;
     }
-    return false;
   }
 
   sendMessage(content: string): void {
@@ -598,29 +509,23 @@ export class FixedWebRTCManager {
     });
   }
 
-  private sendDataChannelMessage(message: any): void {
-    if (this.dataChannel && this.dataChannel.readyState === 'open') {
-      try {
-        this.dataChannel.send(JSON.stringify(message));
-      } catch (error) {
-        console.error('Failed to send data channel message:', error);
-        // Fallback: send via Supabase for messaging
-        this.sendMessageViaSupabase(message);
-      }
-    } else {
-      // Fallback: send via Supabase for messaging
-      this.sendMessageViaSupabase(message);
-    }
+  sendDeviceInfo(deviceInfo: any): void {
+    console.log('📱 EnhancedWebRTC: sendDeviceInfo called with:', deviceInfo);
+    
+    const message = {
+      type: 'device-info',
+      deviceInfo,
+      userId: this.userId, // ✅ Add userId for proper filtering
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('📱 EnhancedWebRTC: Sending device info message:', message);
+    this.sendDataChannelMessage(message);
   }
 
-  private sendMessageViaSupabase(message: any): void {
-    if (message.type === 'chat-message') {
-      // Send message via Supabase as fallback
-      this.signalingChannel?.send({
-        type: 'broadcast',
-        event: 'chat-message',
-        payload: message
-      });
+  private sendDataChannelMessage(message: any): void {
+    if (this.dataChannel && this.dataChannel.readyState === 'open') {
+      this.dataChannel.send(JSON.stringify(message));
     }
   }
 

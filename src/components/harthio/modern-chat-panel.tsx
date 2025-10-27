@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Send, MessageCircle } from 'lucide-react'
+import { X, Send, MessageCircle, Shield, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type Message } from '@/hooks/use-message-panel'
+import { SessionSafetyReminder } from '@/components/session/session-safety-reminder'
 
 interface ModernChatPanelProps {
   isOpen: boolean
@@ -13,6 +14,7 @@ interface ModernChatPanelProps {
   otherUserName?: string
   otherUserInitials?: string
   className?: string
+  sessionTitle?: string
 }
 
 export function ModernChatPanel({ 
@@ -22,18 +24,55 @@ export function ModernChatPanel({
   onSendMessage,
   otherUserName = 'Other User',
   otherUserInitials = 'OU',
-  className 
+  className,
+  sessionTitle
 }: ModernChatPanelProps) {
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [showSafetyReminder, setShowSafetyReminder] = useState(false)
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const messageAreaRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive (smart behavior)
   useEffect(() => {
     if (messageAreaRef.current) {
-      messageAreaRef.current.scrollTop = messageAreaRef.current.scrollHeight
+      const scrollElement = messageAreaRef.current;
+      const isScrolledToBottom = scrollElement.scrollHeight - scrollElement.clientHeight <= scrollElement.scrollTop + 50;
+      
+      // Only auto-scroll if user is near the bottom (don't interrupt reading older messages)
+      if (isScrolledToBottom || messages.length === 1) {
+        setTimeout(() => {
+          scrollElement.scrollTo({
+            top: scrollElement.scrollHeight,
+            behavior: 'smooth'
+          });
+        }, 100);
+      }
     }
   }, [messages])
+
+  // Handle scroll detection for scroll-to-bottom button
+  useEffect(() => {
+    const scrollElement = messageAreaRef.current;
+    if (!scrollElement) return;
+
+    const handleScroll = () => {
+      const isScrolledToBottom = scrollElement.scrollHeight - scrollElement.clientHeight <= scrollElement.scrollTop + 50;
+      setShowScrollToBottom(!isScrolledToBottom && messages.length > 5);
+    };
+
+    scrollElement.addEventListener('scroll', handleScroll);
+    return () => scrollElement.removeEventListener('scroll', handleScroll);
+  }, [messages.length])
+
+  const scrollToBottom = () => {
+    if (messageAreaRef.current) {
+      messageAreaRef.current.scrollTo({
+        top: messageAreaRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }
 
   const handleSendMessage = () => {
     const message = inputValue.trim()
@@ -76,9 +115,13 @@ export function ModernChatPanel({
       {/* Chat Panel */}
       <div
         className={cn(
-          'fixed bottom-0 left-0 right-0 bg-white flex flex-col transition-transform duration-400 ease-out z-[1000]',
+          'fixed bottom-0 bg-white flex flex-col transition-transform duration-400 ease-out z-[1000]',
           'h-[70vh] max-h-[600px] rounded-t-[20px] shadow-[0_-5px_25px_rgba(0,0,0,0.2)]',
-          // Mobile responsive
+          // Responsive width constraints
+          'left-0 right-0', // Full width on mobile (default)
+          'md:left-1/2 md:transform md:-translate-x-1/2 md:w-[400px]', // Phone-like width on tablet
+          'lg:w-[450px]', // Slightly larger on laptop
+          // Mobile responsive height
           'max-md:h-[80vh] max-md:rounded-t-[15px]',
           'max-sm:h-[85vh]',
           isOpen ? 'translate-y-0' : 'translate-y-full',
@@ -104,37 +147,52 @@ export function ModernChatPanel({
             </div>
           </div>
 
-          {/* Close Button */}
-          <button
-            onClick={onToggle}
-            className="w-10 h-10 rounded-full bg-gray-100 border-none flex justify-center items-center cursor-pointer text-gray-600 text-lg transition-all duration-200 hover:bg-red-500 hover:text-white"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          {/* Header Actions */}
+          <div className="flex items-center gap-2">
+            {/* Safety Reminder Button */}
+            <button
+              onClick={() => setShowSafetyReminder(true)}
+              className="w-9 h-9 rounded-full bg-blue-100 border-none flex justify-center items-center cursor-pointer text-blue-600 transition-all duration-200 hover:bg-blue-500 hover:text-white"
+              title="Safety & Privacy Guidelines"
+            >
+              <Shield className="w-4 h-4" />
+            </button>
+            
+            {/* Close Button */}
+            <button
+              onClick={onToggle}
+              className="w-10 h-10 rounded-full bg-gray-100 border-none flex justify-center items-center cursor-pointer text-gray-600 text-lg transition-all duration-200 hover:bg-red-500 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Message Area */}
         <div 
           ref={messageAreaRef}
-          className="flex-1 overflow-y-auto p-5 flex flex-col gap-4 bg-[#f5f7fb] max-md:p-4 max-sm:p-3"
+          className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-[#f5f7fb] max-md:p-2 max-sm:p-2 scroll-smooth"
           style={{
             scrollbarWidth: 'thin',
-            scrollbarColor: '#c5c5c5 #f1f1f1'
+            scrollbarColor: '#c5c5c5 #f1f1f1',
+            WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+            overscrollBehavior: 'contain' // Prevent page scroll when reaching top/bottom
           }}
         >
           {messages.map((message) => (
             <div
               key={message.id}
               className={cn(
-                'max-w-[75%] animate-in slide-in-from-bottom-2 duration-300',
-                'max-sm:max-w-[85%]',
+                'max-w-[80%] animate-in slide-in-from-bottom-2 duration-300',
+                'max-sm:max-w-[90%]',
                 message.sender === 'System' 
                   ? 'self-center w-full text-center' 
                   : message.isOwn 
-                    ? 'self-end' 
-                    : 'self-start'
+                    ? 'self-end ml-auto' 
+                    : 'self-start mr-auto'
               )}
             >
+
               {message.sender === 'System' ? (
                 <div className="text-center">
                   <span className="text-xs text-rose-600 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
@@ -145,17 +203,17 @@ export function ModernChatPanel({
                 <>
                   <div
                     className={cn(
-                      'p-3 rounded-[18px] break-words shadow-sm',
+                      'p-2 rounded-[12px] break-words shadow-sm text-sm',
                       message.isOwn
-                        ? 'bg-gradient-to-r from-rose-500 to-teal-500 text-white rounded-br-[5px]'
-                        : 'bg-white text-gray-800 rounded-bl-[5px] shadow-[0_2px_5px_rgba(0,0,0,0.05)]'
+                        ? 'bg-rose-500 text-white rounded-br-[5px]'
+                        : 'bg-teal-500 text-white rounded-bl-[5px]'
                     )}
                   >
                     {message.content}
                   </div>
                   
                   <div className={cn(
-                    'flex justify-between text-xs mt-1 px-2 text-gray-400',
+                    'flex justify-between text-xs mt-1 px-1 text-gray-400',
                     message.isOwn ? 'justify-end' : 'justify-start'
                   )}>
                     <span>{message.isOwn ? 'You' : message.sender}</span>
@@ -176,6 +234,19 @@ export function ModernChatPanel({
                   <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Scroll to Bottom Button */}
+          {showScrollToBottom && (
+            <div className="absolute bottom-20 right-4">
+              <button
+                onClick={scrollToBottom}
+                className="w-10 h-10 rounded-full bg-rose-500 hover:bg-rose-600 text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+                title="Scroll to bottom"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
             </div>
           )}
         </div>
@@ -199,6 +270,13 @@ export function ModernChatPanel({
           </button>
         </div>
       </div>
+
+      {/* Safety Reminder Modal */}
+      <SessionSafetyReminder
+        isOpen={showSafetyReminder}
+        onClose={() => setShowSafetyReminder(false)}
+        sessionTitle={sessionTitle}
+      />
     </>
   )
 }

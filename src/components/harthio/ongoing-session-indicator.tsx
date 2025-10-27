@@ -104,10 +104,15 @@ export function OngoingSessionIndicator() {
   // This is the only time users can actually join the session
   if (activeSession) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-        <Button variant="destructive" size="sm" onClick={() => router.push(`/session/${activeSession.id}`)}>
-          Join Session
+      <div className="flex items-center gap-1 sm:gap-2">
+        <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+        <Button 
+          variant="destructive" 
+          size="sm" 
+          onClick={() => router.push(`/session/${activeSession.id}`)}
+          className="text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8"
+        >
+          <span className="truncate">Join Session</span>
         </Button>
       </div>
     );
@@ -119,26 +124,36 @@ export function OngoingSessionIndicator() {
     return (
        <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="outline" size="sm">
-            Upcoming Session
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8"
+          >
+            <span className="truncate">Upcoming Session</span>
           </Button>
         </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-          <AlertDialogTitle>Your next session</AlertDialogTitle>
-             <AlertDialogDescription>
+        <AlertDialogContent className="sm:max-w-[425px] max-h-[90vh]">
+          <AlertDialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6">
+            <AlertDialogTitle className="text-lg sm:text-xl">Your next session</AlertDialogTitle>
+             <AlertDialogDescription className="text-sm sm:text-base">
               You are scheduled to join the following session.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="py-4 space-y-2">
-            <p><span className="font-semibold">Topic:</span> {upcomingSession.title}</p>
+          <div className="py-3 sm:py-4 space-y-2 px-4 sm:px-6">
+            <p className="text-sm sm:text-base break-words">
+              <span className="font-semibold">Topic:</span> {upcomingSession.title}
+            </p>
             {upcomingSession.author?.display_name && (
-              <p><span className="font-semibold">Host:</span> {upcomingSession.author.display_name}</p>
+              <p className="text-sm sm:text-base break-words">
+                <span className="font-semibold">Host:</span> {upcomingSession.author.display_name}
+              </p>
             )}
-            <p><span className="font-semibold">Starts at:</span> {format(upcomingSession.startTime, 'E, d MMM @ HH:mm')}</p>
+            <p className="text-sm sm:text-base break-words">
+              <span className="font-semibold">Starts at:</span> {format(upcomingSession.startTime, 'E, d MMM @ HH:mm')}
+            </p>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogAction>Got it</AlertDialogAction>
+          <AlertDialogFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
+            <AlertDialogAction className="w-full sm:w-auto text-sm">Got it</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
