@@ -1,0 +1,63 @@
+# LiveKit Configuration for Railway Deployment
+port: 7880
+bind_addresses:
+  - ""
+
+# API Keys - will be set via Railway environment variables
+keys:
+  # These will be provided via Railway env vars:
+  # LIVEKIT_API_KEY: your-api-key
+  # LIVEKIT_API_SECRET: your-api-secret
+
+# Redis for scaling (optional, can use in-memory for free tier)
+redis:
+  # Will use Railway Redis addon if needed, otherwise in-memory
+
+# Room settings optimized for 1-on-1 conversations
+room:
+  # Auto-create rooms
+  auto_create: true
+  # Clean up empty rooms after 10 minutes
+  empty_timeout: 10m
+  # Max participants per room (perfect for 1-on-1)
+  max_participants: 2
+  # Enable recording if needed (optional)
+  enable_recording: false
+
+# WebRTC settings optimized for reliability
+webrtc:
+  # Use STUN servers for NAT traversal
+  ice_servers:
+    - urls:
+        - "stun:stun.l.google.com:19302"
+        - "stun:stun1.l.google.com:19302"
+  
+  # Port range for WebRTC (Railway will handle this)
+  port_range_start: 50000
+  port_range_end: 60000
+  
+  # Use TCP fallback for difficult networks
+  tcp_port: 7881
+
+# Logging
+log_level: info
+development: false
+
+# Health check endpoint
+health_check:
+  enabled: true
+  port: 8080
+
+# Metrics (optional)
+prometheus:
+  enabled: false
+
+# Turn server settings (for difficult networks)
+turn:
+  enabled: false
+  # Can be enabled later if needed
+
+# Node settings for Railway
+node:
+  # Railway will set this automatically
+  ip: "0.0.0.0"

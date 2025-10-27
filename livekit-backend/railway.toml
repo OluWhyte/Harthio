@@ -1,0 +1,23 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+# Auto-sleep configuration to save Railway hours
+[deploy.sleepMode]
+enabled = true
+# Sleep after 10 minutes of inactivity
+sleepAfter = "10m"
+# Wake up on any HTTP request
+wakeOnRequest = true
+
+# Environment variables (set these in Railway dashboard)
+[env]
+LIVEKIT_API_KEY = { from = "LIVEKIT_API_KEY" }
+LIVEKIT_API_SECRET = { from = "LIVEKIT_API_SECRET" }
+PORT = "7880"
