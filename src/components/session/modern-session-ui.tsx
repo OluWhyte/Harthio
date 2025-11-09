@@ -320,6 +320,7 @@ export function ModernSessionUI({
               autoPlay
               playsInline
               muted
+              muted
               className="w-full h-full object-cover"
             />
             {isVideoOff && (
