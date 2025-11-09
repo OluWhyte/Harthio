@@ -1,24 +1,30 @@
-// Simple logger utility to reduce console spam in production
+/**
+ * Production-safe logger
+ * Disables console logs in production environment
+ */
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 export const logger = {
   log: (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.log(...args);
     }
   },
   
+  error: (...args: any[]) => {
+    // Always log errors, even in production
+    console.error(...args);
+  },
+  
   warn: (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.warn(...args);
     }
   },
   
-  error: (...args: any[]) => {
-    // Always log errors
-    console.error(...args);
-  },
-  
   info: (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.info(...args);
     }
   }

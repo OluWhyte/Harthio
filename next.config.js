@@ -8,7 +8,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   // Simplified webpack configuration
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -18,6 +18,16 @@ const nextConfig = {
         crypto: false,
       };
     }
+    
+    // Remove console.logs in production
+    if (!dev) {
+      config.optimization.minimizer.forEach((plugin) => {
+        if (plugin.constructor.name === 'TerserPlugin') {
+          plugin.options.terserOptions.compress.drop_console = true;
+        }
+      });
+    }
+    
     return config;
   },
   // Ensure proper asset loading for mobile/ngrok
