@@ -36,8 +36,8 @@ const mockSessionReports = [
     status: 'pending',
     participants_count: 5,
     duration_minutes: 45,
-    created_at: '2024-01-15T10:30:00Z',
-    updated_at: '2024-01-15T10:30:00Z'
+    created_at: '2025-11-07T10:30:00Z',
+    updated_at: '2025-11-07T10:30:00Z'
   },
   {
     id: '2',
@@ -49,8 +49,8 @@ const mockSessionReports = [
     status: 'resolved',
     participants_count: 8,
     duration_minutes: 30,
-    created_at: '2024-01-14T15:45:00Z',
-    updated_at: '2024-01-14T16:30:00Z'
+    created_at: '2025-11-06T15:45:00Z',
+    updated_at: '2025-11-06T16:30:00Z'
   },
   {
     id: '3',
@@ -62,8 +62,8 @@ const mockSessionReports = [
     status: 'investigating',
     participants_count: 3,
     duration_minutes: 15,
-    created_at: '2024-01-13T09:15:00Z',
-    updated_at: '2024-01-13T14:20:00Z'
+    created_at: '2025-11-05T09:15:00Z',
+    updated_at: '2025-11-05T14:20:00Z'
   }
 ];
 

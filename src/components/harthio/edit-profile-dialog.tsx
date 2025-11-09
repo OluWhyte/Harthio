@@ -170,8 +170,7 @@ export function EditProfileDialog({ children, user }: EditProfileDialogProps) {
         </div>
         <DialogFooter>
           <Button onClick={handleSaveChanges} disabled={isSaving}>
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isSaving ? 'Saving...' : 'Save changes'}
+            Save changes
           </Button>
         </DialogFooter>
       </DialogContent>

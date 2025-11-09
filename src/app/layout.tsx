@@ -1,25 +1,10 @@
 
 import type { Metadata } from 'next';
-import { Inter, Poppins } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/components/harthio/auth-provider';
 import { AppPerformanceProvider } from '@/components/common/app-performance-provider';
 import { Analytics } from '@/components/seo/analytics';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  weight: ['400', '500', '700'],
-  display: 'swap',
-})
-
-const poppins = Poppins({
-  subsets: ['latin'],
-  variable: '--font-poppins',
-  weight: ['400', '600', '700'],
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   title: 'Harthio - Find Someone Who Truly Gets It',
@@ -90,8 +75,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${poppins.variable}`}>
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Google Fonts - Inter */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
+          rel="stylesheet" 
+        />
+      </head>
+      <body className="font-sans antialiased">
         <AppPerformanceProvider>
           <AuthProvider>
             {children}

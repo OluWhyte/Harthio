@@ -88,10 +88,22 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          // Basic security headers for development
+          // OWASP Security headers for development
           {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
           },
           // Relaxed CSP for development
           {
@@ -103,8 +115,8 @@ const nextConfig = {
               "img-src 'self' data: blob: https: http:",
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https: wss: ws: https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
-              "media-src 'self' blob: data: https://session.harthio.com",
-              "frame-src 'self' https://session.harthio.com",
+              "media-src 'self' blob: data: https://session.harthio.com https://*.daily.co",
+              "frame-src 'self' https://session.harthio.com https://*.daily.co",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'"
@@ -121,10 +133,10 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          // Enhanced security headers for production
+          // OWASP Enhanced Security Headers for Production
           {
             key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
+            value: 'DENY', // Stronger than SAMEORIGIN - prevents all framing
           },
           {
             key: 'X-Content-Type-Options',
@@ -136,11 +148,23 @@ const nextConfig = {
           },
           {
             key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
+            value: 'strict-origin-when-cross-origin', // More secure
           },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on', // Performance + Security
+          },
+          {
+            key: 'X-Download-Options',
+            value: 'noopen', // Prevent IE from executing downloads
+          },
+          {
+            key: 'X-Permitted-Cross-Domain-Policies',
+            value: 'none', // Restrict Adobe Flash/PDF cross-domain
           },
           {
             key: 'Content-Security-Policy',
@@ -151,8 +175,8 @@ const nextConfig = {
               "img-src 'self' data: https://images.unsplash.com https://res.cloudinary.com https://i.imgur.com https://raw.githubusercontent.com https://placehold.co https://*.supabase.co",
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live https://api.resend.com https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
-              "media-src 'self' blob: https://session.harthio.com",
-              "frame-src 'self' https://session.harthio.com",
+              "media-src 'self' blob: https://session.harthio.com https://*.daily.co",
+              "frame-src 'self' https://session.harthio.com https://*.daily.co",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

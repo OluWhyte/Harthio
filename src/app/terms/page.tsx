@@ -42,7 +42,7 @@ export default function TermsOfServicePage() {
                 These terms govern your use of Harthio and outline our mutual responsibilities for creating a safe, supportive community.
               </p>
               <p className="text-sm text-gray-500">
-                Last updated: December 10, 2024
+                Last updated: November 8, 2025
               </p>
             </div>
           </div>
@@ -410,7 +410,7 @@ export default function TermsOfServicePage() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <h3 className="font-semibold mb-2 text-blue-800">Effective Date</h3>
                     <p className="text-blue-700">
-                      These Terms of Service are effective as of December 10, 2024, and will remain in effect 
+                      These Terms of Service are effective as of November 8, 2025, and will remain in effect 
                       except with respect to any changes in their provisions in the future.
                     </p>
                   </div>

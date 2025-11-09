@@ -18,7 +18,6 @@ import {
   UserCheck,
   AlertTriangle,
   RefreshCw,
-
 } from "lucide-react";
 import { TopicCard, Topic } from "@/components/harthio/topic-card";
 import { ScheduleSessionDialog } from "@/components/harthio/schedule-session-dialog";

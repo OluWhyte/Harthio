@@ -1,0 +1,140 @@
+/**
+ * TURN Credentials API Endpoint
+ * Securely generates time-limited TURN credentials on the backend
+ * 
+ * This endpoint:
+ * 1. Uses the secret API key stored securely on the server
+ * 2. Fetches fresh, time-limited credentials from TURN providers
+ * 3. Returns them to the client just before establishing WebRTC connection
+ * 
+ * Security: The secret keys never leave the server
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+
+interface TURNCredentials {
+  urls: string | string[];
+  username: string;
+  credential: string;
+}
+
+interface TURNResponse {
+  iceServers: TURNCredentials[];
+  expiresAt: number; // Timestamp when credentials expire
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const iceServers: TURNCredentials[] = [];
+    const now = Date.now();
+    
+    // 1. Metered.ca - Primary TURN service (dynamic credentials)
+    const meteredDomain = process.env.NEXT_PUBLIC_METERED_DOMAIN;
+    const meteredApiKey = process.env.METERED_API_KEY || process.env.NEXT_PUBLIC_METERED_API_KEY;
+    
+    if (meteredDomain && meteredApiKey) {
+      try {
+        console.log('🔄 Fetching Metered.ca TURN credentials...');
+        const meteredUrl = `https://${meteredDomain}/api/v1/turn/credentials?apiKey=${meteredApiKey}`;
+        
+        const response = await fetch(meteredUrl, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (response.ok) {
+          const meteredServers = await response.json();
+          if (Array.isArray(meteredServers) && meteredServers.length > 0) {
+            iceServers.push(...meteredServers);
+            console.log(`✅ Metered.ca: ${meteredServers.length} servers`);
+          }
+        } else {
+          console.warn(`⚠️ Metered.ca API error: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('❌ Metered.ca fetch failed:', error);
+      }
+    }
+    
+    // 2. ExpressTURN - Secondary TURN service (if configured)
+    const expressTurnSecret = process.env.EXPRESSTURN_SECRET_KEY;
+    const expressTurnUrl = process.env.EXPRESSTURN_SERVER_URL;
+    
+    if (expressTurnSecret && expressTurnUrl) {
+      try {
+        console.log('🔄 Generating ExpressTURN credentials...');
+        // ExpressTURN uses HMAC-based authentication
+        // Generate time-limited username and credential
+        const ttl = 24 * 3600; // 24 hours
+        const timestamp = Math.floor(now / 1000) + ttl;
+        const username = `${timestamp}:harthio`;
+        
+        // Generate HMAC credential using the secret
+        const crypto = require('crypto');
+        const hmac = crypto.createHmac('sha1', expressTurnSecret);
+        hmac.update(username);
+        const credential = hmac.digest('base64');
+        
+        iceServers.push({
+          urls: [
+            `turn:${expressTurnUrl}:3478`,
+            `turn:${expressTurnUrl}:3478?transport=tcp`,
+            `turns:${expressTurnUrl}:5349`,
+            `turns:${expressTurnUrl}:5349?transport=tcp`
+          ],
+          username,
+          credential
+        });
+        
+        console.log('✅ ExpressTURN credentials generated');
+      } catch (error) {
+        console.error('❌ ExpressTURN generation failed:', error);
+      }
+    }
+    
+    // 3. Free public TURN servers (fallback)
+    iceServers.push(
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    );
+    
+    // Calculate expiry (12 hours from now, or when credentials expire)
+    const expiresAt = now + (12 * 60 * 60 * 1000);
+    
+    const response: TURNResponse = {
+      iceServers,
+      expiresAt
+    };
+    
+    console.log(`📡 Returning ${iceServers.length} TURN servers to client`);
+    
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'private, max-age=43200' // Cache for 12 hours
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ TURN credentials API error:', error);
+    
+    // Return minimal fallback configuration
+    return NextResponse.json({
+      iceServers: [
+        {
+          urls: 'turn:openrelay.metered.ca:80',
+          username: 'openrelayproject',
+          credential: 'openrelayproject'
+        }
+      ],
+      expiresAt: Date.now() + (1 * 60 * 60 * 1000) // 1 hour
+    }, { status: 200 }); // Still return 200 with fallback
+  }
+}

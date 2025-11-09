@@ -4,22 +4,11 @@
  * Works with Supabase real-time for reliable message delivery
  */
 
-import { createClient } from '@supabase/supabase-js';
 import { Database } from './database-types';
+import { messageService } from './supabase-services';
 
-// Safe Supabase client initialization
-const getSupabaseClient = () => {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  
-  if (!url || !key) {
-    throw new Error('Missing Supabase environment variables');
-  }
-  
-  return createClient<Database>(url, key);
-};
-
-let supabase: ReturnType<typeof createClient<Database>> | null = null;
+// Use shared Supabase client to avoid multiple instances
+import { supabase } from './supabase';
 
 export interface Message {
   id: string;
@@ -27,8 +16,9 @@ export interface Message {
   userName: string;
   content: string;
   timestamp: Date;
-  type: 'text' | 'system';
+  type: 'text' | 'system' | 'device-metadata';
   sessionId: string;
+  metadata?: any; // For device orientation metadata
 }
 
 export interface MessageCallback {
@@ -67,11 +57,14 @@ export class MessagingService {
   }
 
   private async initialize(): Promise<void> {
+    // Prevent multiple initialization
+    if (this.channel && this.isConnected) {
+      console.warn('Messaging service already initialized');
+      return;
+    }
+
     try {
-      // Initialize Supabase client if not already done
-      if (!supabase) {
-        supabase = getSupabaseClient();
-      }
+      // Use shared Supabase client (already initialized)
       
       // Create a dedicated channel for messaging
       this.channel = supabase.channel(`session-messages-${this.sessionId}`, {
@@ -147,12 +140,18 @@ export class MessagingService {
       // Add to history for persistence
       this.addToHistory(message);
 
-      // Only show incoming messages from others (our own are already shown locally)
-      if (messageData.userId !== this.userId) {
+      // CRITICAL FIX: Always deliver messages from other users
+      // Check if we've already shown this message locally (by ID)
+      const alreadyShown = this.messageHistory.some(m => 
+        m.id === message.id && m.userId === this.userId
+      );
+      
+      // Show message if it's from another user OR if we haven't shown it yet
+      if (messageData.userId !== this.userId || !alreadyShown) {
         this.callbacks.onMessage(message);
       }
     } catch (error) {
-      // Error handling incoming message
+      console.error('Error handling incoming message:', error);
     }
   }
 
@@ -232,6 +231,11 @@ export class MessagingService {
     try {
       if (this.isConnected) {
         await this.sendMessageToChannel(message);
+        
+        // Save to database if it's a text message (not system message)
+        if (type === 'text') {
+          await this.saveMessageToDatabase(message);
+        }
       } else {
         // Queue message if not connected
         this.messageQueue.push(message);
@@ -371,6 +375,29 @@ export class MessagingService {
     if (!this.messageHistory.find(m => m.id === message.id)) {
       this.messageHistory.push(message);
       this.saveMessageHistory();
+    }
+  }
+
+  private async saveMessageToDatabase(message: Message): Promise<void> {
+    try {
+      // Map message format to database format
+      const dbMessage = {
+        topic_id: this.sessionId,
+        sender_id: this.userId, // Map userId to sender_id for database
+        text: message.content
+      };
+      
+      await messageService.sendMessage(dbMessage);
+    } catch (error) {
+      // Handle RLS policy errors gracefully
+      if (error instanceof Error && error.message.includes('row-level security policy')) {
+        console.warn('💬 Message sent via real-time but not saved to database (RLS policy issue)');
+        console.warn('🔧 Run the fix-messages-rls.sql script to enable database message storage');
+      } else {
+        console.warn('Failed to save message to database:', error);
+      }
+      // Don't throw error to avoid breaking the messaging flow
+      // Messages still work via real-time P2P even if database save fails
     }
   }
 

@@ -893,15 +893,14 @@ export function ScheduleSessionDialog({
                   disabled={
                     form.formState.isSubmitting ||
                     Object.keys(validationErrors).length > 0 ||
-                    conflictResult?.hasConflict ||
-                    isCheckingConflicts
+                    conflictResult?.hasConflict
                   }
                   className="px-6"
                 >
                   {form.formState.isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Scheduling...
+                      Creating...
                     </>
                   ) : (
                     "Schedule Session"

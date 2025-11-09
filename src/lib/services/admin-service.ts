@@ -50,7 +50,7 @@ export class AdminService {
         .single();
 
       if (error) return false;
-      return data?.role === 'admin' || data?.role === 'editor';
+      return (data as any)?.role === 'admin' || (data as any)?.role === 'editor';
     } catch (error) {
       console.error('Error checking admin status:', error);
       return false;
@@ -66,7 +66,7 @@ export class AdminService {
         .single();
 
       if (error) return null;
-      return data?.role || null;
+      return (data as any)?.role || null;
     } catch (error) {
       console.error('Error getting user role:', error);
       return null;
@@ -94,11 +94,11 @@ export class AdminService {
       // Get rating stats for each user
       const usersWithStats = await Promise.all(
         users.map(async (user) => {
-          const ratingStats = await AdminService.getUserRatingStats(user.id);
+          const ratingStats = await AdminService.getUserRatingStats((user as any).id);
           return {
-            ...user,
-            topic_count: user.topic_count?.[0]?.count || 0,
-            message_count: user.message_count?.[0]?.count || 0,
+            ...(user as any),
+            topic_count: (user as any).topic_count?.[0]?.count || 0,
+            message_count: (user as any).message_count?.[0]?.count || 0,
             rating_stats: ratingStats
           };
         })
@@ -129,7 +129,7 @@ export class AdminService {
       ]);
 
       return {
-        ...user,
+        ...(user as any),
         topic_count: topicCount,
         message_count: messageCount,
         rating_stats: ratingStats
@@ -261,18 +261,18 @@ export class AdminService {
       const topicsWithDetails = await Promise.all(
         data.map(async (topic) => {
           const [messageCount, joinRequests, sessionPresence] = await Promise.all([
-            AdminService.getTopicMessageCount(topic.id),
-            AdminService.getTopicJoinRequests(topic.id),
-            AdminService.getSessionPresence(topic.id)
+            AdminService.getTopicMessageCount((topic as any).id),
+            AdminService.getTopicJoinRequests((topic as any).id),
+            AdminService.getSessionPresence((topic as any).id)
           ]);
 
           const sessionStatus = AdminService.calculateSessionStatus(topic, joinRequests, sessionPresence);
           const actualDuration = AdminService.calculateActualDuration(topic, sessionPresence);
 
           return {
-            ...topic,
+            ...(topic as any),
             message_count: messageCount,
-            participant_count: topic.participants?.length || 0,
+            participant_count: (topic as any).participants?.length || 0,
             join_requests: joinRequests,
             session_presence: sessionPresence,
             session_status: sessionStatus.status,
@@ -323,18 +323,18 @@ export class AdminService {
       const topicsWithDetails = await Promise.all(
         data.map(async (topic) => {
           const [messageCount, joinRequests, sessionPresence] = await Promise.all([
-            AdminService.getTopicMessageCount(topic.id),
-            AdminService.getTopicJoinRequests(topic.id),
-            AdminService.getSessionPresence(topic.id)
+            AdminService.getTopicMessageCount((topic as any).id),
+            AdminService.getTopicJoinRequests((topic as any).id),
+            AdminService.getSessionPresence((topic as any).id)
           ]);
 
           const sessionStatus = AdminService.calculateSessionStatus(topic, joinRequests, sessionPresence);
           const actualDuration = AdminService.calculateActualDuration(topic, sessionPresence);
 
           return {
-            ...topic,
+            ...(topic as any),
             message_count: messageCount,
-            participant_count: topic.participants?.length || 0,
+            participant_count: (topic as any).participants?.length || 0,
             join_requests: joinRequests,
             session_presence: sessionPresence,
             session_status: sessionStatus.status,
@@ -553,7 +553,7 @@ export class AdminService {
 
       const hourCounts = new Array(24).fill(0);
       topics?.forEach(topic => {
-        const hour = new Date(topic.start_time).getHours();
+        const hour = new Date((topic as any).start_time).getHours();
         hourCounts[hour]++;
       });
 
@@ -628,10 +628,10 @@ export class AdminService {
     
     activeTopics.forEach(topic => {
       // Add topic author
-      activeUserIds.add(topic.author_id);
+      activeUserIds.add((topic as any).author_id);
       // Add participants
-      if (topic.participants && Array.isArray(topic.participants)) {
-        topic.participants.forEach(participantId => activeUserIds.add(participantId));
+      if ((topic as any).participants && Array.isArray((topic as any).participants)) {
+        (topic as any).participants.forEach(participantId => activeUserIds.add(participantId));
       }
     });
 
@@ -680,7 +680,7 @@ export class AdminService {
       .from('topics')
       .select('participants');
     
-    return data?.reduce((total, topic) => total + (topic.participants?.length || 0), 0) || 0;
+    return data?.reduce((total, topic) => total + ((topic as any).participants?.length || 0), 0) || 0;
   }
 
   private static async getTotalMessageCount(): Promise<number> {
@@ -717,7 +717,7 @@ export class AdminService {
     try {
       const { error } = await supabase
         .from('admin_roles')
-        .upsert({ user_id: userId, role });
+        .upsert({ user_id: userId, role } as any);
 
       if (error) throw error;
     } catch (error) {
@@ -767,7 +767,7 @@ export class AdminService {
         }
 
         // Get user data for each admin
-        const userIds = adminRoles.map(admin => admin.user_id);
+        const userIds = adminRoles.map(admin => (admin as any).user_id);
         const { data: users, error: userError } = await supabase
           .from('users')
           .select('*')
@@ -777,8 +777,8 @@ export class AdminService {
 
         // Combine the data
         return adminRoles.map(admin => ({
-          ...admin,
-          user: users?.find(user => user.id === admin.user_id) || null
+          ...(admin as any),
+          user: users?.find(user => (user as any).id === (admin as any).user_id) || null
         })).filter(admin => admin.user !== null);
       }
 
@@ -812,11 +812,11 @@ export class AdminService {
       // Get rating stats for each user
       const usersWithStats = await Promise.all(
         users.map(async (user) => {
-          const ratingStats = await AdminService.getUserRatingStats(user.id);
+          const ratingStats = await AdminService.getUserRatingStats((user as any).id);
           return {
-            ...user,
-            topic_count: user.topic_count?.[0]?.count || 0,
-            message_count: user.message_count?.[0]?.count || 0,
+            ...(user as any),
+            topic_count: (user as any).topic_count?.[0]?.count || 0,
+            message_count: (user as any).message_count?.[0]?.count || 0,
             rating_stats: ratingStats
           };
         })
@@ -1172,15 +1172,15 @@ export class AdminService {
         ];
         
         const rows = (deviceData || []).map(device => [
-          device.device_type || 'Unknown',
-          device.browser || 'Unknown',
-          device.operating_system || 'Unknown',
-          device.country || 'Unknown',
-          device.unique_users || 0,
-          device.total_sessions || 0,
-          Math.round(device.avg_session_duration || 0),
-          device.sessions_last_7_days || 0,
-          device.sessions_last_30_days || 0
+          (device as any).device_type || 'Unknown',
+          (device as any).browser || 'Unknown',
+          (device as any).operating_system || 'Unknown',
+          (device as any).country || 'Unknown',
+          (device as any).unique_users || 0,
+          (device as any).total_sessions || 0,
+          Math.round((device as any).avg_session_duration || 0),
+          (device as any).sessions_last_7_days || 0,
+          (device as any).sessions_last_30_days || 0
         ]);
         
         const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
@@ -1239,7 +1239,7 @@ export class AdminService {
         .single();
 
       if (!error && data) {
-        return { engagement_level: data.engagement_level };
+        return { engagement_level: (data as any).engagement_level };
       }
 
       // If view doesn't work, return a default engagement level
@@ -1309,9 +1309,9 @@ export class AdminService {
 
       // Combine all activities to simulate sessions
       const activities = [
-        ...(topics.data || []).map(t => ({ ...t, type: 'topic' })),
-        ...(messages.data || []).map(m => ({ ...m, type: 'message' })),
-        ...(ratings.data || []).map(r => ({ ...r, type: 'rating' }))
+        ...(topics.data || []).map(t => ({ ...(t as any), type: 'topic' })),
+        ...(messages.data || []).map(m => ({ ...(m as any), type: 'message' })),
+        ...(ratings.data || []).map(r => ({ ...(r as any), type: 'rating' }))
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       // Simulate session data with device info
@@ -1478,13 +1478,13 @@ export class AdminService {
       // Get rating stats and apply rating/engagement filters
       const usersWithStats = await Promise.all(
         users.map(async (user) => {
-          const ratingStats = await AdminService.getUserRatingStats(user.id);
-          const engagementMetrics = await AdminService.getUserEngagementMetrics(user.id);
+          const ratingStats = await AdminService.getUserRatingStats((user as any).id);
+          const engagementMetrics = await AdminService.getUserEngagementMetrics((user as any).id);
           
           return {
-            ...user,
-            topic_count: user.topic_count?.[0]?.count || 0,
-            message_count: user.message_count?.[0]?.count || 0,
+            ...(user as any),
+            topic_count: (user as any).topic_count?.[0]?.count || 0,
+            message_count: (user as any).message_count?.[0]?.count || 0,
             rating_stats: ratingStats,
             engagement_metrics: engagementMetrics
           };
@@ -1565,14 +1565,14 @@ export class AdminService {
 
       // Get additional stats and apply post-processing filters
       const topicsWithDetails = await Promise.all(
-        data.map(async (topic) => {
+        (data as any[]).map(async (topic: any) => {
           const [messageCount, participantCount] = await Promise.all([
             AdminService.getTopicMessageCount(topic.id),
-            topic.participants?.length || 0
+            (topic as any).participants?.length || 0
           ]);
 
           return {
-            ...topic,
+            ...(topic as any),
             message_count: messageCount,
             participant_count: participantCount
           };

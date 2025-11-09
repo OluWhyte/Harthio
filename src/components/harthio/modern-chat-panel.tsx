@@ -89,7 +89,7 @@ export function ModernChatPanel({
         <div className="p-5 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-[20px] max-md:p-4 max-sm:p-3">
           <div className="flex items-center gap-3">
             {/* Avatar */}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-teal-500 flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
               {otherUserInitials}
             </div>
             
@@ -126,8 +126,8 @@ export function ModernChatPanel({
             <div
               key={message.id}
               className={cn(
-                'max-w-[75%] animate-in slide-in-from-bottom-2 duration-300',
-                'max-sm:max-w-[85%]',
+                'max-w-[80%] animate-in slide-in-from-bottom-2 duration-300',
+                'max-sm:max-w-[90%]',
                 message.sender === 'System' 
                   ? 'self-center w-full text-center' 
                   : message.isOwn 
@@ -137,7 +137,7 @@ export function ModernChatPanel({
             >
               {message.sender === 'System' ? (
                 <div className="text-center">
-                  <span className="text-xs text-rose-600 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
+                  <span className="text-xs text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
                     {message.content}
                   </span>
                 </div>
@@ -145,17 +145,22 @@ export function ModernChatPanel({
                 <>
                   <div
                     className={cn(
-                      'p-3 rounded-[18px] break-words shadow-sm',
+                      'p-3 rounded-[18px] shadow-sm',
                       message.isOwn
-                        ? 'bg-gradient-to-r from-rose-500 to-teal-500 text-white rounded-br-[5px]'
-                        : 'bg-white text-gray-800 rounded-bl-[5px] shadow-[0_2px_5px_rgba(0,0,0,0.05)]'
+                        ? 'bg-primary text-white rounded-br-[5px]'
+                        : 'bg-accent/10 text-gray-800 rounded-bl-[5px] border border-accent/20'
                     )}
+                    style={{ 
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      hyphens: 'auto'
+                    }}
                   >
                     {message.content}
                   </div>
                   
                   <div className={cn(
-                    'flex justify-between text-xs mt-1 px-2 text-gray-400',
+                    'flex text-xs mt-1 px-2 text-gray-400',
                     message.isOwn ? 'justify-end' : 'justify-start'
                   )}>
                     <span>{message.isOwn ? 'You' : message.sender}</span>
@@ -188,12 +193,12 @@ export function ModernChatPanel({
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type a message..."
-            className="flex-1 p-3 border border-gray-300 rounded-[24px] outline-none text-sm transition-colors duration-300 focus:border-rose-500"
+            className="flex-1 p-3 border border-gray-300 rounded-[24px] outline-none text-sm transition-colors duration-300 focus:border-primary"
           />
           <button
             onClick={handleSendMessage}
             disabled={!inputValue.trim()}
-            className="w-11 h-11 rounded-full bg-gradient-to-r from-rose-500 to-teal-500 text-white border-none flex justify-center items-center cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            className="w-11 h-11 rounded-full bg-primary hover:bg-primary/90 text-white border-none flex justify-center items-center cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
             <Send className="w-4 h-4" />
           </button>

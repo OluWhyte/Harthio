@@ -676,6 +676,7 @@ export interface Database {
           read_at?: string | null;
         };
       };
+
     };
     Views: {
       user_footprints: {
@@ -889,6 +890,8 @@ export type AdminActionUpdate = TablesUpdate<"admin_actions">;
 export type AdminNotification = Tables<"admin_notifications">;
 export type AdminNotificationInsert = TablesInsert<"admin_notifications">;
 export type AdminNotificationUpdate = TablesUpdate<"admin_notifications">;
+
+
 
 // ============================================================================
 // EXTENDED TYPES WITH RELATIONS

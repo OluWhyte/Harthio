@@ -6,6 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { RobustWebRTCTest } from '@/components/admin/robust-webrtc-test'
+import { SessionQualityAnalytics } from '@/components/admin/session-quality-analytics'
+import { SecurityDashboard } from '@/components/admin/security-dashboard'
+import { SecurityTestSuite } from '@/components/admin/security-test-suite'
 import { 
   MessageSquare, 
   Video, 
@@ -19,7 +24,9 @@ import {
   Code,
   Smartphone,
   Monitor,
-  Tablet
+  Tablet,
+  Wifi,
+  BarChart3
 } from 'lucide-react'
 
 export default function AdminTestingPage() {
@@ -218,15 +225,56 @@ User Agent: ${navigator.userAgent}`)
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Feature Testing</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Admin Testing & Analytics</h1>
           <p className="text-gray-600 mt-2">
-            Test and validate Harthio features, components, and functionality
+            Test WebRTC infrastructure, analyze session quality, and validate system functionality
           </p>
         </div>
         <Badge variant="outline" className="text-sm">
           Admin Only
         </Badge>
       </div>
+
+      <Tabs defaultValue="webrtc" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="webrtc">WebRTC Testing</TabsTrigger>
+          <TabsTrigger value="analytics">Quality Analytics</TabsTrigger>
+          <TabsTrigger value="security">Security (OWASP)</TabsTrigger>
+          <TabsTrigger value="features">Feature Tests</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="webrtc" className="space-y-6">
+          <RobustWebRTCTest />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <SessionQualityAnalytics />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium">OWASP Security Center</h3>
+              <p className="text-sm text-gray-600">
+                Monitor security events, test OWASP implementations, and ensure compliance
+              </p>
+            </div>
+            
+            {/* Security Test Suite */}
+            <div>
+              <h4 className="text-md font-medium mb-4">Security Testing</h4>
+              <SecurityTestSuite />
+            </div>
+            
+            {/* Security Dashboard */}
+            <div>
+              <h4 className="text-md font-medium mb-4">Security Monitoring</h4>
+              <SecurityDashboard />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="features" className="space-y-6">
 
       <div className="grid gap-6">
         {featureTests.map((category, categoryIndex) => (
@@ -354,6 +402,8 @@ User Agent: ${navigator.userAgent}`)
           Use this page to test new features, validate functionality, and debug issues
         </p>
       </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

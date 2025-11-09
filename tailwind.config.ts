@@ -29,8 +29,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['var(--font-inter)', 'Inter', 'sans-serif'],
-        headline: ['var(--font-poppins)', 'Poppins', 'sans-serif'],
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'sans-serif'],
+        body: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        headline: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        inter: ['Inter', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',

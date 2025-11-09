@@ -3,6 +3,7 @@ import { emailService } from '@/lib/email-service';
 import { z } from 'zod';
 import { emailRateLimit } from '@/lib/rate-limit';
 import { sanitizeError, logSecurityEvent, getSecurityHeaders, sanitizeInput } from '@/lib/security-utils';
+import { InputSanitizer, SecurityLogger } from '@/lib/security/owasp-security-service';
 
 // Validation schema for contact form
 const contactSchema = z.object({
@@ -45,9 +46,23 @@ export async function POST(request: NextRequest) {
 
     const { userName, userEmail, topic, message } = validationResult.data;
 
-    // Sanitize inputs
-    const sanitizedUserName = sanitizeInput(userName, 100);
-    const sanitizedMessage = sanitizeInput(message, 500);
+    // OWASP: Sanitize inputs to prevent XSS
+    const sanitizedUserName = InputSanitizer.sanitizeHTML(sanitizeInput(userName, 100));
+    const sanitizedMessage = InputSanitizer.sanitizeHTML(sanitizeInput(message, 500));
+    
+    // OWASP: Validate email format
+    if (!InputSanitizer.isValidEmail(userEmail)) {
+      await SecurityLogger.logSecurityEvent({
+        type: 'suspicious_activity',
+        ipAddress: request.ip || 'unknown',
+        details: 'Invalid email format in contact form',
+        severity: 'low'
+      });
+      return NextResponse.json(
+        { success: false, error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
 
     console.log('📧 Processing contact form submission:', {
       userName: sanitizedUserName,

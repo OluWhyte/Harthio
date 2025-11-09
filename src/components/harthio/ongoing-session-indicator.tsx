@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { topicService, dbUtils } from '@/lib/supabase-services';
 export function OngoingSessionIndicator() {
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [upcomingSession, setUpcomingSession] = useState<any | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
   const { user, setIsInOngoingSession } = useAuth();
   const router = useRouter();
 
@@ -99,6 +100,23 @@ export function OngoingSessionIndicator() {
     return () => clearInterval(interval);
   }, [user, setIsInOngoingSession, router]);
 
+  const handleJoinSession = useCallback(async () => {
+    if (isNavigating || !activeSession) {
+      console.log('Navigation already in progress or no active session, ignoring click');
+      return;
+    }
+    
+    setIsNavigating(true);
+    console.log('Navigating to session:', activeSession.id);
+    
+    try {
+      await router.push(`/session/${activeSession.id}`);
+    } catch (error) {
+      console.error('Navigation failed:', error);
+      setIsNavigating(false);
+    }
+  }, [activeSession, isNavigating, router]);
+
 
   // STATE 3: Show "Join Session" when session is active (within time window AND has exactly 2 participants)
   // This is the only time users can actually join the session
@@ -106,8 +124,13 @@ export function OngoingSessionIndicator() {
     return (
       <div className="flex items-center gap-2">
         <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-        <Button variant="destructive" size="sm" onClick={() => router.push(`/session/${activeSession.id}`)}>
-          Join Session
+        <Button 
+          variant="destructive" 
+          size="sm" 
+          onClick={handleJoinSession}
+          disabled={isNavigating}
+        >
+          {isNavigating ? 'Joining...' : 'Join Session'}
         </Button>
       </div>
     );

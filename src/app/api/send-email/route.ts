@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { moderateRateLimit } from '@/lib/rate-limit';
 import { sanitizeError, logSecurityEvent, getSecurityHeaders, isValidEmail } from '@/lib/security-utils';
+import { InputSanitizer, SecurityLogger } from '@/lib/security/owasp-security-service';
 
 // Initialize Resend client only if API key is available
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -40,8 +41,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate email format
-    if (!isValidEmail(to)) {
+    // OWASP: Validate email format
+    if (!InputSanitizer.isValidEmail(to)) {
+      await SecurityLogger.logSecurityEvent({
+        type: 'suspicious_activity',
+        ipAddress: request.ip || 'unknown',
+        details: `Invalid email format in send-email API: ${to}`,
+        severity: 'medium'
+      });
+      
       logSecurityEvent({
         type: 'validation_error',
         ip: request.ip || 'unknown',

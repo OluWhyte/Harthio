@@ -245,17 +245,10 @@ export function RequestToJoinDialog({ topicId, onSuccess, children }: RequestToJ
                   disabled={isRetrying}
                   className="px-4"
                 >
-                  {isRetrying ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Retrying...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Retry
-                    </>
-                  )}
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Retry
+                  </>
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={() => setOpen(false)} className="px-4">
@@ -349,14 +342,7 @@ export function RequestToJoinDialog({ topicId, onSuccess, children }: RequestToJ
                     }
                     className="px-6"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      'Send Request'
-                    )}
+                    Send Request
                   </Button>
                 </PreventInvalidActions>
               </DialogFooter>

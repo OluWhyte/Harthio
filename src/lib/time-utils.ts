@@ -10,7 +10,7 @@ import { format, formatDistanceToNow, formatDistanceStrict, differenceInSeconds,
 export const TIME_FORMAT_12H = 'h:mm a'; // 2:30 PM
 export const DATE_FORMAT = 'E, MMM d'; // Mon, Jan 15
 export const DATETIME_FORMAT_12H = 'E, MMM d @ h:mm a'; // Mon, Jan 15 @ 2:30 PM
-export const FULL_DATETIME_FORMAT_12H = 'EEEE, MMMM d, yyyy @ h:mm a'; // Monday, January 15, 2024 @ 2:30 PM
+export const FULL_DATETIME_FORMAT_12H = 'EEEE, MMMM d, yyyy @ h:mm a'; // Monday, January 15, 2025 @ 2:30 PM
 
 // Format time in 12-hour format
 export function formatTime12h(date: Date | string): string {

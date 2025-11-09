@@ -24,30 +24,38 @@ if (!supabaseAnonKey) {
 // TYPED SUPABASE CLIENT
 // ============================================================================
 
+// Create a singleton Supabase client to prevent multiple instances
+let supabaseInstance: ReturnType<typeof createClient<Database>> | null = null;
+
 // Create typed Supabase client for full type safety
-// Temporarily use 'any' to bypass strict typing issues after dependency updates
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    flowType: "pkce",
-    debug: false, // Never debug in production
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: 'harthio-auth',
-  },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
-  },
-  global: {
-    headers: {
-      "X-Client-Info": "harthio-web",
-      "X-Requested-With": "XMLHttpRequest",
-    },
-  },
-});
+// Use singleton pattern to prevent multiple GoTrueClient instances
+export const supabase = (() => {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        flowType: "pkce",
+        debug: false, // Never debug in production
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storageKey: 'harthio-auth',
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10,
+        },
+      },
+      global: {
+        headers: {
+          "X-Client-Info": "harthio-web",
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      },
+    });
+  }
+  return supabaseInstance;
+})();
 
 // Create a properly typed client for use in services
 export const typedSupabase = supabase as ReturnType<

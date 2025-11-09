@@ -9,7 +9,7 @@ import {
   Mic, MicOff, Video, VideoOff, PhoneOff, Settings, 
   MessageSquare, Send, MoreVertical, Maximize2, Minimize2,
   Users, Clock, Signal, WifiOff, Copy, Info, AlertTriangle,
-  Loader2, X, Monitor
+  Loader2, X, Monitor, RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,9 @@ interface Message {
   userName: string;
   content: string;
   timestamp: Date;
-  type: 'text' | 'system';
+  type: 'text' | 'system' | 'device-metadata';
+  sessionId?: string; // Optional for compatibility
+  metadata?: any; // For device orientation metadata
 }
 
 interface ConnectionStats {
@@ -44,6 +46,8 @@ interface ConnectionStats {
 interface HarthioSessionUIProps {
   localVideoRef: React.RefObject<HTMLVideoElement>;
   remoteVideoRef: React.RefObject<HTMLVideoElement>;
+  localContainerRef?: React.RefObject<HTMLDivElement>;
+  remoteContainerRef?: React.RefObject<HTMLDivElement>;
   sessionState: 'initializing' | 'connecting' | 'connected' | 'reconnecting' | 'failed' | 'ended';
   connectionQuality: 'excellent' | 'good' | 'fair' | 'poor' | 'failed';
   connectionStats: ConnectionStats;
@@ -52,6 +56,7 @@ interface HarthioSessionUIProps {
   isRemoteAudioMuted?: boolean;
   isRemoteVideoOff?: boolean;
   currentUserName: string;
+  currentUserId: string;
   otherUserName: string;
   sessionDuration: number;
   timeRemaining?: number | null;
@@ -61,7 +66,8 @@ interface HarthioSessionUIProps {
   onEndCall: () => void;
   onReconnect: () => void;
   onSendMessage: (message: string) => void;
-  onSwitchToJitsi?: () => void;
+  onSwitchToOptimal?: () => void; // Renamed from onSwitchToJitsi
+  onStartScreenShare?: () => void;
   messages: Message[];
   notifications?: string[];
   onCopySessionLink?: () => void;
@@ -72,6 +78,8 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
   const {
     localVideoRef,
     remoteVideoRef,
+    localContainerRef,
+    remoteContainerRef,
     sessionState,
     connectionQuality,
     connectionStats,
@@ -80,6 +88,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
     isRemoteAudioMuted = false,
     isRemoteVideoOff = false,
     currentUserName,
+    currentUserId,
     otherUserName,
     sessionDuration,
     timeRemaining,
@@ -89,7 +98,8 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
     onEndCall,
     onReconnect,
     onSendMessage,
-    onSwitchToJitsi,
+    onSwitchToOptimal,
+    onStartScreenShare,
     messages,
     notifications = [],
     onCopySessionLink,
@@ -115,7 +125,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
     content: msg.content,
     sender: msg.type === 'system' ? 'System' : msg.userName,
     timestamp: msg.timestamp,
-    isOwn: msg.userId === 'current-user' && msg.type !== 'system'
+    isOwn: msg.userId === currentUserId && msg.type !== 'system'
   }));
 
   // Auto-hide controls - only on desktop
@@ -152,7 +162,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
   useEffect(() => {
     if (!showChat && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.userId !== 'current-user') {
+      if (lastMessage.userId !== currentUserId) {
         setUnreadMessages(prev => prev + 1);
       }
     }
@@ -222,9 +232,9 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
       case 'connecting': return 'Connecting...';
       case 'connected': return 'Connected';
       case 'reconnecting': return 'Reconnecting...';
-      case 'failed': return 'Connection failed';
+      case 'failed': return 'Connection issues';
       case 'ended': return 'Call ended';
-      default: return 'Unknown state';
+      default: return 'Preparing...';
     }
   };
 
@@ -234,7 +244,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
         {/* Main Video Area - Takes full container */}
         <div className="flex-1 relative w-full h-full">
           {/* Remote Video */}
-          <div className="absolute inset-0 w-full h-full">
+          <div ref={remoteContainerRef} className="absolute inset-0 w-full h-full">
             <video
               ref={remoteVideoRef}
               autoPlay
@@ -255,9 +265,6 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
                   </div>
                   <h2 className="text-lg sm:text-2xl font-semibold mb-2 text-rose-100">{otherUserName}</h2>
                   <p className="text-rose-200/80 text-sm sm:text-base">{getStateMessage(sessionState)}</p>
-                  {sessionState === 'connecting' && (
-                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin mx-auto mt-4 text-rose-300" />
-                  )}
                 </div>
               </div>
             )}
@@ -274,6 +281,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
 
           {/* Local Video (Picture-in-Picture) */}
           <div 
+            ref={localContainerRef}
             className={cn(
               "absolute rounded-lg overflow-hidden bg-gray-900 border-2 border-rose-400/30 shadow-2xl transition-all duration-300",
               screen.deviceType === 'phone' ? "bottom-20 right-4 w-32 h-40" : "top-4 right-4 w-64 h-48"
@@ -345,19 +353,19 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
 
             {/* Right: Controls */}
             <div className="flex items-center space-x-2">
-              {connectionQuality === 'failed' && onSwitchToJitsi && (
+              {(connectionQuality === 'failed' || sessionState === 'failed') && onSwitchToOptimal && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={onSwitchToJitsi}
+                      onClick={onSwitchToOptimal}
                       className="text-white hover:bg-white/20 bg-teal-600/80"
                     >
-                      <Monitor className="w-4 h-4" />
+                      <RefreshCw className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Switch to Jitsi</TooltipContent>
+                  <TooltipContent>Try reconnecting</TooltipContent>
                 </Tooltip>
               )}
 
@@ -386,6 +394,12 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {onStartScreenShare && (
+                    <DropdownMenuItem onClick={onStartScreenShare}>
+                      <Monitor className="w-4 h-4 mr-2" />
+                      Share Screen
+                    </DropdownMenuItem>
+                  )}
                   {onCopySessionLink && (
                     <DropdownMenuItem onClick={onCopySessionLink}>
                       <Copy className="w-4 h-4 mr-2" />
@@ -468,8 +482,11 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
               screen.deviceType === 'tablet' ? 
                 `${Math.max(60, screen.height * 0.08)}px` : // 8% of screen height or 60px minimum
                 '0px', // Desktop - no browser UI at bottom
-            padding: `${screen.padding}px`,
-            paddingBottom: `${Math.max(screen.padding, 20)}px`
+            // Use specific padding properties to avoid conflicts
+            paddingTop: `${screen.padding}px`,
+            paddingRight: `${screen.padding}px`,
+            paddingBottom: `${Math.max(screen.padding, 20)}px`,
+            paddingLeft: `${screen.padding}px`
           }}
         >
           <div 
@@ -605,8 +622,7 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
                       minHeight: `${screen.buttonSize}px`
                     }}
                   >
-                    <Loader2 
-                      className="animate-spin"
+                    <RefreshCw 
                       style={{ width: `${screen.iconSize}px`, height: `${screen.iconSize}px` }}
                     />
                   </Button>

@@ -33,11 +33,11 @@ export function StructuredData({ type, data }: StructuredDataProps) {
           url: 'https://harthio.com',
           logo: 'https://harthio.com/logo.png',
           description: 'Connecting hearts and minds through meaningful conversations',
-          foundingDate: '2024',
+          foundingDate: '2025',
           sameAs: [
             'https://twitter.com/harthio_',
             'https://linkedin.com/company/harthio',
-            'https://instagram.com/harthio'
+            'https://www.reddit.com/user/harthio/'
           ],
           contactPoint: {
             '@type': 'ContactPoint',

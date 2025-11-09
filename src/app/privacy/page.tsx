@@ -42,7 +42,7 @@ export default function PrivacyPolicyPage() {
                 Your privacy is fundamental to our mission. Learn how we protect your personal information and conversations.
               </p>
               <p className="text-sm text-gray-500">
-                Last updated: December 10, 2024
+                Last updated: November 8, 2025
               </p>
             </div>
           </div>

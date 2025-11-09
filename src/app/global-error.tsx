@@ -43,7 +43,7 @@ export default function GlobalError({
                     Refresh Page
                 </Button>
             </div>
-             <p className="text-xs text-muted-foreground mt-8">&copy; 2024 Harthio Inc. All rights reserved.</p>
+             <p className="text-xs text-muted-foreground mt-8">&copy; 2025 Harthio Inc. All rights reserved.</p>
         </div>
       </body>
     </html>

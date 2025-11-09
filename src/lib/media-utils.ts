@@ -250,16 +250,9 @@ export async function getUserMediaWithFallback(
     console.warn('Video only failed:', error);
   }
 
-  // Strategy 7: Audio only (last resort)
-  try {
-    console.log('Attempting getUserMedia with audio only');
-    const stream = await getUserMediaWithTimeout({ audio: true }, 5000);
-    console.warn('Only audio available - video not accessible');
-    return stream;
-  } catch (error) {
-    console.error('All getUserMedia strategies failed:', error);
-    throw error;
-  }
+  // All strategies failed
+  console.error('All getUserMedia strategies failed');
+  throw new Error('Unable to access camera and microphone. Please check your device permissions and try again.');
 }
 
 /**

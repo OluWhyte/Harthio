@@ -50,9 +50,10 @@ export class BlogService {
     
     if (!data) return null;
     
+    const postData = data as any;
     return {
-      ...data,
-      author: { id: data.author_id, email: 'Unknown', full_name: 'Harthio Team' },
+      ...postData,
+      author: { id: postData.author_id, email: 'Unknown', full_name: 'Harthio Team' },
       like_count: 0
     };
   }
@@ -82,7 +83,7 @@ export class BlogService {
         blog_post_id: postId,
         ip_address: ipAddress,
         user_agent: userAgent
-      });
+      } as any);
 
     if (error && error.code !== '23505') { // Ignore duplicate key error
       throw error;
@@ -177,15 +178,15 @@ export class BlogService {
         slug,
         author_id: userId,
         published_at: postData.status === 'published' ? new Date().toISOString() : null
-      })
+      } as any)
       .select('*')
       .single();
 
     if (error) throw error;
     
     return {
-      ...data,
-      author: { id: data.author_id, email: 'Unknown', full_name: 'Harthio Team' },
+      ...(data as any),
+      author: { id: (data as any).author_id, email: 'Unknown', full_name: 'Harthio Team' },
       like_count: 0
     };
   }
@@ -212,7 +213,7 @@ export class BlogService {
       updateData.published_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('blog_posts')
       .update(updateData)
       .eq('id', postData.id)
@@ -222,8 +223,8 @@ export class BlogService {
     if (error) throw error;
     
     return {
-      ...data,
-      author: { id: data.author_id, email: 'Unknown', full_name: 'Harthio Team' },
+      ...(data as any),
+      author: { id: (data as any).author_id, email: 'Unknown', full_name: 'Harthio Team' },
       like_count: 0
     };
   }

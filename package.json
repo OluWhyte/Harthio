@@ -1,19 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "name": "harthio-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "dev:mobile": "next dev --hostname 0.0.0.0",
-    "dev:https": "node setup-https-mobile.js",
-    "mobile:setup": "node setup-mobile-testing.js",
-    "mobile:start": "node setup-mobile-testing.js --start",
-    "mobile:video": "node start-mobile-video.js",
-    "mobile:https": "node mobile-video-test.js --start",
-    "mobile:help": "node mobile-video-test.js",
-    "mobile:ngrok": "node setup-https-mobile.js --ngrok",
-    "mobile:config": "node start-mobile-dev.js",
+    "dev:https": "node server-https.js",
+    "mobile:ngrok": "ngrok http 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -71,6 +65,7 @@
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1",
+    "webrtc-adapter": "^9.0.3",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -79,6 +74,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/uuid": "^9.0.8",
+    "autoprefixer": "^10.4.21",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.5.6",
     "postcss": "^8",

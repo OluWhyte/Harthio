@@ -88,14 +88,10 @@ export function FloatingChatButton({
         getPositionClasses(),
         // Size
         getSizeClasses(),
-        // Colors
+        // Colors - use company branding
         isOpen 
           ? "bg-gray-600 hover:bg-gray-700 text-white" 
-          : accentColor === 'blue' 
-            ? "bg-blue-500 hover:bg-blue-600 text-white"
-            : accentColor === 'green'
-            ? "bg-green-500 hover:bg-green-600 text-white"
-            : "bg-gray-500 hover:bg-gray-600 text-white",
+          : "bg-primary hover:bg-primary/90 text-white",
         // Animation
         "animate-in fade-in slide-in-from-bottom-2 duration-300",
         // Disabled state

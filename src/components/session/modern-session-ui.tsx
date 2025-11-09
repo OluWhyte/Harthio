@@ -58,6 +58,7 @@ interface ModernSessionUIProps {
   
   // User info
   currentUserName: string;
+  currentUserId: string;
   otherUserName: string;
   sessionDuration: number;
   sessionId: string;
@@ -89,6 +90,7 @@ export function ModernSessionUI({
   isRemoteAudioMuted = false,
   isRemoteVideoOff = false,
   currentUserName,
+  currentUserId,
   otherUserName,
   sessionDuration,
   sessionId,
@@ -160,7 +162,7 @@ export function ModernSessionUI({
   useEffect(() => {
     if (!showChat && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.userId !== 'current-user') {
+      if (lastMessage.userId !== currentUserId) {
         setUnreadMessages(prev => prev + 1);
       }
     }
@@ -344,7 +346,7 @@ export function ModernSessionUI({
         <ZoomChatPanel
           messages={messages}
           onSendMessage={onSendMessage}
-          currentUserId="current-user"
+          currentUserId={currentUserId}
           currentUserName={currentUserName}
           isOpen={showChat}
           onClose={() => setShowChat(false)}

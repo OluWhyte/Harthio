@@ -27,6 +27,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { AnalyticsCharts } from '@/components/admin/analytics-charts';
+import { CacheMonitor } from '@/components/admin/cache-monitor';
 
 export default function AdminDashboardContent() {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -238,6 +239,11 @@ export default function AdminDashboardContent() {
               Export Users
             </Button>
           </div>
+        </div>
+
+        {/* Performance Monitor - O(1) Cache */}
+        <div className="mb-6">
+          <CacheMonitor />
         </div>
 
         {/* Key Metrics - Prioritized */}

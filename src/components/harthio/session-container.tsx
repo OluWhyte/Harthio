@@ -30,9 +30,12 @@ export function SessionContainer({ children, className }: SessionContainerProps)
         height: '100vh',
         maxWidth: '100vw',
         maxHeight: '100vh',
-        // Prevent any margin/padding issues
+        // Prevent any margin/padding issues - use specific properties to avoid conflicts
         margin: 0,
-        padding: 0,
+        paddingTop: 0,
+        paddingRight: 0,
+        paddingBottom: 0,
+        paddingLeft: 0,
       }}
     >
       {/* Inner container for content */}

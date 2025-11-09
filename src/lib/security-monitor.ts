@@ -240,38 +240,109 @@ class SecurityMonitor {
    * Send immediate notification for critical alerts
    */
   private async sendImmediateNotification(alert: SecurityAlert): Promise<void> {
-    // In production, send immediate notifications via:
-    // - Email
-    // - SMS
-    // - Slack
-    // - Discord
-    // - PagerDuty
-
-    if (process.env.NODE_ENV === 'production') {
+    // Security alert recipients
+    const alertRecipients = [
+      'peterlimited2000@gmail.com',
+      'seyi@harthio.com'
+    ];
+    
+    // Send email to each recipient
+    for (const recipient of alertRecipients) {
       try {
-        // Example: Send email notification
-        if (process.env.SECURITY_EMAIL_ENDPOINT) {
-          await fetch(process.env.SECURITY_EMAIL_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: process.env.SECURITY_ALERT_EMAIL,
-              subject: `🚨 CRITICAL Security Alert: ${alert.type}`,
-              body: `
-                Alert ID: ${alert.id}
-                Severity: ${alert.severity.toUpperCase()}
-                Type: ${alert.type}
-                Message: ${alert.message}
-                Timestamp: ${alert.timestamp}
-                
-                Metadata:
-                ${JSON.stringify(alert.metadata, null, 2)}
-              `
-            })
-          });
+        const emailSubject = `🚨 ${alert.severity.toUpperCase()} Security Alert: ${alert.type}`;
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: ${alert.severity === 'critical' ? '#dc2626' : '#f59e0b'}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+              <h1 style="margin: 0; font-size: 24px;">🚨 ${alert.severity.toUpperCase()} Security Alert</h1>
+            </div>
+            
+            <div style="background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+              <h2 style="color: ${alert.severity === 'critical' ? '#dc2626' : '#f59e0b'}; margin-top: 0;">${alert.message}</h2>
+              
+              <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                <tr>
+                  <td style="padding: 10px; background-color: white; border: 1px solid #e5e7eb; font-weight: bold; width: 150px;">Alert ID:</td>
+                  <td style="padding: 10px; background-color: white; border: 1px solid #e5e7eb; font-family: monospace; font-size: 12px;">${alert.id}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; background-color: white; border: 1px solid #e5e7eb; font-weight: bold;">Alert Type:</td>
+                  <td style="padding: 10px; background-color: white; border: 1px solid #e5e7eb;">${alert.type}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; background-color: white; border: 1px solid #e5e7eb; font-weight: bold;">Severity:</td>
+                  <td style="padding: 10px; background-color: white; border: 1px solid #e5e7eb;">
+                    <span style="background-color: ${alert.severity === 'critical' ? '#dc2626' : alert.severity === 'high' ? '#f59e0b' : '#10b981'}; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;">
+                      ${alert.severity.toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 10px; background-color: white; border: 1px solid #e5e7eb; font-weight: bold;">Timestamp:</td>
+                  <td style="padding: 10px; background-color: white; border: 1px solid #e5e7eb;">${alert.timestamp}</td>
+                </tr>
+              </table>
+              
+              <div style="background-color: white; padding: 15px; border: 1px solid #e5e7eb; border-radius: 4px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #374151;">Alert Details:</h3>
+                <pre style="margin: 0; color: #6b7280; white-space: pre-wrap; font-size: 12px; background-color: #f9fafb; padding: 10px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(alert.metadata, null, 2)}</pre>
+              </div>
+              
+              <div style="background-color: ${alert.severity === 'critical' ? '#fef2f2' : '#fef3c7'}; border-left: 4px solid ${alert.severity === 'critical' ? '#dc2626' : '#f59e0b'}; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; color: ${alert.severity === 'critical' ? '#991b1b' : '#92400e'};">
+                  <strong>⚠️ ${alert.severity === 'critical' ? 'IMMEDIATE ACTION REQUIRED' : 'Action Required'}:</strong> Please review this security alert and take appropriate action.
+                </p>
+              </div>
+              
+              <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 12px;">
+                <p>This is an automated security alert from Harthio</p>
+                <p>Dashboard: <a href="https://harthio.com/admin/testing?tab=security" style="color: #2563eb;">View Security Dashboard</a></p>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        const emailText = `
+🚨 ${alert.severity.toUpperCase()} SECURITY ALERT
+
+${alert.message}
+
+Alert ID: ${alert.id}
+Alert Type: ${alert.type}
+Severity: ${alert.severity.toUpperCase()}
+Timestamp: ${alert.timestamp}
+
+Alert Details:
+${JSON.stringify(alert.metadata, null, 2)}
+
+⚠️ ${alert.severity === 'critical' ? 'IMMEDIATE ACTION REQUIRED' : 'Action Required'}: Please review this security alert and take appropriate action.
+
+Dashboard: https://harthio.com/admin/testing?tab=security
+
+---
+This is an automated security alert from Harthio
+        `;
+        
+        // Send email via API
+        const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: recipient,
+            subject: emailSubject,
+            html: emailHtml,
+            text: emailText
+          })
+        });
+        
+        if (response.ok) {
+          console.log(`✅ Security alert email sent to ${recipient}`);
+        } else {
+          console.error(`❌ Failed to send security alert to ${recipient}:`, await response.text());
         }
       } catch (error) {
-        console.error('Failed to send immediate security notification:', error);
+        console.error(`❌ Error sending security alert to ${recipient}:`, error);
       }
     }
   }

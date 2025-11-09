@@ -341,8 +341,8 @@ export function EnhancedMessagingPanel({
                           <div key={message.id}>
                             {message.type === 'system' ? (
                               <div className="flex justify-center">
-                                <div className="bg-gray-100 px-3 py-1 rounded-full max-w-xs">
-                                  <span className="text-xs text-gray-600">
+                                <div className="bg-primary/10 px-3 py-1 rounded-full max-w-xs border border-primary/20">
+                                  <span className="text-xs text-primary">
                                     {message.content}
                                   </span>
                                 </div>
@@ -392,10 +392,8 @@ export function EnhancedMessagingPanel({
                                       className={cn(
                                         "px-3 py-2 rounded-lg text-sm break-words",
                                         isCurrentUser
-                                          ? accentColor === 'blue' 
-                                            ? "bg-blue-500 text-white rounded-br-sm"
-                                            : "bg-gray-500 text-white rounded-br-sm"
-                                          : "bg-gray-100 text-gray-900 rounded-bl-sm"
+                                          ? "bg-primary text-white rounded-br-sm"
+                                          : "bg-accent/10 text-gray-900 rounded-bl-sm border border-accent/20"
                                       )}
                                     >
                                       {message.content}
