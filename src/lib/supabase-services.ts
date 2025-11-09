@@ -908,7 +908,7 @@ export const topicService = {
           (u: any) => u.id === topic.author_id
         );
 
-        if (requesterUser?.email && approverUser?.email) {
+        if (requesterUser?.email && approverUser?.email && topic.start_time && topic.end_time) {
           // Send enhanced approval notification with emails
           await notificationService.notifyRequestApprovedWithEmail(
             requesterId,
