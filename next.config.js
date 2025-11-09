@@ -7,8 +7,14 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Remove console.logs in production
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'], // Keep error and warn logs
+    } : false,
+  },
   // Simplified webpack configuration
-  webpack: (config, { isServer, dev }) => {
+  webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -18,16 +24,6 @@ const nextConfig = {
         crypto: false,
       };
     }
-    
-    // Remove console.logs in production
-    if (!dev) {
-      config.optimization.minimizer.forEach((plugin) => {
-        if (plugin.constructor.name === 'TerserPlugin') {
-          plugin.options.terserOptions.compress.drop_console = true;
-        }
-      });
-    }
-    
     return config;
   },
   // Ensure proper asset loading for mobile/ngrok
