@@ -619,37 +619,45 @@ export class EmailService {
     this.appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://harthio.com";
   }
 
-  // Send email using Resend directly
+  // Send email using API route (works both client and server-side)
   private async sendEmail(
     to: string,
     template: EmailTemplate
   ): Promise<boolean> {
     try {
-      // Check if we're in a server environment and have Resend configured
-      if (typeof window !== 'undefined') {
-        // Client-side: use API route
-        const response = await fetch("/api/send-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to,
-            subject: template.subject,
-            html: template.html,
-            text: template.text,
-          }),
-        });
+      // Always use API route for consistency
+      const baseUrl = typeof window !== 'undefined' 
+        ? '' // Client-side: relative URL
+        : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'); // Server-side: absolute URL
+      
+      const response = await fetch(`${baseUrl}/api/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to,
+          subject: template.subject,
+          html: template.html,
+          text: template.text,
+        }),
+      });
 
-        if (!response.ok) {
-          throw new Error(`Email API responded with status: ${response.status}`);
-        }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Email API error (${response.status}):`, errorText);
+        throw new Error(`Email API responded with status: ${response.status}`);
+      }
 
-        const result = await response.json();
-        return result.success;
-      } else {
-        // Server-side: use Resend directly
-        const { Resend } = await import('resend');
+      const result = await response.json();
+      return result.success;
+    } catch (error) {
+      console.error("❌ Failed to send email:", error);
+      
+      // Fallback: Try direct Resend if API route fails (server-side only)
+      if (typeof window === 'undefined') {
+        try {
+          const { Resend } = await import('resend');
         const resendApiKey = process.env.RESEND_API_KEY;
         
         if (!resendApiKey) {
