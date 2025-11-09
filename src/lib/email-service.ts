@@ -653,12 +653,13 @@ export class EmailService {
         const resendApiKey = process.env.RESEND_API_KEY;
         
         if (!resendApiKey) {
+          console.error('❌ RESEND_API_KEY not found in environment variables');
           console.log('📧 EMAIL FALLBACK (No Resend API key):', {
             to,
             subject: template.subject,
             text: template.text.substring(0, 200) + '...'
           });
-          return false;
+          throw new Error('RESEND_API_KEY not configured');
         }
 
         const resend = new Resend(resendApiKey);
