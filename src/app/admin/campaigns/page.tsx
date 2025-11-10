@@ -488,18 +488,40 @@ export default function EmailCampaignsPage() {
                         All Users
                       </div>
                     </SelectItem>
-                    <SelectItem value="new_users">
-                      <div className="flex items-center gap-2">
-                        <Plus className="h-4 w-4" />
-                        New Users (Last 3 Days)
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="new_users_7d">
+                    
+                    {/* Precise Date Range Filters */}
+                    <SelectItem value="new_users_24h">
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4" />
-                        New Users (Last 7 Days)
+                        New Users (Last 24 Hours)
                       </div>
                     </SelectItem>
+                    <SelectItem value="new_users_1_3d">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        New Users (1-3 Days Ago)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="new_users_3_7d">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        New Users (3-7 Days Ago)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="new_users_7_30d">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        New Users (7-30 Days Ago)
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="new_users_30plus">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Users (30+ Days Ago)
+                      </div>
+                    </SelectItem>
+                    
+                    {/* Activity-based Filters */}
                     <SelectItem value="active_users">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="h-4 w-4" />
@@ -512,6 +534,7 @@ export default function EmailCampaignsPage() {
                         Inactive Users (30+ Days)
                       </div>
                     </SelectItem>
+                    
                     <SelectItem value="custom">
                       <div className="flex items-center gap-2">
                         <Mail className="h-4 w-4" />
@@ -681,9 +704,11 @@ export default function EmailCampaignsPage() {
                       <SelectContent>
                         <SelectItem value="all">All Audiences</SelectItem>
                         <SelectItem value="test_users">Test Users</SelectItem>
-                        <SelectItem value="all">All Users</SelectItem>
-                        <SelectItem value="new_users">New Users (3d)</SelectItem>
-                        <SelectItem value="new_users_7d">New Users (7d)</SelectItem>
+                        <SelectItem value="new_users_24h">New (24h)</SelectItem>
+                        <SelectItem value="new_users_1_3d">New (1-3d)</SelectItem>
+                        <SelectItem value="new_users_3_7d">New (3-7d)</SelectItem>
+                        <SelectItem value="new_users_7_30d">New (7-30d)</SelectItem>
+                        <SelectItem value="new_users_30plus">Users (30+d)</SelectItem>
                         <SelectItem value="active_users">Active Users</SelectItem>
                         <SelectItem value="inactive_users">Inactive Users</SelectItem>
                         <SelectItem value="custom">Custom List</SelectItem>

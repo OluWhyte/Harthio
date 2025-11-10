@@ -39,7 +39,7 @@ INSERT INTO email_templates (name, subject, html_content, text_content, descript
     <div class="content">
       <p>Hi {{firstName}},</p>
       
-      <p>I''m Tosin, founder of Harthio. I wanted to personally welcome you to our platform for meaningful conversations.</p>
+      <p>I''m Tosin, co-founder of Harthio. I wanted to personally welcome you to our platform for meaningful conversations.</p>
       
       <p><strong>Quick question:</strong> What topics would you like to talk about?</p>
       
@@ -53,7 +53,7 @@ INSERT INTO email_templates (name, subject, html_content, text_content, descript
       
       <p>Looking forward to seeing what conversations you start!</p>
       
-      <p>Best,<br><strong>Tosin</strong><br>Founder, Harthio</p>
+      <p>Best,<br><strong>Tosin</strong><br>Co-founder, Harthio</p>
     </div>
     <div class="footer">
       <p>This email was sent by Harthio - Platform for meaningful conversations</p>
@@ -64,7 +64,7 @@ INSERT INTO email_templates (name, subject, html_content, text_content, descript
 </html>',
   'Hi {{firstName}},
 
-I''m Tosin, founder of Harthio. I wanted to personally welcome you to our platform for meaningful conversations.
+I''m Tosin, co-founder of Harthio. I wanted to personally welcome you to our platform for meaningful conversations.
 
 Quick question: What topics would you like to talk about?
 
@@ -78,7 +78,7 @@ Looking forward to seeing what conversations you start!
 
 Best,
 Tosin
-Founder, Harthio
+Co-founder, Harthio
 
 ---
 Visit Harthio: {{appUrl}}

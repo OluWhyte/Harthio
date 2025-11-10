@@ -92,8 +92,9 @@ export const emailCampaignService = {
         .from('users')
         .select('id', { count: 'exact', head: true });
 
-      // Apply filters
+      // Apply filters with precise date ranges
       const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
       const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -107,6 +108,36 @@ export const emailCampaignService = {
             'xcrowme@gmail.com'
           ]);
           break;
+        
+        // Precise date range filters for new users
+        case 'new_users_24h':
+          // Users created in last 24 hours only
+          query = query.gte('created_at', oneDayAgo.toISOString());
+          break;
+        case 'new_users_1_3d':
+          // Users created between 1-3 days ago (not including last 24h)
+          query = query
+            .gte('created_at', threeDaysAgo.toISOString())
+            .lt('created_at', oneDayAgo.toISOString());
+          break;
+        case 'new_users_3_7d':
+          // Users created between 3-7 days ago
+          query = query
+            .gte('created_at', sevenDaysAgo.toISOString())
+            .lt('created_at', threeDaysAgo.toISOString());
+          break;
+        case 'new_users_7_30d':
+          // Users created between 7-30 days ago
+          query = query
+            .gte('created_at', thirtyDaysAgo.toISOString())
+            .lt('created_at', sevenDaysAgo.toISOString());
+          break;
+        case 'new_users_30plus':
+          // Users created more than 30 days ago
+          query = query.lt('created_at', thirtyDaysAgo.toISOString());
+          break;
+        
+        // Legacy filters (kept for backward compatibility)
         case 'new_users':
           // Users created in last 3 days
           query = query.gte('created_at', threeDaysAgo.toISOString());
@@ -115,12 +146,14 @@ export const emailCampaignService = {
           // Users created in last 7 days
           query = query.gte('created_at', sevenDaysAgo.toISOString());
           break;
+        
+        // Activity-based filters
         case 'inactive_users':
-          // Users who haven't been active for 30 days (using updated_at instead of last_sign_in_at)
+          // Users who haven't been active for 30+ days
           query = query.lt('updated_at', thirtyDaysAgo.toISOString());
           break;
         case 'active_users':
-          // Users who were active within last 30 days (using updated_at instead of last_sign_in_at)
+          // Users who were active within last 30 days
           query = query.gte('updated_at', thirtyDaysAgo.toISOString());
           break;
         case 'all':
@@ -169,8 +202,9 @@ export const emailCampaignService = {
         .from('users')
         .select('id, email, first_name, last_name, display_name, created_at, updated_at');
 
-      // Apply filters
+      // Apply filters with precise date ranges
       const now = new Date();
+      const oneDayAgo = new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000);
       const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -185,6 +219,36 @@ export const emailCampaignService = {
             'xcrowme@gmail.com'
           ]);
           break;
+        
+        // Precise date range filters for new users
+        case 'new_users_24h':
+          console.log(`📧 [AUDIENCE] Filtering for new users (last 24 hours)`);
+          query = query.gte('created_at', oneDayAgo.toISOString());
+          break;
+        case 'new_users_1_3d':
+          console.log(`📧 [AUDIENCE] Filtering for new users (1-3 days ago)`);
+          query = query
+            .gte('created_at', threeDaysAgo.toISOString())
+            .lt('created_at', oneDayAgo.toISOString());
+          break;
+        case 'new_users_3_7d':
+          console.log(`📧 [AUDIENCE] Filtering for new users (3-7 days ago)`);
+          query = query
+            .gte('created_at', sevenDaysAgo.toISOString())
+            .lt('created_at', threeDaysAgo.toISOString());
+          break;
+        case 'new_users_7_30d':
+          console.log(`📧 [AUDIENCE] Filtering for new users (7-30 days ago)`);
+          query = query
+            .gte('created_at', thirtyDaysAgo.toISOString())
+            .lt('created_at', sevenDaysAgo.toISOString());
+          break;
+        case 'new_users_30plus':
+          console.log(`📧 [AUDIENCE] Filtering for users (30+ days ago)`);
+          query = query.lt('created_at', thirtyDaysAgo.toISOString());
+          break;
+        
+        // Legacy filters (kept for backward compatibility)
         case 'new_users':
           console.log(`📧 [AUDIENCE] Filtering for new users (last 3 days)`);
           query = query.gte('created_at', threeDaysAgo.toISOString());
@@ -193,6 +257,8 @@ export const emailCampaignService = {
           console.log(`📧 [AUDIENCE] Filtering for new users (last 7 days)`);
           query = query.gte('created_at', sevenDaysAgo.toISOString());
           break;
+        
+        // Activity-based filters
         case 'inactive_users':
           // Users who haven't updated their profile in 30+ days (inactive)
           console.log(`📧 [AUDIENCE] Filtering for inactive users (30+ days)`);
@@ -375,9 +441,13 @@ export const emailCampaignService = {
           // Apply dynamic signature based on sender
           const { htmlSignature, textSignature } = this.getEmailSignature(campaign.from_email);
           
-          // Replace Tosin signature with dynamic one in HTML
+          // Replace Tosin signature with dynamic one in HTML (both old "Founder" and new "Co-founder" versions)
           htmlContent = htmlContent.replace(
             /<p>Best,<br><strong>Tosin<\/strong><br>Founder, Harthio<\/p>/g,
+            htmlSignature
+          );
+          htmlContent = htmlContent.replace(
+            /<p>Best,<br><strong>Tosin<\/strong><br>Co-founder, Harthio<\/p>/g,
             htmlSignature
           );
           htmlContent = htmlContent.replace(
@@ -389,7 +459,9 @@ export const emailCampaignService = {
             `<p>Hope to see you back soon!</p>\n${htmlSignature}`
           );
           
-          // Replace in text version
+          // Replace in text version (both old and new versions)
+          textContent = textContent.replace(/Best,\nTosin\nFounder, Harthio/g, textSignature);
+          textContent = textContent.replace(/Best,\nTosin\nCo-founder, Harthio/g, textSignature);
           textContent = textContent.replace(/Best,\nTosin/g, textSignature);
           textContent = textContent.replace(/Cheers,\nTosin/g, textSignature);
 
@@ -548,13 +620,13 @@ export const emailCampaignService = {
   getEmailSignature(fromEmail: string): { htmlSignature: string; textSignature: string } {
     if (fromEmail.includes('tosin@')) {
       return {
-        htmlSignature: '<p>Best,<br><strong>Tosin</strong><br>Founder, Harthio</p>',
-        textSignature: 'Best,\nTosin\nFounder, Harthio'
+        htmlSignature: '<p>Best,<br><strong>Tosin</strong><br>Co-founder, Harthio</p>',
+        textSignature: 'Best,\nTosin\nCo-founder, Harthio'
       };
     } else if (fromEmail.includes('seyi@')) {
       return {
-        htmlSignature: '<p>Best regards,<br><strong>Seyi</strong><br>Co-founder, Harthio</p>',
-        textSignature: 'Best regards,\nSeyi\nCo-founder, Harthio'
+        htmlSignature: '<p>Best regards,<br><strong>Seyi</strong><br>Founder, Harthio</p>',
+        textSignature: 'Best regards,\nSeyi\nFounder, Harthio'
       };
     } else {
       // no-reply or generic
