@@ -616,7 +616,8 @@ export class EmailService {
   private appUrl: string;
 
   constructor() {
-    this.appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://harthio.com";
+    // Clean up the app URL - remove any whitespace/newlines
+    this.appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://harthio.com").trim();
   }
 
   // Send email using API route (works both client and server-side)

@@ -25,6 +25,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const { to, subject, html, text } = await request.json();
+    
+    // Log environment variables with whitespace detection
+    const emailFromRaw = process.env.EMAIL_FROM_ADDRESS || 'NOT SET';
+    const hasWhitespace = emailFromRaw !== emailFromRaw.trim();
+    
     console.log('📧 [SEND-EMAIL API] Request data:', {
       to,
       subject,
@@ -32,8 +37,13 @@ export async function POST(request: NextRequest) {
       hasText: !!text,
       resendConfigured: !!resend,
       resendApiKey: process.env.RESEND_API_KEY ? 'SET' : 'NOT SET',
-      emailFromAddress: process.env.EMAIL_FROM_ADDRESS || 'NOT SET',
+      emailFromAddress: emailFromRaw,
+      emailFromHasWhitespace: hasWhitespace,
     });
+    
+    if (hasWhitespace) {
+      console.warn('⚠️ [SEND-EMAIL API] EMAIL_FROM_ADDRESS has whitespace - will be trimmed');
+    }
 
     // Validate required fields
     if (!to || !subject || (!html && !text)) {
@@ -100,8 +110,11 @@ export async function POST(request: NextRequest) {
     // Send email using Resend
     console.log('📧 [SEND-EMAIL API] Attempting to send via Resend...');
     try {
+      // Clean up the from address - remove any whitespace/newlines
+      const fromAddress = (process.env.EMAIL_FROM_ADDRESS || 'Harthio <no-reply@harthio.com>').trim();
+      
       const emailPayload = {
-        from: process.env.EMAIL_FROM_ADDRESS || 'Harthio <no-reply@harthio.com>',
+        from: fromAddress,
         to: [to],
         subject: subject,
         html: html,
