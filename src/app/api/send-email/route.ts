@@ -8,9 +8,12 @@ import { InputSanitizer, SecurityLogger } from '@/lib/security/owasp-security-se
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 export async function POST(request: NextRequest) {
+  console.log('📧 [SEND-EMAIL API] Request received');
+  
   // Apply rate limiting
   const rateLimitResult = moderateRateLimit(request);
   if (rateLimitResult) {
+    console.log('⚠️ [SEND-EMAIL API] Rate limit exceeded');
     logSecurityEvent({
       type: 'rate_limit',
       ip: request.ip || 'unknown',
@@ -22,6 +25,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const { to, subject, html, text } = await request.json();
+    console.log('📧 [SEND-EMAIL API] Request data:', {
+      to,
+      subject,
+      hasHtml: !!html,
+      hasText: !!text,
+      resendConfigured: !!resend,
+      resendApiKey: process.env.RESEND_API_KEY ? 'SET' : 'NOT SET',
+      emailFromAddress: process.env.EMAIL_FROM_ADDRESS || 'NOT SET',
+    });
 
     // Validate required fields
     if (!to || !subject || (!html && !text)) {
@@ -69,6 +81,7 @@ export async function POST(request: NextRequest) {
     // Check if Resend is configured
     if (!resend) {
       // Fallback: Log email for development/beta
+      console.log('⚠️ [SEND-EMAIL API] Resend not configured - using fallback');
       console.log('📧 EMAIL FALLBACK (Resend not configured):');
       console.log('To:', to);
       console.log('Subject:', subject);
@@ -85,21 +98,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email using Resend
+    console.log('📧 [SEND-EMAIL API] Attempting to send via Resend...');
     try {
-      const { data, error } = await resend.emails.send({
+      const emailPayload = {
         from: process.env.EMAIL_FROM_ADDRESS || 'Harthio <no-reply@harthio.com>',
         to: [to],
         subject: subject,
         html: html,
         text: text,
+      };
+      console.log('📧 [SEND-EMAIL API] Resend payload:', {
+        from: emailPayload.from,
+        to: emailPayload.to,
+        subject: emailPayload.subject,
       });
 
+      const { data, error } = await resend.emails.send(emailPayload);
+
       if (error) {
-        console.error('Resend email error:', error);
+        console.error('❌ [SEND-EMAIL API] Resend email error:', error);
         throw error;
       }
 
-      console.log('✅ Email sent successfully via Resend:', data?.id);
+      console.log('✅ [SEND-EMAIL API] Email sent successfully via Resend:', data?.id);
       return NextResponse.json({ 
         success: true, 
         messageId: data?.id 
@@ -107,7 +128,11 @@ export async function POST(request: NextRequest) {
         headers: getSecurityHeaders()
       });
     } catch (resendError) {
-      console.error('Resend email failed:', resendError);
+      console.error('❌ [SEND-EMAIL API] Resend email failed:', resendError);
+      console.error('❌ [SEND-EMAIL API] Error details:', {
+        message: resendError instanceof Error ? resendError.message : 'Unknown error',
+        stack: resendError instanceof Error ? resendError.stack : undefined,
+      });
       
       // Fallback: Log email for development
       console.log('📧 EMAIL FALLBACK (Resend failed):');

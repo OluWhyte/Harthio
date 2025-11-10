@@ -292,7 +292,6 @@ export function HarthioSessionUI(props: HarthioSessionUIProps) {
               autoPlay
               playsInline
               muted
-              muted
               className="w-full h-full object-cover"
             />
             {isVideoOff && (

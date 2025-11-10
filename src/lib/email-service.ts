@@ -624,13 +624,23 @@ export class EmailService {
     to: string,
     template: EmailTemplate
   ): Promise<boolean> {
+    console.log('📧 [EMAIL SERVICE] sendEmail called:', {
+      to,
+      subject: template.subject,
+      isClient: typeof window !== 'undefined',
+      nodeEnv: process.env.NODE_ENV,
+    });
+
     try {
       // Always use API route for consistency
       const baseUrl = typeof window !== 'undefined' 
         ? '' // Client-side: relative URL
         : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'); // Server-side: absolute URL
       
-      const response = await fetch(`${baseUrl}/api/send-email`, {
+      const apiUrl = `${baseUrl}/api/send-email`;
+      console.log('📧 [EMAIL SERVICE] Calling API:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -643,53 +653,23 @@ export class EmailService {
         }),
       });
 
+      console.log('📧 [EMAIL SERVICE] API response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Email API error (${response.status}):`, errorText);
+        console.error(`❌ [EMAIL SERVICE] Email API error (${response.status}):`, errorText);
         throw new Error(`Email API responded with status: ${response.status}`);
       }
 
       const result = await response.json();
+      console.log('📧 [EMAIL SERVICE] API response result:', result);
       return result.success;
     } catch (error) {
-      console.error("❌ Failed to send email:", error);
-      
-      // Fallback: Try direct Resend if API route fails (server-side only)
-      if (typeof window === 'undefined') {
-        try {
-          const { Resend } = await import('resend');
-        const resendApiKey = process.env.RESEND_API_KEY;
-        
-        if (!resendApiKey) {
-          console.error('❌ RESEND_API_KEY not found in environment variables');
-          console.log('📧 EMAIL FALLBACK (No Resend API key):', {
-            to,
-            subject: template.subject,
-            text: template.text.substring(0, 200) + '...'
-          });
-          throw new Error('RESEND_API_KEY not configured');
-        }
-
-        const resend = new Resend(resendApiKey);
-        
-        const { data, error } = await resend.emails.send({
-          from: process.env.EMAIL_FROM_ADDRESS || 'Harthio <no-reply@harthio.com>',
-          to: [to],
-          subject: template.subject,
-          html: template.html,
-          text: template.text,
-        });
-
-        if (error) {
-          console.error('❌ Resend email error:', error);
-          return false;
-        }
-
-        console.log('✅ Email sent successfully via Resend:', data?.id);
-        return true;
-      }
-    } catch (error) {
-      console.error("❌ Failed to send email:", error);
+      console.error("❌ [EMAIL SERVICE] Failed to send email via API route:", error);
+      console.error("❌ [EMAIL SERVICE] Error details:", {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       return false;
     }
   }

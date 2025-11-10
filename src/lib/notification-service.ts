@@ -325,11 +325,25 @@ export const notificationService = {
     sessionDescription?: string,
     requestMessage?: string
   ): Promise<void> {
+    console.log('🔔 [JOIN REQUEST EMAIL] Starting notification process:', {
+      authorId,
+      authorEmail,
+      requesterName,
+      sessionTitle,
+      hasDescription: !!sessionDescription,
+      hasMessage: !!requestMessage,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      nodeEnv: process.env.NODE_ENV,
+    });
+
     try {
       // Send in-app notification
+      console.log('📱 [JOIN REQUEST EMAIL] Sending in-app notification...');
       await this.notifyNewJoinRequest(authorId, requesterName, sessionTitle);
+      console.log('✅ [JOIN REQUEST EMAIL] In-app notification sent');
 
       // Send email notification
+      console.log('📧 [JOIN REQUEST EMAIL] Calling email service...');
       const emailSent = await emailService.sendNewRequestNotification(authorEmail, {
         requesterName,
         sessionTitle,
@@ -339,12 +353,18 @@ export const notificationService = {
       });
 
       if (emailSent) {
-        console.log(`Email notification sent to ${authorEmail} for new join request`);
+        console.log(`✅ [JOIN REQUEST EMAIL] Email notification sent successfully to ${authorEmail}`);
       } else {
-        console.warn(`Failed to send email notification to ${authorEmail}`);
+        console.error(`❌ [JOIN REQUEST EMAIL] Email service returned false for ${authorEmail}`);
       }
     } catch (error) {
-      console.error("Failed to send enhanced join request notification:", error);
+      console.error("❌ [JOIN REQUEST EMAIL] Failed to send enhanced join request notification:", error);
+      console.error("❌ [JOIN REQUEST EMAIL] Error details:", {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      // Re-throw to see the error in production logs
+      throw error;
     }
   },
 

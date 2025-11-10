@@ -388,18 +388,30 @@ export const topicService = {
       });
 
       // Send notification to topic author (non-blocking)
+      console.log('🔔 [JOIN REQUEST] Preparing to send notification to author:', topic.author_id);
       try {
         const { notificationService } = await import("./notification-service");
 
         // Get author email for enhanced notification
-        const { data: authorData } = await typedSupabase
+        console.log('📧 [JOIN REQUEST] Fetching author email...');
+        const { data: authorData, error: emailError } = await typedSupabase
           .from("users")
           .select("email")
           .eq("id", topic.author_id)
           .single();
 
+        if (emailError) {
+          console.error('❌ [JOIN REQUEST] Error fetching author email:', emailError);
+        }
+
+        console.log('📧 [JOIN REQUEST] Author data:', {
+          hasEmail: !!authorData?.email,
+          email: authorData?.email ? `${authorData.email.substring(0, 3)}***` : 'none',
+        });
+
         if (authorData?.email) {
           // Send enhanced notification with email
+          console.log('📧 [JOIN REQUEST] Sending enhanced notification with email...');
           await notificationService.notifyNewJoinRequestWithEmail(
             topic.author_id,
             authorData.email,
@@ -408,8 +420,10 @@ export const topicService = {
             topic.description,
             requestMessage
           );
+          console.log('✅ [JOIN REQUEST] Enhanced notification sent successfully');
         } else {
           // Fallback to in-app only
+          console.log('⚠️ [JOIN REQUEST] No email found, sending in-app notification only');
           await notificationService.notifyNewJoinRequest(
             topic.author_id,
             requesterName,
@@ -418,9 +432,13 @@ export const topicService = {
         }
       } catch (notificationError) {
         console.error(
-          "Failed to send join request notification:",
+          "❌ [JOIN REQUEST] Failed to send join request notification:",
           notificationError
         );
+        console.error("❌ [JOIN REQUEST] Notification error details:", {
+          message: notificationError instanceof Error ? notificationError.message : 'Unknown error',
+          stack: notificationError instanceof Error ? notificationError.stack : undefined,
+        });
         // Don't fail the request if notification fails
       }
 
