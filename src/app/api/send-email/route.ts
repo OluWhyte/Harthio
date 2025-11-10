@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { to, subject, html, text } = await request.json();
+    const { to, subject, html, text, from } = await request.json();
     
     // Log environment variables with whitespace detection
     const emailFromRaw = process.env.EMAIL_FROM_ADDRESS || 'NOT SET';
@@ -111,7 +111,10 @@ export async function POST(request: NextRequest) {
     console.log('📧 [SEND-EMAIL API] Attempting to send via Resend...');
     try {
       // Clean up the from address - remove any whitespace/newlines
-      const fromAddress = (process.env.EMAIL_FROM_ADDRESS || 'Harthio <no-reply@harthio.com>').trim();
+      // Use custom from address if provided, otherwise use default
+      const fromAddress = from 
+        ? from.trim() 
+        : (process.env.EMAIL_FROM_ADDRESS || 'Harthio <no-reply@harthio.com>').trim();
       
       const emailPayload = {
         from: fromAddress,

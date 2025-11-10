@@ -621,9 +621,10 @@ export class EmailService {
   }
 
   // Send email using API route (works both client and server-side)
-  private async sendEmail(
+  async sendEmail(
     to: string,
-    template: EmailTemplate
+    template: EmailTemplate,
+    fromEmail?: string
   ): Promise<boolean> {
     console.log('📧 [EMAIL SERVICE] sendEmail called:', {
       to,
@@ -651,6 +652,7 @@ export class EmailService {
           subject: template.subject,
           html: template.html,
           text: template.text,
+          from: fromEmail, // Optional custom from address
         }),
       });
 
