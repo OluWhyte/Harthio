@@ -69,7 +69,26 @@ export const topicService = {
         throw new Error(`Failed to fetch topics: ${error.message}`);
       }
 
-      return data || [];
+      // Filter out sessions that reached start time without participants
+      // These sessions can't proceed and should not be shown on timeline
+      const now = new Date();
+      const filteredData = (data || []).filter((topic: any) => {
+        const startTime = new Date(topic.start_time);
+        const hasParticipants = topic.participants && Array.isArray(topic.participants) && topic.participants.length > 0;
+        
+        // Show if:
+        // 1. Session hasn't started yet (regardless of participants)
+        // 2. Session has started AND has participants
+        // Hide if: Session has started WITHOUT participants
+        if (startTime <= now && !hasParticipants) {
+          console.log(`🚫 Hiding session "${topic.title}" - started without participants`);
+          return false;
+        }
+        
+        return true;
+      });
+
+      return filteredData;
     } catch (error: any) {
       if (error.name === 'TimeoutError') {
         logError("getAllTopics", error);
@@ -502,6 +521,14 @@ export const topicService = {
       let invalidRequestsSkipped = 0;
 
       for (const topic of topics) {
+        // Skip topics that have reached start time (past sessions)
+        // Requests for past sessions should not be shown
+        const topicStartTime = new Date(topic.start_time);
+        if (topicStartTime <= new Date()) {
+          console.log(`[SECURITY] Skipping past session: ${topic.title}`);
+          continue;
+        }
+
         // Ensure requests is a valid array
         if (
           !(topic as any).requests ||
@@ -840,7 +867,7 @@ export const topicService = {
       // Get the topic info (with RLS ensuring only author can access)
       const { data: topic, error: fetchError } = await typedSupabase
         .from("topics")
-        .select("id, title, author_id, participants, requests")
+        .select("id, title, author_id, participants, requests, start_time, end_time")
         .eq("id", topicId)
         .single();
 
@@ -1265,6 +1292,80 @@ export const topicService = {
     } catch (error) {
       console.error("Error checking session start eligibility:", error);
       return false;
+    }
+  },
+
+  // Get archived sessions for a user (sessions they authored or participated in)
+  async getArchivedSessions(userId: string): Promise<any[]> {
+    try {
+      if (!userId) {
+        console.error("getArchivedSessions: User ID is required");
+        return [];
+      }
+
+      // Fetch archived sessions without FK join (Supabase can't see auth.users FK)
+      const { data, error } = await typedSupabase
+        .from("topics_archive")
+        .select(`
+          id, title, description, author_id, start_time, end_time,
+          participants, created_at, archived_at, archive_reason
+        `)
+        .order("archived_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching archived sessions:", error);
+        return [];
+      }
+
+      // Filter for user's sessions
+      const filtered = (data || []).filter(session => 
+        session.author_id === userId || 
+        (session.participants && session.participants.includes(userId))
+      );
+
+      // Manually fetch author details (batch query)
+      const authorIds = [...new Set(filtered.map(s => s.author_id))];
+      const { data: authors } = await typedSupabase
+        .from("users")
+        .select("id, display_name, avatar_url, first_name, last_name, email")
+        .in("id", authorIds);
+
+      // Map authors to sessions
+      const authorsMap = new Map(authors?.map(a => [a.id, a]) || []);
+      const withAuthors = filtered.map(session => ({
+        ...session,
+        author: authorsMap.get(session.author_id)
+      }));
+
+      console.log(`📦 [ARCHIVE] Found ${withAuthors.length} archived sessions for user ${userId}`);
+      return withAuthors;
+    } catch (error) {
+      console.error("Error in getArchivedSessions:", error);
+      return [];
+    }
+  },
+
+  // Manually archive a session (for cancellations)
+  async archiveSession(topicId: string, reason: string = "cancelled"): Promise<ApiResponse> {
+    try {
+      const validTopicId = validateTopicId(topicId);
+
+      const { data, error } = await typedSupabase
+        .rpc("archive_session", {
+          p_topic_id: validTopicId,
+          p_reason: reason,
+        });
+
+      if (error) {
+        console.error("Error archiving session:", error);
+        return { data: null, error: error.message, success: false };
+      }
+
+      return { data, error: null, success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("Error in archiveSession:", errorMessage);
+      return { data: null, error: errorMessage, success: false };
     }
   },
 };

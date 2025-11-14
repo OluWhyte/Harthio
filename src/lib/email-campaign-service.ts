@@ -5,6 +5,7 @@
 
 import { supabase } from "./supabase";
 import { emailService } from "./email-service";
+import { getEmailBaseUrl } from "./url-utils";
 
 const typedSupabase = supabase as any;
 
@@ -422,7 +423,7 @@ export const emailCampaignService = {
           // Replace variables in template
           const variables = {
             firstName: user.first_name || user.display_name || 'there',
-            appUrl: 'https://harthio.com', // Always use production URL, never localhost
+            appUrl: getEmailBaseUrl(), // Environment-aware URL (production or localhost)
             unsubscribeToken: user.id // In production, generate a proper token
           };
 

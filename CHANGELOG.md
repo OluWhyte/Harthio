@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - 2025-11-14
+
+### 🔒 Security Fixes
+
+#### Fixed
+- **Chat Messages RLS** - Resolved conflicting INSERT policies preventing message sending
+  - Removed 3 conflicting policies causing authorization issues
+  - Created single, correct policy for message authorization
+- **Admin Views Security** - Secured SECURITY DEFINER views
+  - Restricted access to device_analytics, security_dashboard, user_footprints, user_management_view
+  - Only service_role can access admin monitoring views
+  - Added security barriers to all admin views
+
+### 🗄️ Database Cleanup
+
+#### Removed
+- **topics_backup table** - Dropped old schema backup table (outdated structure)
+
+### 📧 Email Campaigns
+
+#### Added
+- **Waitlist Email Template** - Professional email template for waitlist signups
+- **Audience Filtering** - Precise date range filtering for email campaigns
+- **Email Personalization** - Dynamic content based on user data
+
+#### Fixed
+- **Email From Address** - Fixed whitespace validation error
+- **Email Debugging** - Added comprehensive logging for join request emails
+- **Email API Route** - Consistent API usage for server and client
+
+---
+
 ## [0.2.0] - 2025-11-09
 
 ### 🔒 Security (Major Update)

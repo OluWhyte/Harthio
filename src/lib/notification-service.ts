@@ -7,6 +7,7 @@ import { supabase } from "./supabase";
 import type { Notification, NotificationInsert } from "./database-types";
 import { emailService } from "./email-service";
 import { formatSessionTimeRange } from "./time-utils";
+import { getEmailBaseUrl, buildEmailUrl } from "./url-utils";
 
 // Helper functions with explicit typing to avoid TypeScript issues
 const notificationsTable = () => (supabase as any).from("notifications");
@@ -52,7 +53,14 @@ export const notificationService = {
         "for session:",
         sessionTitle
       );
-      const { error } = await notificationsTable().insert(notificationData);
+      
+      // Use secure RPC function instead of direct insert
+      const { data, error } = await supabase.rpc('create_notification', {
+        p_user_id: userId,
+        p_title: notificationData.title,
+        p_message: notificationData.message,
+        p_type: notificationData.type
+      });
 
       if (error) {
         console.error("Error sending cancellation notification:", error);
@@ -109,7 +117,14 @@ export const notificationService = {
         "for session:",
         sessionTitle
       );
-      const { error } = await notificationsTable().insert(notificationData);
+      
+      // Use secure RPC function instead of direct insert
+      const { data, error } = await supabase.rpc('create_notification', {
+        p_user_id: userId,
+        p_title: notificationData.title,
+        p_message: notificationData.message,
+        p_type: notificationData.type
+      });
 
       if (error) {
         console.error("Error sending approval notification:", error);
@@ -344,12 +359,14 @@ export const notificationService = {
 
       // Send email notification
       console.log('📧 [JOIN REQUEST EMAIL] Calling email service...');
+      const appUrl = getEmailBaseUrl();
+      console.log('📧 [JOIN REQUEST EMAIL] Using app URL:', appUrl);
       const emailSent = await emailService.sendNewRequestNotification(authorEmail, {
         requesterName,
         sessionTitle,
         sessionDescription,
         requestMessage,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com',
+        appUrl,
       });
 
       if (emailSent) {
@@ -381,44 +398,73 @@ export const notificationService = {
     sessionId: string
   ): Promise<void> {
     try {
+      console.log('📧 [APPROVAL EMAIL] Starting approval email process');
+      console.log('📧 [APPROVAL EMAIL] Requester:', { id: requesterId, email: requesterEmail });
+      console.log('📧 [APPROVAL EMAIL] Approver:', { id: approverId, email: approverEmail, name: approverName });
+      console.log('📧 [APPROVAL EMAIL] Session:', { id: sessionId, title: sessionTitle });
+
       // Send in-app notification to requester
       await this.notifyRequestApproved(requesterId, sessionTitle);
+      console.log('✅ [APPROVAL EMAIL] In-app notification sent');
 
-      // Create session URL
-      const sessionUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com'}/session/${sessionId}`;
+      // Create session URL using environment-aware utility
+      const appUrl = getEmailBaseUrl();
+      const sessionUrl = buildEmailUrl(`/session/${sessionId}`);
       const sessionTimeString = formatSessionTimeRange(sessionStartTime, sessionEndTime);
 
+      console.log('📧 [APPROVAL EMAIL] Email data prepared:', {
+        approverName,
+        sessionTitle,
+        sessionTimeString,
+        sessionUrl,
+        appUrl
+      });
+
       // Send email to requester (User A)
+      console.log('📧 [APPROVAL EMAIL] Sending to requester...');
       const requesterEmailSent = await emailService.sendRequestApprovedNotification(requesterEmail, {
         approverName,
         sessionTitle,
         sessionStartTime: sessionTimeString,
         sessionUrl,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com',
+        appUrl,
       });
 
+      if (requesterEmailSent) {
+        console.log(`✅ [APPROVAL EMAIL] Email sent to requester: ${requesterEmail}`);
+      } else {
+        console.error(`❌ [APPROVAL EMAIL] Failed to send to requester: ${requesterEmail}`);
+      }
+
       // Send confirmation email to approver (User B)
+      console.log('📧 [APPROVAL EMAIL] Sending to approver...');
       const approverEmailSent = await emailService.sendRequestApprovedConfirmation(approverEmail, {
         approverName,
         sessionTitle,
         sessionStartTime: sessionTimeString,
         sessionUrl,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com',
+        appUrl,
       });
 
-      if (requesterEmailSent) {
-        console.log(`Approval email sent to requester: ${requesterEmail}`);
+      if (approverEmailSent) {
+        console.log(`✅ [APPROVAL EMAIL] Email sent to approver: ${approverEmail}`);
       } else {
-        console.warn(`Failed to send approval email to requester: ${requesterEmail}`);
+        console.error(`❌ [APPROVAL EMAIL] Failed to send to approver: ${approverEmail}`);
       }
 
-      if (approverEmailSent) {
-        console.log(`Confirmation email sent to approver: ${approverEmail}`);
-      } else {
-        console.warn(`Failed to send confirmation email to approver: ${approverEmail}`);
-      }
+      console.log('✅ [APPROVAL EMAIL] Process complete');
     } catch (error) {
-      console.error("Failed to send enhanced approval notification:", error);
+      console.error("❌ [APPROVAL EMAIL] Error in approval email process:", error);
+      console.error("❌ [APPROVAL EMAIL] Error details:", {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        requesterId,
+        requesterEmail,
+        approverId,
+        approverEmail
+      });
+      // Re-throw to make error visible
+      throw error;
     }
   },
 
@@ -433,9 +479,10 @@ export const notificationService = {
       await this.notifyRequestRejected(requesterId, sessionTitle);
 
       // Send email notification
+      const appUrl = getEmailBaseUrl();
       const emailSent = await emailService.sendRequestDeclinedNotification(requesterEmail, {
         sessionTitle,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com',
+        appUrl,
       });
 
       if (emailSent) {
@@ -456,10 +503,11 @@ export const notificationService = {
   ): Promise<void> {
     try {
       // Send email notification (no in-app notification needed for cancellation)
+      const appUrl = getEmailBaseUrl();
       const emailSent = await emailService.sendRequestCancelledNotification(recipientEmail, {
         requesterName,
         sessionTitle,
-        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com',
+        appUrl,
       });
 
       if (emailSent) {

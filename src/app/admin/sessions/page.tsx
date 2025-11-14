@@ -22,7 +22,8 @@ import {
   Play,
   Pause,
   Square,
-  MoreHorizontal
+  MoreHorizontal,
+  Archive
 } from 'lucide-react';
 import { AdminService } from '@/lib/services/admin-service';
 import { FilterComponent } from '@/components/admin/filters';
@@ -33,6 +34,7 @@ import type { TopicWithDetails, SessionStatus } from '@/lib/database-types';
 export default function SessionManagementPage() {
   const [sessions, setSessions] = useState<TopicWithDetails[]>([]);
   const [activeSessions, setActiveSessions] = useState<TopicWithDetails[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
   const [filters, setFilters] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -85,9 +87,11 @@ export default function SessionManagementPage() {
   const loadSessions = async () => {
     try {
       const [allSessions, activeSessionsData] = await Promise.all([
-        Object.keys(filters).length > 0 
-          ? AdminService.getFilteredTopics(filters, 50)
-          : AdminService.getAllTopics(50),
+        showArchived 
+          ? AdminService.getAllTopicsIncludingArchived(50)
+          : Object.keys(filters).length > 0 
+            ? AdminService.getFilteredTopics(filters, 50)
+            : AdminService.getAllTopics(50),
         AdminService.getActiveTopics()
       ]);
       
@@ -107,9 +111,11 @@ export default function SessionManagementPage() {
     // Auto-apply filters
     try {
       const [allSessions, activeSessionsData] = await Promise.all([
-        Object.keys(newFilters).length > 0 
-          ? AdminService.getFilteredTopics(newFilters, 50)
-          : AdminService.getAllTopics(50),
+        showArchived 
+          ? AdminService.getAllTopicsIncludingArchived(50)
+          : Object.keys(newFilters).length > 0 
+            ? AdminService.getFilteredTopics(newFilters, 50)
+            : AdminService.getAllTopics(50),
         AdminService.getActiveTopics()
       ]);
       
@@ -121,6 +127,30 @@ export default function SessionManagementPage() {
         description: 'Failed to apply filters.',
         variant: 'destructive'
       });
+    }
+  };
+
+  const toggleArchived = async () => {
+    setShowArchived(!showArchived);
+    setLoading(true);
+    try {
+      const [allSessions, activeSessionsData] = await Promise.all([
+        !showArchived 
+          ? AdminService.getAllTopicsIncludingArchived(50)
+          : AdminService.getAllTopics(50),
+        AdminService.getActiveTopics()
+      ]);
+      
+      setSessions(allSessions);
+      setActiveSessions(activeSessionsData);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to toggle archived sessions.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -225,6 +255,12 @@ export default function SessionManagementPage() {
       <ResponsiveAdminHeader
         title="Session Management"
         actions={[
+          {
+            label: showArchived ? 'Hide Archived' : 'Show Archived',
+            onClick: toggleArchived,
+            variant: showArchived ? 'default' : 'outline',
+            icon: <Archive className="h-4 w-4" />
+          },
           {
             label: 'Server Status',
             onClick: () => router.push('/debug/servers'),
@@ -481,6 +517,11 @@ export default function SessionManagementPage() {
                             <Badge className={sessionStatus.color}>
                               {sessionStatus.description || sessionStatus.status}
                             </Badge>
+                            {(session as any).is_archived && (
+                              <Badge variant="outline" className="text-purple-600 border-purple-300">
+                                Archived - {(session as any).archive_reason}
+                              </Badge>
+                            )}
                             <span className="text-sm text-gray-500">
                               {getDuration(session.start_time, session.end_time)}
                             </span>

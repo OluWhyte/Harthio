@@ -305,6 +305,54 @@ export class AdminService {
     }
   }
 
+  static async getArchivedTopics(limit = 50, offset = 0): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('topics_archive')
+        .select(`
+          *,
+          author:users!topics_archive_author_id_fkey(id, display_name, first_name, last_name, avatar_url)
+        `)
+        .order('archived_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw error;
+
+      return data?.map((topic: any) => ({
+        ...topic,
+        participant_count: topic.participants?.length || 0,
+        is_archived: true
+      })) || [];
+    } catch (error) {
+      console.error('Error fetching archived topics:', error);
+      throw error;
+    }
+  }
+
+  static async getAllTopicsIncludingArchived(limit = 50, offset = 0): Promise<any[]> {
+    try {
+      const [activeTopics, archivedTopics] = await Promise.all([
+        AdminService.getAllTopics(limit, offset),
+        AdminService.getArchivedTopics(limit, offset)
+      ]);
+
+      // Combine and sort by most recent
+      const allTopics = [
+        ...activeTopics.map(t => ({ ...t, is_archived: false })),
+        ...archivedTopics
+      ].sort((a, b) => {
+        const dateA = new Date(a.archived_at || a.created_at).getTime();
+        const dateB = new Date(b.archived_at || b.created_at).getTime();
+        return dateB - dateA;
+      });
+
+      return allTopics.slice(0, limit);
+    } catch (error) {
+      console.error('Error fetching all topics including archived:', error);
+      throw error;
+    }
+  }
+
   static async getActiveTopics(): Promise<TopicWithDetails[]> {
     const now = new Date().toISOString();
     try {

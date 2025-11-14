@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { useMobileOptimized, getOptimizedSettings } from "@/hooks/use-mobile-optimized";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -241,6 +242,10 @@ function DashboardContent() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const { hasError, handleError, clearError } = useTopicErrorHandler();
 
+  // Mobile optimization
+  const device = useMobileOptimized();
+  const settings = getOptimizedSettings(device);
+
   // Optimized topic state management - prevent excessive re-renders
   const [topics, setTopics] = useState<Topic[]>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(true);
@@ -249,10 +254,10 @@ function DashboardContent() {
   const lastFetchRef = useRef<number>(0);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // New topic detection system - only when user is active
+  // New topic detection system - adjusted for mobile
   const { hasNewTopics, refreshAndDismiss } = useNewTopicDetector({
     userId: user?.uid,
-    checkInterval: 300000, // Check every 5 minutes
+    checkInterval: settings.realtimeInterval, // Longer on mobile
     enabled: !!user && !loading
   });
 
@@ -279,7 +284,7 @@ function DashboardContent() {
     }
   }, [refreshAndDismiss, user]);
 
-  // Optimized fetchTopics with timeout protection and better error handling
+  // Optimized fetchTopics with caching and timeout protection
   const fetchTopics = useCallback(async (force = false) => {
     if (!user) {
       setIsLoadingTopics(false);
@@ -289,7 +294,7 @@ function DashboardContent() {
     // Prevent rapid successive calls
     const now = Date.now();
     if (!force && now - lastFetchRef.current < 2000) {
-      console.log('Skipping fetch - too soon after last fetch');
+      console.log('⏭️ Skipping fetch - too soon after last fetch');
       return;
     }
     lastFetchRef.current = now;
@@ -300,12 +305,38 @@ function DashboardContent() {
       fetchTimeoutRef.current = null;
     }
 
+    // Try cache first (unless force refresh)
+    const CACHE_KEY = 'dashboard_topics_cache';
+    const CACHE_TIME = settings.cacheTime;
+
+    if (!force) {
+      try {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          const age = Date.now() - timestamp;
+          
+          if (age < CACHE_TIME) {
+            console.log(`📦 [CACHE] Hit - Age: ${(age / 1000).toFixed(0)}s`);
+            const convertedTopics = (data || []).map(convertSupabaseTopicToTopic);
+            setTopics(convertedTopics);
+            setIsLoadingTopics(false);
+            return;
+          }
+          console.log(`📦 [CACHE] Expired - Age: ${(age / 1000).toFixed(0)}s`);
+        }
+      } catch (cacheError) {
+        console.error('📦 [CACHE] Error reading:', cacheError);
+      }
+    }
+
     try {
       setIsLoadingTopics(true);
       setTopicsError(null);
       clearError();
 
-      console.log('Fetching topics for user:', user.uid);
+      const startTime = performance.now();
+      console.log('⚡ Fetching topics for user:', user.uid);
       
       // Add timeout protection to prevent hanging
       const fetchPromise = topicService.getAllTopics();
@@ -314,7 +345,19 @@ function DashboardContent() {
       );
       
       const data = await Promise.race([fetchPromise, timeoutPromise]) as any[];
-      console.log('Topics fetched successfully:', data?.length || 0);
+      const fetchTime = performance.now() - startTime;
+      console.log(`⚡ Topics fetched in ${fetchTime.toFixed(0)}ms - ${data?.length || 0} topics`);
+
+      // Save to cache
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          data,
+          timestamp: Date.now()
+        }));
+        console.log(`📦 [CACHE] Saved ${data?.length || 0} topics`);
+      } catch (cacheError) {
+        console.error('📦 [CACHE] Error saving:', cacheError);
+      }
 
       const convertedTopics = (data || []).map(convertSupabaseTopicToTopic);
       
@@ -387,71 +430,9 @@ function DashboardContent() {
 
   const now = currentTime;
 
-  // Enhanced cleanup for 3-state session system
-  useEffect(() => {
-    if (!user || topics.length === 0) return;
-
-    const cleanupExpiredSessions = async () => {
-      const sessionsToCleanup = topics.filter((topic) => {
-        const status = getSessionStatus(topic.startTime, topic.endTime);
-        const hasApprovedParticipants = (topic.participants?.length || 0) > 0;
-        const isUserAuthor = topic.author.userId === user.uid;
-
-        // Clean up sessions that have ended (session clears at end time set by author)
-        const endedWithGracePeriod =
-          status === "ended" &&
-          new Date(topic.endTime).getTime() < now.getTime() - 5 * 60 * 1000; // 5 minute grace period
-
-        // CRITICAL: Clean up sessions that reached start time WITHOUT approved participants
-        // Sessions in STATE 1 (no approved participants) MUST be cleaned up at start time
-        // They cannot graduate to STATE 2 or STATE 3 without approved participants
-        const startedWithoutParticipants =
-          !hasApprovedParticipants &&
-          new Date(topic.startTime).getTime() <= now.getTime(); // Clean up immediately at start time
-
-        return endedWithGracePeriod || startedWithoutParticipants;
-      });
-
-      if (sessionsToCleanup.length > 0) {
-        console.log(`Cleaning up ${sessionsToCleanup.length} expired sessions`);
-
-        // Process cleanup without triggering immediate refresh
-        await Promise.allSettled(
-          sessionsToCleanup.map(async (session) => {
-            try {
-              await topicService.deleteTopic(session.id);
-              const status = getSessionStatus(session.startTime, session.endTime);
-              const hasParticipants = (session.participants?.length || 0) > 0;
-              
-              let reason = "unknown";
-              if (status === "ended") {
-                reason = "session ended at scheduled end time";
-              } else if (!hasParticipants && new Date(session.startTime).getTime() <= now.getTime()) {
-                reason = "STATE 1 session reached start time without approved participants - cannot graduate to STATE 2";
-              }
-              
-              console.log(`Cleaned up session "${session.title}" (${reason})`);
-            } catch (error) {
-              console.error(`Failed to cleanup session ${session.id}:`, error);
-            }
-          })
-        );
-
-        // Remove from local state immediately instead of refetching
-        setTopics(prev => prev.filter(topic => 
-          !sessionsToCleanup.some(cleanup => cleanup.id === topic.id)
-        ));
-      }
-    };
-
-    // Run cleanup immediately on mount and when topics change
-    cleanupExpiredSessions();
-
-    // Run cleanup frequently to handle session state transitions - every 30 seconds
-    const cleanupInterval = setInterval(cleanupExpiredSessions, 30 * 1000);
-
-    return () => clearInterval(cleanupInterval);
-  }, [topics.length, user?.uid, now]); // Reduced dependencies
+  // Note: Session archival now happens server-side via pg_cron
+  // Expired sessions are automatically moved to topics_archive table every hour
+  // No need for browser-side cleanup
 
   // Filter and categorize topics based on their current state and user relationship
   const filteredTopics = topics.filter((topic) =>

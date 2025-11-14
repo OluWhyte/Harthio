@@ -149,11 +149,18 @@ function HarthioSessionPageContent() {
       });
       
       if (remoteVideoRef.current) {
-        // Check if this is a different stream to avoid unnecessary reloads
+        // Check if this is a different stream OR if tracks changed
         const currentStream = remoteVideoRef.current.srcObject as MediaStream;
-        if (currentStream && currentStream.id === stream.id) {
-          console.log('📺 Same remote stream, skipping reload');
+        const currentVideoTracks = currentStream?.getVideoTracks().length || 0;
+        const newVideoTracks = stream.getVideoTracks().length;
+        
+        if (currentStream && currentStream.id === stream.id && currentVideoTracks === newVideoTracks) {
+          console.log('📺 Same remote stream with same tracks, skipping reload');
           return;
+        }
+        
+        if (currentStream && currentStream.id === stream.id && newVideoTracks > currentVideoTracks) {
+          console.log('📺 Video track added to existing stream, updating...');
         }
         
         // Pause current video before setting new stream
