@@ -19,7 +19,8 @@
     "validate:db": "node validate-deployment.js",
     "validate:db:verbose": "node validate-deployment.js --verbose",
     "resume": "node scripts/resume-session.js",
-    "status": "bash scripts/quick-status.sh"
+    "status": "bash scripts/quick-status.sh",
+    "check:env": "node scripts/check-environment.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
