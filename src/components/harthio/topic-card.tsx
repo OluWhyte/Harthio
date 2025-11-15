@@ -80,18 +80,32 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
   const { handleError, executeWithRetry, clearError } = useTopicErrorHandler();
   const timeString = formatSessionTimeRange(topic.startTime, topic.endTime);
 
+  // Optimistic UI state for request status
+  const [optimisticRequestSent, setOptimisticRequestSent] = useState(false);
+
   // Core user state calculations
   const isUserHost = topic.author.userId === user?.uid;
   const isUserParticipant = topic.participants?.includes(user?.uid || "");
 
-  // Check if user has already sent a request
+  // Check if user has already sent a request (with optimistic update)
   const hasRequested =
-    topic.requests?.some((req) => req.requesterId === user?.uid) || false;
+    optimisticRequestSent ||
+    topic.requests?.some((req) => req.requesterId === user?.uid) ||
+    false;
+
+  // Reset optimistic state when topic data changes (after refetch)
+  useEffect(() => {
+    if (topic.requests?.some((req) => req.requesterId === user?.uid)) {
+      setOptimisticRequestSent(false);
+    }
+  }, [topic.requests, user?.uid]);
 
   const timeSinceCreation = formatRelativeTime(topic.createdAt);
 
   // Enhanced update handler with comprehensive error handling and feedback
   const handleUpdateWithFeedback = async () => {
+    // Optimistically update the UI immediately
+    setOptimisticRequestSent(true);
     setIsUpdating(true);
     setActionError(null);
     setActionSuccess(null);
@@ -104,7 +118,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
       }, "updateTopicCard");
 
       // Show success feedback
-      setActionSuccess("Updated successfully");
+      setActionSuccess("Request sent successfully");
       setRetryCount(0);
 
       // Clear success message after 2 seconds
@@ -113,6 +127,8 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
         setIsUpdating(false);
       }, 2000);
     } catch (error) {
+      // Revert optimistic update on error
+      setOptimisticRequestSent(false);
       setIsUpdating(false);
       setRetryCount((prev) => prev + 1);
 
