@@ -156,8 +156,9 @@ CREATE INDEX IF NOT EXISTS idx_users_display_name ON public.users(display_name);
 -- Advanced performance indexes
 CREATE INDEX IF NOT EXISTS idx_topics_requests_gin ON public.topics USING GIN(requests);
 CREATE INDEX IF NOT EXISTS idx_topics_author_time_range ON public.topics(author_id, start_time, end_time);
-CREATE INDEX IF NOT EXISTS idx_topics_active_sessions ON public.topics(start_time, end_time) WHERE start_time <= NOW() AND end_time >= NOW();
-CREATE INDEX IF NOT EXISTS idx_topics_upcoming_sessions ON public.topics(start_time) WHERE start_time > NOW();
+-- Note: Removed NOW() indexes as they require immutable functions
+-- CREATE INDEX IF NOT EXISTS idx_topics_active_sessions ON public.topics(start_time, end_time) WHERE start_time <= NOW() AND end_time >= NOW();
+-- CREATE INDEX IF NOT EXISTS idx_topics_upcoming_sessions ON public.topics(start_time) WHERE start_time > NOW();
 CREATE INDEX IF NOT EXISTS idx_users_id_display_name ON public.users(id, display_name);
 
 -- Conditional indexes for better performance
