@@ -1,265 +1,86 @@
-# Environment Setup Guide
+# Simple Dev/Prod Separation
 
-This guide explains how to separate development and production environments for Harthio.
+## The Simple Way: Use Git Branches
 
-## Overview
-
-We use separate Supabase projects and environment configurations to ensure:
-- Development changes don't affect production data
-- Safe testing of new features
-- Independent database schemas
-- Separate API keys and credentials
-
-## Environment Structure
+Instead of creating multiple databases, use **branch-based deployments**:
 
 ```
-Development (Local)     →  .env.local          →  Dev Supabase Project
-Staging (Vercel)        →  Vercel Environment  →  Dev Supabase Project  
-Production (Vercel)     →  Vercel Environment  →  Prod Supabase Project
+develop branch  →  Vercel Preview URL  →  Test here first
+main branch     →  harthio.com         →  Production
 ```
 
-## Step 1: Create Separate Supabase Projects
+## Setup (2 minutes)
 
-### Production Project (Already exists)
-- **Name**: Harthio Production
-- **URL**: Your current production Supabase URL
-- **Purpose**: Live production data
-
-### Development Project (Create new)
-1. Go to https://supabase.com/dashboard
-2. Click "New Project"
-3. **Name**: Harthio Development
-4. **Database Password**: Use a strong password (save it!)
-5. **Region**: Same as production for consistency
-6. Wait for project to be created (~2 minutes)
-
-## Step 2: Set Up Development Database
-
-Once your dev project is ready:
-
-### Option A: Copy Schema from Production (Recommended)
+### 1. Create develop branch
 ```bash
-# Install Supabase CLI if not already installed
-npm install -g supabase
-
-# Link to your production project
-supabase link --project-ref YOUR_PROD_PROJECT_ID
-
-# Generate migration from production
-supabase db pull
-
-# Link to your development project
-supabase link --project-ref YOUR_DEV_PROJECT_ID
-
-# Apply schema to development
-supabase db push
+git checkout -b develop
+git push -u origin develop
 ```
 
-### Option B: Run SQL Files Manually
-1. Go to your dev Supabase dashboard → SQL Editor
-2. Run these files in order:
-   - `database/schema.sql` (main schema)
-   - `database/setup-rls.sql` (security policies)
-   - `database/setup-functions.sql` (database functions)
-   - Any migration files in `database/migrations/`
-
-## Step 3: Configure Local Development
-
-### Create `.env.local` for Development
+### 2. Work on develop branch
 ```bash
-# Copy template
-cp env.template .env.local
+# Make changes
+git add .
+git commit -m "Your changes"
+git push origin develop
 ```
 
-### Fill in Development Values
-```env
-# Development Supabase (NEW PROJECT)
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_DEV_PROJECT_ID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_dev_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_dev_service_role_key
+### 3. Vercel automatically creates preview URL
+- Every push to `develop` gets a preview URL like `harthio-git-develop-yourname.vercel.app`
+- Test everything there first
+- Same database, but isolated testing
 
-# Local development URL
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Development email (use Resend test mode or separate account)
-RESEND_API_KEY=your_dev_resend_key
-EMAIL_FROM_ADDRESS=Harthio Dev <dev@harthio.com>
-
-# WebRTC (can use same TURN servers or separate dev credentials)
-NEXT_PUBLIC_METERED_DOMAIN=your-domain.metered.live
-METERED_API_KEY=your_metered_api_key
-
-# Optional: Development-specific settings
-NODE_ENV=development
-```
-
-**Important**: `.env.local` is already in `.gitignore` - never commit it!
-
-## Step 4: Configure Vercel Environments
-
-### Production Environment (harthio.com)
-1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables
-2. Select **Production** environment
-3. Add variables:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROD_PROJECT_ID.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_prod_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_prod_service_role_key
-   NEXT_PUBLIC_APP_URL=https://harthio.com
-   (... all other production values)
-   ```
-
-### Preview/Staging Environment (Optional but Recommended)
-1. In Vercel → Environment Variables
-2. Select **Preview** environment
-3. Add same variables as development:
-   ```
-   NEXT_PUBLIC_SUPABASE_URL=https://YOUR_DEV_PROJECT_ID.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_dev_anon_key
-   (... all other dev values)
-   ```
-
-This way, preview deployments (from PRs or branches) use the dev database.
-
-## Step 5: Update Git Workflow
-
-### Recommended Branch Strategy
-
-```
-main (production)
-  ↓
-develop (development)
-  ↓
-feature/* (feature branches)
-```
-
-### Workflow:
-1. **Development**: Work on `develop` branch or feature branches
-   - Uses `.env.local` (dev database)
-   - Test locally with `npm run dev`
-   
-2. **Preview**: Push to feature branch
-   - Vercel creates preview deployment
-   - Uses Preview environment variables (dev database)
-   - Share preview URL for testing
-   
-3. **Production**: Merge to `main` branch
-   - Vercel deploys to production
-   - Uses Production environment variables (prod database)
-   - Goes live at harthio.com
-
-## Step 6: Database Migration Strategy
-
-### For Development
+### 4. When ready, merge to production
 ```bash
-# Make changes to dev database
-# Test thoroughly
+git checkout main
+git merge develop
+git push origin main
+```
+
+## Why This Works
+
+✅ **No extra database needed** - Use same Supabase  
+✅ **Automatic preview URLs** - Vercel does it for you  
+✅ **Test before production** - Preview URL is your staging  
+✅ **Simple workflow** - Just use branches  
+
+## Daily Workflow
+
+1. Work on `develop` branch
+2. Push to see preview deployment
+3. Test on preview URL
+4. Merge to `main` when ready
+5. Production updates automatically
+
+## Database Changes
+
+For database changes, test carefully:
+
+1. Make changes in Supabase dashboard
+2. Test on preview URL (develop branch)
+3. If it works, merge to main
+4. Production gets the same database (already updated)
+
+**OR** use migrations:
+```bash
 # Create migration file
 npm run db:generate-migration
 
-# Apply to dev
+# Test locally
+npm run deploy:db:dry-run
+
+# Apply when ready
 npm run deploy:db
 ```
 
-### For Production
-```bash
-# After testing in dev, apply to production
-# Option 1: Via Supabase Dashboard (safer)
-# - Copy SQL from migration file
-# - Run in production SQL editor
-# - Test carefully
+## That's It!
 
-# Option 2: Via CLI (advanced)
-supabase link --project-ref YOUR_PROD_PROJECT_ID
-npm run deploy:db
-```
+No need for:
+- ❌ Second Supabase project
+- ❌ Complex environment configs
+- ❌ Multiple databases to manage
 
-**Always test migrations in dev first!**
-
-## Step 7: Verify Setup
-
-### Check Local Development
-```bash
-npm run dev
-# Should connect to dev database
-# Check browser console for Supabase URL
-```
-
-### Check Environment Variables
-```bash
-# Local
-echo $NEXT_PUBLIC_SUPABASE_URL
-
-# Vercel (via dashboard)
-# Settings → Environment Variables → Check each environment
-```
-
-### Test Data Isolation
-1. Create a test user in dev
-2. Check it doesn't appear in production
-3. Create a test session in dev
-4. Verify production is unaffected
-
-## Common Commands
-
-```bash
-# Development
-npm run dev                    # Start dev server (uses .env.local)
-npm run build                  # Test production build locally
-npm run deploy:db              # Deploy to current linked Supabase
-
-# Database
-npm run deploy:db:dry-run      # Preview changes
-npm run deploy:db:rollback     # Rollback last migration
-npm run validate:db            # Validate schema
-
-# Switching between projects
-supabase link --project-ref YOUR_DEV_PROJECT_ID
-supabase link --project-ref YOUR_PROD_PROJECT_ID
-```
-
-## Security Best Practices
-
-1. **Never commit** `.env.local` or any file with real credentials
-2. **Use different passwords** for dev and prod databases
-3. **Rotate keys regularly**, especially after team changes
-4. **Limit access**: Only give prod access to necessary team members
-5. **Monitor production**: Set up alerts for unusual activity
-6. **Backup regularly**: Enable Supabase automatic backups for production
-
-## Troubleshooting
-
-### "Using wrong database"
-- Check `NEXT_PUBLIC_SUPABASE_URL` in your environment
-- Clear browser cache and localStorage
-- Restart dev server
-
-### "Environment variables not updating"
-- Restart dev server after changing `.env.local`
-- In Vercel, redeploy after changing environment variables
-- Check variable names match exactly (case-sensitive)
-
-### "Migration failed"
-- Run `npm run deploy:db:dry-run` first
-- Check for syntax errors in SQL
-- Verify you're linked to correct project
-- Check database logs in Supabase dashboard
-
-## Quick Reference
-
-| Environment | Branch | Database | URL |
-|------------|--------|----------|-----|
-| Local Dev | any | Dev Supabase | localhost:3000 |
-| Preview | feature/* | Dev Supabase | *.vercel.app |
-| Production | main | Prod Supabase | harthio.com |
-
-## Next Steps
-
-1. ✅ Create dev Supabase project
-2. ✅ Set up `.env.local` with dev credentials
-3. ✅ Configure Vercel environment variables
-4. ✅ Test local development
-5. ✅ Create `develop` branch
-6. ✅ Update team documentation
-7. ✅ Set up database backups
-8. ✅ Configure monitoring/alerts
+Just use:
+- ✅ Git branches
+- ✅ Vercel preview URLs
+- ✅ One database
