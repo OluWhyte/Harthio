@@ -1,86 +1,117 @@
-# Simple Dev/Prod Separation
+# Dev/Prod Separation Setup
 
-## The Simple Way: Use Git Branches
+## What You Need
 
-Instead of creating multiple databases, use **branch-based deployments**:
+1. **One extra Supabase project** (for development/testing)
+2. **Git branches** (develop + main)
+3. **Vercel environment variables** (separate for preview vs production)
 
+## Setup Steps
+
+### Step 1: Create Dev Supabase Project (5 min)
+
+1. Go to https://supabase.com/dashboard
+2. Click "New Project"
+3. Name: **"Harthio Development"**
+4. Same region as production
+5. Save the password!
+6. Wait ~2 minutes for setup
+
+### Step 2: Copy Database Schema to Dev
+
+In your dev Supabase dashboard → SQL Editor, run:
+- `database/schema.sql`
+- `database/setup-rls.sql`
+- `database/setup-functions.sql`
+
+Or use Supabase CLI to copy from production.
+
+### Step 3: Configure Vercel Environment Variables
+
+**For Preview Deployments (develop branch):**
+
+Vercel Dashboard → Settings → Environment Variables → Select **"Preview"**
+
+Add these with your **DEV** Supabase credentials:
 ```
-develop branch  →  Vercel Preview URL  →  Test here first
-main branch     →  harthio.com         →  Production
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_DEV_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_dev_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_dev_service_role_key
 ```
 
-## Setup (2 minutes)
+**For Production (main branch):**
 
-### 1. Create develop branch
-```bash
-git checkout -b develop
-git push -u origin develop
+Already configured, but verify in **"Production"** environment:
+```
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROD_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_prod_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_prod_service_role_key
 ```
 
-### 2. Work on develop branch
-```bash
-# Make changes
-git add .
-git commit -m "Your changes"
-git push origin develop
-```
+### Step 4: Branches Already Created ✅
 
-### 3. Vercel automatically creates preview URL
-- Every push to `develop` gets a preview URL like `harthio-git-develop-yourname.vercel.app`
-- Test everything there first
-- Same database, but isolated testing
-
-### 4. When ready, merge to production
-```bash
-git checkout main
-git merge develop
-git push origin main
-```
-
-## Why This Works
-
-✅ **No extra database needed** - Use same Supabase  
-✅ **Automatic preview URLs** - Vercel does it for you  
-✅ **Test before production** - Preview URL is your staging  
-✅ **Simple workflow** - Just use branches  
+- `develop` branch → Uses dev database (via Preview env vars)
+- `main` branch → Uses prod database (via Production env vars)  
 
 ## Daily Workflow
 
-1. Work on `develop` branch
-2. Push to see preview deployment
-3. Test on preview URL
-4. Merge to `main` when ready
-5. Production updates automatically
-
-## Database Changes
-
-For database changes, test carefully:
-
-1. Make changes in Supabase dashboard
-2. Test on preview URL (develop branch)
-3. If it works, merge to main
-4. Production gets the same database (already updated)
-
-**OR** use migrations:
 ```bash
-# Create migration file
-npm run db:generate-migration
+# 1. Work on develop branch
+git checkout develop
+# Make your changes
 
-# Test locally
-npm run deploy:db:dry-run
+# 2. Push to see preview deployment (uses DEV database)
+git add .
+git commit -m "Your changes"
+git push origin develop
 
-# Apply when ready
+# 3. Test on preview URL
+# Vercel creates: harthio-git-develop.vercel.app
+
+# 4. When ready, merge to production
+git checkout main
+git merge develop
+git push origin main
+# Goes live at harthio.com (uses PROD database)
+```
+
+## How It Works
+
+**develop branch:**
+- Vercel uses "Preview" environment variables
+- Connects to DEV Supabase
+- Safe to test and break things
+
+**main branch:**
+- Vercel uses "Production" environment variables  
+- Connects to PROD Supabase
+- Live site at harthio.com
+
+## Database Migrations
+
+**Test in dev first:**
+```bash
+# Link to dev project
+supabase link --project-ref YOUR_DEV_PROJECT_ID
+
+# Make changes and test
+npm run deploy:db
+
+# Test on preview URL
+```
+
+**Then apply to production:**
+```bash
+# Link to prod project
+supabase link --project-ref YOUR_PROD_PROJECT_ID
+
+# Apply same migration
 npm run deploy:db
 ```
 
-## That's It!
+## Summary
 
-No need for:
-- ❌ Second Supabase project
-- ❌ Complex environment configs
-- ❌ Multiple databases to manage
-
-Just use:
-- ✅ Git branches
-- ✅ Vercel preview URLs
-- ✅ One database
+✅ **One extra database** (dev Supabase)  
+✅ **Two branches** (develop + main)  
+✅ **Vercel handles the rest** (automatic deployments)  
+✅ **Safe testing** (dev database isolated from prod)
