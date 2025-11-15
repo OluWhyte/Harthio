@@ -1,117 +1,73 @@
-# Dev/Prod Separation Setup
+# Simple Dev/Prod Workflow
 
-## What You Need
+## Setup (Already Done ✅)
 
-1. **One extra Supabase project** (for development/testing)
-2. **Git branches** (develop + main)
-3. **Vercel environment variables** (separate for preview vs production)
+- `develop` branch created
+- `main` branch is production
+- Both use the **same database** (your production Supabase)
 
-## Setup Steps
+## Why This Works
 
-### Step 1: Create Dev Supabase Project (5 min)
-
-1. Go to https://supabase.com/dashboard
-2. Click "New Project"
-3. Name: **"Harthio Development"**
-4. Same region as production
-5. Save the password!
-6. Wait ~2 minutes for setup
-
-### Step 2: Copy Database Schema to Dev
-
-In your dev Supabase dashboard → SQL Editor, run:
-- `database/schema.sql`
-- `database/setup-rls.sql`
-- `database/setup-functions.sql`
-
-Or use Supabase CLI to copy from production.
-
-### Step 3: Configure Vercel Environment Variables
-
-**For Preview Deployments (develop branch):**
-
-Vercel Dashboard → Settings → Environment Variables → Select **"Preview"**
-
-Add these with your **DEV** Supabase credentials:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_DEV_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_dev_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_dev_service_role_key
-```
-
-**For Production (main branch):**
-
-Already configured, but verify in **"Production"** environment:
-```
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROD_PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_prod_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_prod_service_role_key
-```
-
-### Step 4: Branches Already Created ✅
-
-- `develop` branch → Uses dev database (via Preview env vars)
-- `main` branch → Uses prod database (via Production env vars)  
+You'll be careful:
+- Test thoroughly on `develop` branch preview URL before merging
+- Use preview deployments to catch issues
+- Only merge to `main` when confident  
 
 ## Daily Workflow
 
 ```bash
 # 1. Work on develop branch
 git checkout develop
-# Make your changes
 
-# 2. Push to see preview deployment (uses DEV database)
+# 2. Make your changes and test locally
+npm run dev
+
+# 3. Push to see preview deployment
 git add .
 git commit -m "Your changes"
 git push origin develop
 
-# 3. Test on preview URL
-# Vercel creates: harthio-git-develop.vercel.app
+# 4. Test on Vercel preview URL
+# URL: harthio-git-develop-yourname.vercel.app
+# Test thoroughly before merging!
 
-# 4. When ready, merge to production
+# 5. When confident, merge to production
 git checkout main
 git merge develop
 git push origin main
-# Goes live at harthio.com (uses PROD database)
+# Goes live at harthio.com
 ```
 
-## How It Works
+## Important Notes
 
-**develop branch:**
-- Vercel uses "Preview" environment variables
-- Connects to DEV Supabase
-- Safe to test and break things
+⚠️ **Same Database**: Both branches use the same production database
+- Be careful with database changes
+- Test locally first with `npm run dev`
+- Use preview URL to catch UI/logic bugs
+- For risky database changes, do them during low-traffic times
 
-**main branch:**
-- Vercel uses "Production" environment variables  
-- Connects to PROD Supabase
-- Live site at harthio.com
+✅ **What This Protects**:
+- Code bugs (caught on preview URL)
+- UI issues (test before production)
+- Breaking changes (review on preview first)
 
-## Database Migrations
+## Database Changes
 
-**Test in dev first:**
+For database migrations:
 ```bash
-# Link to dev project
-supabase link --project-ref YOUR_DEV_PROJECT_ID
+# 1. Test locally first
+npm run deploy:db:dry-run
 
-# Make changes and test
+# 2. Apply during low-traffic time
 npm run deploy:db
 
-# Test on preview URL
-```
-
-**Then apply to production:**
-```bash
-# Link to prod project
-supabase link --project-ref YOUR_PROD_PROJECT_ID
-
-# Apply same migration
-npm run deploy:db
+# 3. Test immediately on preview URL
+# 4. If good, merge to main
 ```
 
 ## Summary
 
-✅ **One extra database** (dev Supabase)  
-✅ **Two branches** (develop + main)  
-✅ **Vercel handles the rest** (automatic deployments)  
-✅ **Safe testing** (dev database isolated from prod)
+✅ **Two branches** (develop for testing, main for production)  
+✅ **Same database** (no credential hassle)  
+✅ **Preview URLs** (test before going live)  
+✅ **Simple workflow** (just be careful!)
