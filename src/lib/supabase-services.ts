@@ -247,7 +247,7 @@ export const topicService = {
     message?: string
   ): Promise<ApiResponse<void>> {
     try {
-      console.log("Adding join request:", { topicId, requesterId, message });
+      console.log("🚀 [JOIN REQUEST] Starting:", { topicId, requesterId, message });
 
       // Enhanced input validation
       if (
@@ -275,13 +275,13 @@ export const topicService = {
           .single(),
         typedSupabase
           .from("topics")
-          .select("id, title, author_id, participants, requests")
+          .select("id, title, description, author_id, participants, requests")
           .eq("id", topicId.trim())
           .single(),
       ]);
 
       if (requesterResult.error) {
-        console.error("User fetch error:", requesterResult.error);
+        console.error("❌ [JOIN REQUEST] User fetch error:", requesterResult.error);
         if (requesterResult.error.code === "PGRST116") {
           throw new Error("User profile not found");
         }
@@ -289,7 +289,7 @@ export const topicService = {
       }
 
       if (topicResult.error) {
-        console.error("Topic fetch error:", topicResult.error);
+        console.error("❌ [JOIN REQUEST] Topic fetch error:", topicResult.error);
         if (topicResult.error.code === "PGRST116") {
           throw new Error("Topic not found");
         }
@@ -337,63 +337,88 @@ export const topicService = {
         throw new Error("Message cannot exceed 200 characters");
       }
 
-      // Get current requests array
-      const currentRequests = Array.isArray((topic as any).requests)
-        ? (topic as any).requests
-        : [];
+      console.log("✅ [JOIN REQUEST] Validation passed, attempting RPC call");
 
-      // Check if user already has a pending request
-      const existingRequestIndex = currentRequests.findIndex(
-        (req: any) =>
-          req && typeof req === "object" && req.requesterId === requesterId
-      );
+      // STRATEGY 1: Try secure RPC function first (preferred method)
+      let rpcSuccess = false;
+      try {
+        const { data: result, error: rpcError } = await typedSupabase
+          .rpc('add_join_request_secure', {
+            p_topic_id: topicId,
+            p_requester_id: requesterId,
+            p_requester_name: requesterName,
+            p_message: requestMessage
+          });
 
-      // Create new request object
-      const newRequest = {
-        requesterId,
-        requesterName,
-        message: requestMessage,
-        timestamp: new Date().toISOString(),
-      };
-
-      let updatedRequests;
-      if (existingRequestIndex >= 0) {
-        // Update existing request
-        updatedRequests = [...currentRequests];
-        updatedRequests[existingRequestIndex] = newRequest;
-      } else {
-        // Add new request
-        updatedRequests = [...currentRequests, newRequest];
-      }
-
-      // Update the topic with the new request
-      const updateData: TopicUpdate = { requests: updatedRequests };
-      const { error: updateError } = await typedSupabase
-        .from("topics")
-        .update(updateData as any)
-        .eq("id", topicId);
-
-      if (updateError) {
-        console.error("Update topic error:", updateError);
-
-        // Provide specific error messages based on error codes
-        if (updateError.code === "23505") {
-          throw new Error("A request with this information already exists");
+        if (rpcError) {
+          console.error("⚠️ [JOIN REQUEST] RPC error:", rpcError);
+          throw rpcError; // Will be caught by inner try-catch for fallback
         }
-        if (updateError.code === "42501") {
+
+        console.log("✅ [JOIN REQUEST] RPC call successful:", result);
+        rpcSuccess = true;
+
+      } catch (rpcError: any) {
+        console.error("❌ [JOIN REQUEST] RPC failed, trying fallback method:", rpcError);
+        
+        // STRATEGY 2: Fallback to direct update (if RPC function doesn't exist)
+        // Get current requests array
+        const currentRequests = Array.isArray(topic.requests) ? topic.requests : [];
+
+        // Check if user already has a pending request
+        const existingRequestIndex = currentRequests.findIndex(
+          (req: any) => req && typeof req === "object" && req.requesterId === requesterId
+        );
+
+        // Create new request object
+        const newRequest = {
+          requesterId,
+          requesterName,
+          message: requestMessage,
+          timestamp: new Date().toISOString(),
+        };
+
+        let updatedRequests;
+        if (existingRequestIndex >= 0) {
+          // Update existing request
+          updatedRequests = [...currentRequests];
+          updatedRequests[existingRequestIndex] = newRequest;
+          console.log("🔄 [JOIN REQUEST] Updating existing request");
+        } else {
+          // Add new request
+          updatedRequests = [...currentRequests, newRequest];
+          console.log("➕ [JOIN REQUEST] Adding new request");
+        }
+
+        console.log("🔄 [JOIN REQUEST] Attempting direct update fallback");
+
+        // Try direct update
+        const { data: updateData, error: updateError } = await typedSupabase
+          .from("topics")
+          .update({ 
+            requests: updatedRequests,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", topicId)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error("❌ [JOIN REQUEST] Direct update failed:", updateError);
+          
+          // Provide helpful error messages
+          if (updateError.code === "42501") {
+            throw new Error(
+              "Permission denied. The system may need maintenance. Please contact support."
+            );
+          }
+          
           throw new Error(
-            "You don't have permission to add requests to this topic"
+            `Failed to add join request: ${updateError.message}. Please try again.`
           );
         }
-        if (updateError.code === "PGRST116") {
-          throw new Error("Topic not found");
-        }
 
-        throw new Error(
-          `Failed to add join request: ${
-            updateError.message || "Unknown database error"
-          }`
-        );
+        console.log("✅ [JOIN REQUEST] Fallback update successful");
       }
 
       // Trigger immediate real-time update broadcast
@@ -403,7 +428,6 @@ export const topicService = {
       console.log("Join request added successfully:", {
         topicId,
         requesterId,
-        isUpdate: existingRequestIndex >= 0,
       });
 
       // Send notification to topic author (non-blocking)

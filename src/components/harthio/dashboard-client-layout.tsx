@@ -124,8 +124,11 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background">
         <div className="text-center max-w-md">
-          <p className="mb-4 text-muted-foreground">Could not load user profile. Please try logging out and back in.</p>
-          <Button onClick={handleLogout}>Log Out</Button>
+          <p className="mb-2 text-lg font-semibold">Having trouble loading your profile</p>
+          <p className="mb-4 text-muted-foreground">
+            This usually fixes itself by logging out and back in. Your data is safe.
+          </p>
+          <Button onClick={handleLogout}>Log Out & Sign Back In</Button>
         </div>
       </div>
     );
@@ -139,13 +142,13 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   };
 
   const sidebarContent = (
-    <div className="flex h-full max-h-screen flex-col gap-2">
-      <div className="flex h-16 items-center border-b px-4 lg:px-6">
+    <div className="flex h-full max-h-screen flex-col gap-2 overflow-hidden">
+      <div className="flex h-16 items-center border-b px-4 lg:px-6 flex-shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
             <Logo />
         </Link>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
           {navItems.map(item => {
             const Icon = item.icon;
@@ -188,7 +191,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
             </ContactUsDialog>
         </nav>
       </div>
-        <div className="mt-auto p-4">
+        <div className="p-4 border-t flex-shrink-0">
             <Button size="sm" className="w-full" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4"/>
                 Log Out

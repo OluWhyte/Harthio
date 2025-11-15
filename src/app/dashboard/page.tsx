@@ -472,9 +472,28 @@ function DashboardContent() {
         onRefresh={handleRefreshFromArrow}
       />
       
-      <div className="flex-1 p-4 sm:p-6 lg:p-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
-        <div className="md:col-span-2 lg:col-span-3 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 lg:p-8 md:flex md:flex-col md:h-[calc(100vh-4rem)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8 md:flex-1 md:overflow-hidden">
+        <div className="md:col-span-2 lg:col-span-3 md:flex md:flex-col md:overflow-hidden">
+          {/* Timeline Header - Fixed on desktop */}
+          <div className="pb-4 pt-2 border-b md:flex-shrink-0">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold">Timeline</h1>
+              </div>
+              {/* Desktop Schedule Button */}
+              <div className="hidden md:block">
+                <ScheduleSessionDialog onSessionCreated={() => fetchTopics()}>
+                  <Button disabled={isInOngoingSession}>
+                    <Plus className="mr-2 h-4 w-4" /> Schedule Session
+                  </Button>
+                </ScheduleSessionDialog>
+              </div>
+            </div>
+          </div>
+
+          {/* Scrollable content area - Only on desktop */}
+          <div className="space-y-6 md:flex-1 md:overflow-y-auto md:mt-6 scrollbar-hide">
           {/* MY ACTIVE SESSION - Show prominently at the top when user has an active session */}
           {categorizedTopics.myActiveSession && (
             <div className="space-y-4">
@@ -496,18 +515,16 @@ function DashboardContent() {
             </div>
           )}
 
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold">Timeline</h1>
-              <div className="flex items-center gap-4 mt-2">
-
-                
-
-              </div>
-            </div>
+          {/* Mobile Floating Action Button */}
+          <div className="md:hidden fixed bottom-6 right-6 z-50">
             <ScheduleSessionDialog onSessionCreated={() => fetchTopics()}>
-              <Button disabled={isInOngoingSession}>
-                <Plus className="mr-2 h-4 w-4" /> Schedule Session
+              <Button 
+                size="lg" 
+                className="h-14 px-6 rounded-full shadow-lg"
+                disabled={isInOngoingSession}
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                <span className="font-semibold">Schedule</span>
               </Button>
             </ScheduleSessionDialog>
           </div>
@@ -621,10 +638,11 @@ function DashboardContent() {
           )}
 
           {/* No error state shown */}
+          </div>
         </div>
 
         {/* Sidebar */}
-        <aside className="space-y-6 md:col-start-3 lg:col-start-4">
+        <aside className="space-y-6 md:col-start-3 lg:col-start-4 md:overflow-y-auto">
           <Card>
             <CardContent className="p-4 space-y-4">
               <div className="flex items-center font-bold">

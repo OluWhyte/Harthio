@@ -185,9 +185,36 @@ export function validateDisplayName(name: unknown): ValidationResult {
 }
 
 /**
+ * Check if email is from a disposable/temporary email service
+ */
+function isDisposableEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return false;
+  
+  // Top 50 most common disposable email domains
+  const disposableDomains = [
+    'tempmail.com', 'temp-mail.org', 'guerrillamail.com', '10minutemail.com',
+    'mailinator.com', 'throwaway.email', 'getnada.com', 'maildrop.cc',
+    'yopmail.com', 'fakeinbox.com', 'trashmail.com', 'dispostable.com',
+    'tempinbox.com', 'mohmal.com', 'sharklasers.com', 'guerrillamail.info',
+    'grr.la', 'guerrillamail.biz', 'guerrillamail.de', 'spam4.me',
+    'mailnesia.com', 'mytemp.email', 'temp-mail.io', 'emailondeck.com',
+    'mintemail.com', 'getairmail.com', 'anonbox.net', 'anonymousemail.me',
+    'bugmenot.com', 'deadaddress.com', 'emailsensei.com', 'filzmail.com',
+    'gishpuppy.com', 'hidemail.de', 'jetable.org', 'mailcatch.com',
+    'mailin8r.com', 'mailmoat.com', 'mailnull.com', 'meltmail.com',
+    'mt2014.com', 'mytrashmail.com', 'no-spam.ws', 'nobulk.com',
+    'noclickemail.com', 'nospamfor.us', 'nowmymail.com', 'objectmail.com',
+    'obobbo.com', 'oneoffemail.com'
+  ];
+  
+  return disposableDomains.includes(domain);
+}
+
+/**
  * Validate email address
  */
-export function validateEmail(email: unknown): ValidationResult {
+export function validateEmail(email: unknown, options?: { allowDisposable?: boolean }): ValidationResult {
   if (!email || typeof email !== 'string') {
     return { isValid: false, error: 'Email address is required' };
   }
@@ -206,6 +233,14 @@ export function validateEmail(email: unknown): ValidationResult {
   
   if (sanitized.length > 254) {
     return { isValid: false, error: 'Email address is too long' };
+  }
+  
+  // Check for disposable email (unless explicitly allowed)
+  if (!options?.allowDisposable && isDisposableEmail(sanitized)) {
+    return { 
+      isValid: false, 
+      error: 'Disposable email addresses are not allowed. Please use a permanent email address.' 
+    };
   }
   
   return { isValid: true, sanitized };
@@ -236,32 +271,89 @@ export function validateUUID(id: unknown): ValidationResult {
 function containsHarmfulContent(text: string): boolean {
   const lowerText = text.toLowerCase();
   
-  // Basic checks for common harmful patterns
-  const harmfulPatterns = [
-    // Script injection attempts
+  // Check for script injection attempts
+  const scriptPatterns = [
     '<script',
     'javascript:',
     'onload=',
     'onerror=',
-    
-    // SQL injection attempts
+    'onclick=',
+    'onmouseover=',
+    '<iframe',
+    '<object',
+    '<embed',
+  ];
+  
+  // Check for SQL injection attempts
+  const sqlPatterns = [
     'drop table',
     'delete from',
     'insert into',
     'update set',
-    
-    // Common spam/abuse patterns
+    'union select',
+    '; drop',
+  ];
+  
+  // Check for spam/scam patterns
+  const spamPatterns = [
     'viagra',
     'casino',
     'lottery',
-    
-    // Excessive profanity (basic check)
-    'fuck you',
-    'go kill yourself',
-    'kys'
+    'click here',
+    'buy now',
+    'limited time',
+    'act now',
+    'free money',
+    'get rich',
+    'work from home',
   ];
   
-  return harmfulPatterns.some(pattern => lowerText.includes(pattern));
+  // Check for hate speech and severe profanity
+  const offensivePatterns = [
+    'fuck you',
+    'go kill yourself',
+    'kys',
+    'kill yourself',
+    'n1gger',
+    'n1gg3r',
+    'f4ggot',
+    'f@ggot',
+    'retard',
+    'cunt',
+    'whore',
+    'slut',
+    'bitch ass',
+    'piece of shit',
+  ];
+  
+  // Check for URL/link spam (multiple URLs)
+  const urlCount = (text.match(/https?:\/\//gi) || []).length;
+  if (urlCount > 2) {
+    return true; // More than 2 URLs is likely spam
+  }
+  
+  // Check for excessive repeated characters (spam)
+  if (/(.)\1{10,}/.test(text)) {
+    return true; // Same character repeated 10+ times
+  }
+  
+  // Check for phone number patterns (potential harvesting)
+  const phonePattern = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
+  const phoneMatches = text.match(phonePattern) || [];
+  if (phoneMatches.length > 1) {
+    return true; // Multiple phone numbers is suspicious
+  }
+  
+  // Check for email harvesting patterns
+  const emailPattern = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  const emailMatches = text.match(emailPattern) || [];
+  if (emailMatches.length > 2) {
+    return true; // Multiple emails is suspicious
+  }
+  
+  // Check all pattern arrays
+  const allPatterns = [...scriptPatterns, ...sqlPatterns, ...spamPatterns, ...offensivePatterns];
+  return allPatterns.some(pattern => lowerText.includes(pattern));
 }
 
 /**
