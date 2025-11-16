@@ -13,6 +13,7 @@ import { topicService } from '@/lib/supabase-services';
 import { checkinService, type DailyCheckIn } from '@/lib/checkin-service';
 import { formatDistanceToNow } from 'date-fns';
 import { RecoveryTracker } from '@/components/harthio/recovery-tracker';
+import { WeeklyStats } from '@/components/harthio/weekly-stats';
 
 export default function ProgressPage() {
   const { user, userProfile } = useAuth();
@@ -242,21 +243,21 @@ export default function ProgressPage() {
 
           {/* Requests Tab - Weekly Stats */}
           <TabsContent value="requests" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Stats</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Calendar className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-lg font-semibold mb-2">Weekly Statistics</p>
-                  <p className="text-muted-foreground mb-4">
-                    Track your weekly progress and patterns
-                  </p>
-                  <p className="text-sm text-muted-foreground">Coming soon in V0.3</p>
-                </div>
-              </CardContent>
-            </Card>
+            {loading ? (
+              <Card>
+                <CardContent className="p-12">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <WeeklyStats 
+                checkIns={checkInHistory} 
+                sessionsJoined={sessionsJoined}
+                sessionHistory={sessionHistory}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
