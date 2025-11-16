@@ -1,10 +1,17 @@
-# Dev/Prod Separation - CONFIGURED ✅
+# Simple Dev/Prod Workflow
 
-## Setup Complete!
+## Setup (Already Done ✅)
 
-Your environment is now configured with:
-- **develop branch** → Preview URL → **Dev Database** (scnbnmqokchmnnoehnjr.supabase.co)
-- **main branch** → harthio.com → **Production Database**
+- `develop` branch created
+- `main` branch is production
+- Both use the **same database** (your production Supabase)
+
+## Why This Works
+
+You'll be careful:
+- Test thoroughly on `develop` branch preview URL before merging
+- Use preview deployments to catch issues
+- Only merge to `main` when confident  
 
 ## Daily Workflow
 
@@ -12,46 +19,55 @@ Your environment is now configured with:
 # 1. Work on develop branch
 git checkout develop
 
-# 2. Make changes and push
+# 2. Make your changes and test locally
+npm run dev
+
+# 3. Push to see preview deployment
 git add .
 git commit -m "Your changes"
 git push origin develop
 
-# 3. Vercel creates preview URL automatically
-# Test at: harthio-git-develop-yourname.vercel.app
-# Uses DEV database - safe to test!
+# 4. Test on Vercel preview URL
+# URL: harthio-git-develop-yourname.vercel.app
+# Test thoroughly before merging!
 
-# 4. When ready, merge to production
+# 5. When confident, merge to production
 git checkout main
 git merge develop
 git push origin main
-# Goes live at harthio.com with PROD database
+# Goes live at harthio.com
 ```
 
-## What's Protected Now
+## Important Notes
 
-✅ **Production database is safe** - Preview uses separate dev database  
-✅ **Test freely** - Break things in dev without affecting users  
-✅ **Database changes** - Test migrations in dev first  
-✅ **Automatic deployments** - Vercel handles everything  
+⚠️ **Same Database**: Both branches use the same production database
+- Be careful with database changes
+- Test locally first with `npm run dev`
+- Use preview URL to catch UI/logic bugs
+- For risky database changes, do them during low-traffic times
 
-## Database Migrations
+✅ **What This Protects**:
+- Code bugs (caught on preview URL)
+- UI issues (test before production)
+- Breaking changes (review on preview first)
 
+## Database Changes
+
+For database migrations:
 ```bash
-# Test in dev first
-git checkout develop
+# 1. Test locally first
 npm run deploy:db:dry-run
-npm run deploy:db
-# Push and test on preview URL
 
-# Then apply to production
-git checkout main
+# 2. Apply during low-traffic time
 npm run deploy:db
-git push origin main
+
+# 3. Test immediately on preview URL
+# 4. If good, merge to main
 ```
 
 ## Summary
 
-- **develop** = Safe testing with dev database
-- **main** = Production with prod database
-- No more worrying about breaking production!
+✅ **Two branches** (develop for testing, main for production)  
+✅ **Same database** (no credential hassle)  
+✅ **Preview URLs** (test before going live)  
+✅ **Simple workflow** (just be careful!)

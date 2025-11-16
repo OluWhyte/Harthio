@@ -642,15 +642,7 @@ export default function ProfilePage() {
             <span>{userProfile.email}</span>
           </div>
           
-            {userProfile.phone_number && (
-            <div className="flex items-center justify-center gap-2">
-              <span>📱</span>
-              <span>{userProfile.phone_country_code} {userProfile.phone_number}</span>
-                {userProfile.phone_verified && (
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                )}
-            </div>
-            )}
+            {/* Phone number temporarily disabled - SMS verification not yet available */}
           
             {userProfile.country && (
             <div className="flex items-center justify-center gap-2">
@@ -667,24 +659,7 @@ export default function ProfilePage() {
               Email Verified
             </Badge>
             
-            {userProfile.phone_number && (
-              <Badge 
-                variant={userProfile.phone_verified ? "secondary" : "outline"} 
-              className="px-3 py-1"
-              >
-                {userProfile.phone_verified ? (
-                  <>
-                  <CheckCircle className="h-4 w-4 mr-1 text-green-500" />
-                    Phone Verified
-                  </>
-                ) : (
-                  <>
-                  <X className="h-4 w-4 mr-1 text-orange-500" />
-                    Phone Not Verified
-                  </>
-                )}
-              </Badge>
-            )}
+          {/* Phone verification badge temporarily disabled */}
           </div>
           
         {/* Member Since */}
@@ -848,60 +823,18 @@ export default function ProfilePage() {
           <div>
             <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Contact Information</h3>
             <div className="grid gap-4 sm:gap-6">
+              {/* Phone number field temporarily disabled - SMS verification not yet available */}
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber" className="text-sm">Phone Number</Label>
-                <div className="flex flex-col sm:flex-row gap-2">
-              <Select
-                value={methods.watch("phoneCountryCode")}
-                onValueChange={(value) => setValue("phoneCountryCode", value)}
-              >
-                    <SelectTrigger className="w-full sm:w-32">
-                  <SelectValue placeholder="Code" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countryCodes.map((item) => (
-                    <SelectItem key={item.code} value={item.code}>
-                      <span className="flex items-center gap-2">
-                        <span>{item.flag}</span>
-                        <span>{item.code}</span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                id="phoneNumber"
-                type="tel"
-                placeholder="555 123 4567"
-                    className="flex-1 text-sm"
-                {...register("phoneNumber", {
-                  pattern: {
-                    value: /^[\d\s\-\(\)]+$/,
-                    message: "Please enter a valid phone number",
-                  },
-                })}
-              />
-            </div>
-            {methods.formState.errors.phoneNumber && (
-                  <p className="text-xs text-red-600">
-                {methods.formState.errors.phoneNumber.message}
-              </p>
-            )}
-            {userProfile?.phone_number && (
-                  <div className="flex items-center gap-2 mt-2">
-                {userProfile.phone_verified ? (
-                      <Badge variant="secondary" className="text-xs px-2 py-1">
-                    <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
-                    Verified
-                  </Badge>
-                ) : (
-                      <Badge variant="outline" className="text-xs px-2 py-1">
-                    Not Verified
-                  </Badge>
-                )}
+                <Label className="text-sm text-muted-foreground">Phone Number</Label>
+                <div className="p-4 border border-dashed rounded-lg bg-muted/30">
+                  <p className="text-sm text-muted-foreground text-center">
+                    📱 Phone verification coming soon
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center mt-1">
+                    We're working on adding SMS verification
+                  </p>
+                </div>
               </div>
-            )}
-          </div>
 
               <div className="space-y-2">
                 <Label htmlFor="country" className="text-sm">Country/Nationality</Label>
