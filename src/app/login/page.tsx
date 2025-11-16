@@ -36,8 +36,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      console.log('User already logged in, redirecting to dashboard...');
-      router.push("/dashboard");
+      console.log('User already logged in, redirecting to home...');
+      router.push("/home");
     }
   }, [user, authLoading, router]);
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
       // Login successful - redirect will be handled by useEffect when user state updates
       toast({
         title: "Login Successful",
-        description: "Welcome back! Redirecting to dashboard...",
+        description: "Welcome back!",
       });
     } catch (error: unknown) {
       const errorMessage =

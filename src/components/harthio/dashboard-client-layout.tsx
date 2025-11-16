@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Search, Home, User, Bell, Users, History as HistoryIcon, LogOut, UsersRound, Menu, MessageSquare, Loader2, BellRing } from 'lucide-react';
+import { Search, Home, User, Bell, Users, History as HistoryIcon, LogOut, UsersRound, Menu, MessageSquare, Loader2, BellRing, MessageCircle, TrendingUp, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { ContactUsDialog } from '@/components/harthio/contact-us-dialog';
 import { OngoingSessionIndicator } from './ongoing-session-indicator';
 import { useToast } from '@/hooks/use-toast';
+import { MobileNavigation } from '@/components/harthio/mobile-navigation';
 
 function getInitials(name: string = '') {
   const names = name.split(' ');
@@ -29,7 +30,10 @@ function getInitials(name: string = '') {
 }
 
 const navItems = [
-    { href: '/dashboard', label: 'Home', icon: Home },
+    { href: '/home', label: 'Home', icon: Home },
+    { href: '/progress', label: 'Progress', icon: TrendingUp, isComingSoon: true },
+    { href: '/harthio', label: 'Harthio AI', icon: MessageCircle, isComingSoon: true },
+    { href: '/dashboard', label: 'Sessions', icon: Calendar },
     { href: '/requests', label: 'Requests', icon: BellRing },
     { href: '/profile', label: 'Profile', icon: User },
     { href: '/notifications', label: 'Notifications', icon: Bell },
@@ -251,7 +255,8 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                     </Tooltip>
                 </div>
             </header>
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
+        <MobileNavigation />
       </div>
     </div>
     </TooltipProvider>
