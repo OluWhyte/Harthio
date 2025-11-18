@@ -132,9 +132,9 @@ function UnsubscribeContent() {
               <p className="text-sm text-muted-foreground">
                 Changed your mind? You can update your preferences anytime in your account settings.
               </p>
-              <Link href="/dashboard">
+              <Link href="/home">
                 <Button variant="outline" className="w-full">
-                  Go to Dashboard
+                  Go to Home
                 </Button>
               </Link>
               <Link href="/">

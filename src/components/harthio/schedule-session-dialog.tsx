@@ -450,39 +450,50 @@ export function ScheduleSessionDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Schedule a New Session</DialogTitle>
-          <DialogDescription>
-            Fill out the details below to create a new session for others to
-            join.
+      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-4 sm:p-6">
+        <DialogHeader className="flex-shrink-0 space-y-2">
+          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+            <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            Schedule a Session
+          </DialogTitle>
+          <DialogDescription className="space-y-2 text-xs sm:text-sm">
+            <p className="hidden sm:block">Create a meaningful conversation space for others to join.</p>
+            <div className="flex items-center gap-2 text-[10px] sm:text-xs bg-primary/5 text-primary px-2 py-1.5 sm:px-3 sm:py-2 rounded-md border border-primary/20">
+              <span className="font-semibold whitespace-nowrap">✨ Coming Soon:</span>
+              <span className="line-clamp-1">AI Topic Helper</span>
+            </div>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow overflow-y-auto pr-2">
+        <div className="flex-grow overflow-y-auto pr-1 sm:pr-2">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
               <FormField
                 control={form.control}
                 name="topic"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Session Topic</FormLabel>
+                    <FormLabel className="flex items-center gap-2 text-sm">
+                      <span>Session Topic</span>
+                      <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">(Required)</span>
+                    </FormLabel>
                     <FormControl>
                       <Input
                         placeholder="e.g., Venting about a co-founder"
                         disabled={form.formState.isSubmitting}
+                        className="text-sm"
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                     {validationErrors.title && (
-                      <p className="text-sm text-destructive">
+                      <p className="text-xs text-destructive">
                         {validationErrors.title}
                       </p>
                     )}
-                    <div className="text-xs text-muted-foreground">
-                      {field.value?.length || 0}/100 characters
+                    <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
+                      <span className="hidden sm:inline">Be clear and specific</span>
+                      <span>{field.value?.length || 0}/100</span>
                     </div>
                   </FormItem>
                 )}
@@ -492,23 +503,27 @@ export function ScheduleSessionDialog({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel className="flex items-center gap-2 text-sm">
+                      <span>Description</span>
+                      <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">(Optional)</span>
+                    </FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="What's the session about? What will participants gain by joining?"
-                        className="resize-none"
+                        placeholder="What's the session about?"
+                        className="resize-none min-h-[80px] sm:min-h-[100px] text-sm"
                         disabled={form.formState.isSubmitting}
                         {...field}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-xs" />
                     {validationErrors.description && (
-                      <p className="text-sm text-destructive">
+                      <p className="text-xs text-destructive">
                         {validationErrors.description}
                       </p>
                     )}
-                    <div className="text-xs text-muted-foreground">
-                      {field.value?.length || 0}/500 characters
+                    <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
+                      <span className="hidden sm:inline">Help others understand your session</span>
+                      <span>{field.value?.length || 0}/500</span>
                     </div>
                   </FormItem>
                 )}
@@ -864,9 +879,9 @@ export function ScheduleSessionDialog({
                 />
               </div>
               {calculatedDuration && (
-                <div className="text-sm text-muted-foreground p-2 bg-muted rounded-md">
-                  <span className="font-semibold">Duration:</span>{" "}
-                  {calculatedDuration}
+                <div className="flex items-center gap-2 text-xs sm:text-sm p-2 sm:p-3 bg-primary/5 text-primary rounded-md border border-primary/20">
+                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span><span className="font-semibold">Duration:</span> {calculatedDuration}</span>
                 </div>
               )}
 
@@ -877,33 +892,34 @@ export function ScheduleSessionDialog({
                   className="mt-4"
                 />
               )}
-              <DialogFooter className="flex-shrink-0 pt-4 flex-row justify-end space-x-2">
+              <DialogFooter className="flex-shrink-0 pt-3 sm:pt-4 flex-row justify-end gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setOpen(false)}
                   disabled={form.formState.isSubmitting}
-                  className="px-4"
+                  className="px-3 sm:px-4 text-xs sm:text-sm"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
+                  size="sm"
                   disabled={
                     form.formState.isSubmitting ||
                     Object.keys(validationErrors).length > 0 ||
                     conflictResult?.hasConflict
                   }
-                  className="px-6"
+                  className="px-4 sm:px-6 text-xs sm:text-sm"
                 >
                   {form.formState.isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                       Creating...
                     </>
                   ) : (
-                    "Schedule Session"
+                    "Schedule"
                   )}
                 </Button>
               </DialogFooter>

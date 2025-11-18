@@ -46,9 +46,9 @@ export default function AuthVerifiedPage() {
 
           <div className="space-y-3">
             <Button asChild className="w-full">
-              <Link href="/dashboard">
+              <Link href="/home">
                 <Home className="h-4 w-4 mr-2" />
-                Go to Dashboard
+                Go to Home
               </Link>
             </Button>
             

@@ -37,6 +37,13 @@ export class InputSanitizer {
   }
 
   /**
+   * General input sanitization (alias for sanitizeHTML)
+   */
+  static sanitizeInput(input: string): string {
+    return this.sanitizeHTML(input);
+  }
+
+  /**
    * Sanitize for SQL (though Supabase handles this)
    */
   static sanitizeSQL(input: string): string {

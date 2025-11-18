@@ -789,7 +789,7 @@ function HarthioSessionPageContent() {
   // Modal handlers
   const handleSetupModalClose = useCallback(() => {
     setShowSetupModal(false);
-    router.push("/dashboard"); // Go back to dashboard if they cancel
+    router.push("/sessions"); // Go back to sessions if they cancel
   }, [router]);
 
   const handleSetupModalJoin = useCallback((preferences: {

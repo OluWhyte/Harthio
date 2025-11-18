@@ -9,7 +9,7 @@ export interface SanitizedError {
 }
 
 export interface SecurityEvent {
-  type: 'auth_failure' | 'access_denied' | 'rate_limit' | 'suspicious_activity' | 'validation_error' | 'api_error' | 'security_scan';
+  type: 'auth_failure' | 'access_denied' | 'rate_limit' | 'suspicious_activity' | 'validation_error' | 'api_error' | 'security_scan' | 'contact_form';
   userId?: string;
   ip?: string;
   userAgent?: string;

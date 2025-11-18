@@ -105,4 +105,48 @@ export const checkinService = {
 
     return streak;
   },
+
+  // Detect struggling pattern (3+ consecutive days)
+  async detectStrugglingPattern(userId: string): Promise<{
+    isStruggling: boolean;
+    consecutiveDays: number;
+    shouldIntervene: boolean;
+  }> {
+    const history = await this.getCheckInHistory(userId, 7); // Last 7 days
+    
+    if (history.length === 0) {
+      return { isStruggling: false, consecutiveDays: 0, shouldIntervene: false };
+    }
+
+    let consecutiveDays = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Count consecutive "struggling" days from today backwards
+    for (let i = 0; i < history.length; i++) {
+      const checkInDate = new Date(history[i].created_at);
+      checkInDate.setHours(0, 0, 0, 0);
+      
+      const expectedDate = new Date(today);
+      expectedDate.setDate(today.getDate() - i);
+      expectedDate.setHours(0, 0, 0, 0);
+
+      // Check if this is the expected consecutive day
+      if (checkInDate.getTime() === expectedDate.getTime()) {
+        if (history[i].mood === 'struggling') {
+          consecutiveDays++;
+        } else {
+          break; // Pattern broken
+        }
+      } else {
+        break; // Missing day
+      }
+    }
+
+    return {
+      isStruggling: consecutiveDays > 0,
+      consecutiveDays,
+      shouldIntervene: consecutiveDays >= 3, // Intervene after 3 days
+    };
+  },
 };

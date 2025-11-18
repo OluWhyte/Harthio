@@ -13,8 +13,8 @@ const nextConfig = {
       exclude: ['error', 'warn'], // Keep error and warn logs
     } : false,
   },
-  // Simplified webpack configuration
-  webpack: (config, { isServer }) => {
+  // Simplified webpack configuration with cache management
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -24,6 +24,16 @@ const nextConfig = {
         crypto: false,
       };
     }
+    
+    // Disable persistent caching in development to prevent cache issues
+    if (dev) {
+      config.cache = false;
+      // Also disable filesystem cache
+      config.infrastructureLogging = {
+        level: 'error',
+      };
+    }
+    
     return config;
   },
   // Ensure proper asset loading for mobile/ngrok

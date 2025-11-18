@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Search, Home, User, Bell, Users, History as HistoryIcon, LogOut, UsersRound, Menu, MessageSquare, Loader2, BellRing, MessageCircle, TrendingUp, Calendar } from 'lucide-react';
+import { Search, Home, User, Bell, Users, History as HistoryIcon, LogOut, UsersRound, Menu, Loader2, BellRing, MessageCircle, TrendingUp, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -18,7 +18,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Badge } from '@/components/ui/badge';
-import { ContactUsDialog } from '@/components/harthio/contact-us-dialog';
 import { OngoingSessionIndicator } from './ongoing-session-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { MobileNavigation } from '@/components/harthio/mobile-navigation';
@@ -31,14 +30,11 @@ function getInitials(name: string = '') {
 
 const navItems = [
     { href: '/home', label: 'Home', icon: Home },
-    { href: '/progress', label: 'Progress', icon: TrendingUp, isComingSoon: true },
-    { href: '/harthio', label: 'Harthio AI', icon: MessageCircle, isComingSoon: true },
-    { href: '/dashboard', label: 'Sessions', icon: Calendar },
+    { href: '/harthio', label: 'Harthio', icon: MessageCircle },
+    { href: '/sessions', label: 'Sessions', icon: Calendar },
+    { href: '/progress', label: 'Progress', icon: TrendingUp },
     { href: '/requests', label: 'Requests', icon: BellRing },
-    { href: '/profile', label: 'Profile', icon: User },
-    { href: '/notifications', label: 'Notifications', icon: Bell },
-    { href: '/following', label: 'Following', icon: Users, isComingSoon: true },
-    { href: '/followers', label: 'Followers', icon: UsersRound, isComingSoon: true },
+    { href: '/me', label: 'Profile', icon: User },
     { href: '/history', label: 'History', icon: HistoryIcon },
 ]
 
@@ -148,7 +144,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   const sidebarContent = (
     <div className="flex h-full max-h-screen flex-col gap-2 overflow-hidden">
       <div className="flex h-16 items-center border-b px-4 lg:px-6 flex-shrink-0">
-          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
+          <Link href="/home" className="flex items-center gap-2 font-semibold">
             <Logo />
         </Link>
       </div>
@@ -175,8 +171,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                     href={item.href}
                     className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                        pathname.startsWith(item.href) && item.href !== '/dashboard' && "bg-muted text-primary",
-                        pathname === '/dashboard' && item.href === '/dashboard' && "bg-muted text-primary"
+                        pathname.startsWith(item.href) && "bg-muted text-primary"
                     )}
                 >
                     <Icon className="h-4 w-4" />
@@ -184,15 +179,6 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                 </Link>
             )
           })}
-            <ContactUsDialog>
-                 <Button
-                    variant="ghost"
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary justify-start w-full"
-                >
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="flex-1 text-left">Contact Us</span>
-                </Button>
-            </ContactUsDialog>
         </nav>
       </div>
         <div className="p-4 border-t flex-shrink-0">
@@ -212,22 +198,8 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
         {sidebarContent}
       </div>
       <div className="flex flex-col">
-          <header className="flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
-                <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
-                    <SheetTrigger asChild>
-                         <Button
-                            variant="outline"
-                            size="icon"
-                            className="shrink-0 md:hidden"
-                            >
-                            <Menu className="h-5 w-5" />
-                            <span className="sr-only">Toggle navigation menu</span>
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="flex flex-col p-0">
-                       {sidebarContent}
-                    </SheetContent>
-                </Sheet>
+          {/* Desktop Header - Hidden on mobile */}
+          <header className="hidden md:flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
                 <div className="flex-1">
                     <div className="relative w-full max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -256,6 +228,12 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                 </div>
             </header>
         <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
+        
+        {/* Mobile Session Indicator - Floating above bottom nav, left side */}
+        <div className="md:hidden fixed bottom-20 left-4 z-50">
+          <OngoingSessionIndicator />
+        </div>
+        
         <MobileNavigation />
       </div>
     </div>

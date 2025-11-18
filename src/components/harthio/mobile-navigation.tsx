@@ -23,12 +23,12 @@ const tabs = [
   {
     name: 'Sessions',
     icon: Calendar,
-    path: '/dashboard',
+    path: '/sessions',
   },
   {
     name: 'Me',
     icon: User,
-    path: '/profile',
+    path: '/me',
   },
 ];
 
@@ -37,8 +37,8 @@ export function MobileNavigation() {
   const router = useRouter();
 
   const isActive = (path: string) => {
-    if (path === '/dashboard') {
-      return pathname === '/dashboard' || pathname === '/';
+    if (path === '/sessions') {
+      return pathname === '/sessions' || pathname === '/dashboard' || pathname === '/';
     }
     return pathname?.startsWith(path);
   };

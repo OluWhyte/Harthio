@@ -13,7 +13,7 @@ export function Logo({
   className = "",
 }: LogoProps) {
   const sizeClasses = {
-    sm: { logo: 24, text: "text-lg" },
+    sm: { logo: 24, text: "text-sm" },
     md: { logo: 32, text: "text-xl" },
     lg: { logo: 40, text: "text-2xl" },
   };
@@ -29,12 +29,12 @@ export function Logo({
         height={logo}
         priority
       />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <span className={`font-headline font-bold ${text}`}>Harthio</span>
         {showBeta && (
           <Badge
             variant="secondary"
-            className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200"
+            className="text-[9px] px-1.5 py-0 h-3.5 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200"
           >
             BETA
           </Badge>
