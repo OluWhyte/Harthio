@@ -1,105 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { strictRateLimit } from '@/lib/rate-limit';
-import { getSecurityHeaders, logSecurityEvent, sanitizeError } from '@/lib/security-utils';
-import { InputSanitizer } from '@/lib/security/owasp-security-service';
+import { emailService } from '@/lib/email-service';
+import { z } from 'zod';
+import { emailRateLimit } from '@/lib/rate-limit';
+import { sanitizeError, logSecurityEvent, getSecurityHeaders, sanitizeInput } from '@/lib/security-utils';
+import { InputSanitizer, SecurityLogger } from '@/lib/security/owasp-security-service';
+
+// Validation schema for contact form
+const contactSchema = z.object({
+  userName: z.string().min(1, 'Name is required'),
+  userEmail: z.string().email('Valid email is required'),
+  topic: z.enum(['feedback', 'feature', 'issue'], {
+    required_error: 'Topic is required',
+  }),
+  message: z.string().min(10, 'Message must be at least 10 characters').max(500, 'Message must be less than 500 characters'),
+});
 
 export async function POST(request: NextRequest) {
-  // Apply strict rate limiting (3 requests per 15 minutes)
-  const rateLimitResult = strictRateLimit(request);
+  // Apply rate limiting
+  const rateLimitResult = emailRateLimit(request);
   if (rateLimitResult) {
     logSecurityEvent({
       type: 'rate_limit',
       ip: request.ip || 'unknown',
       endpoint: '/api/contact',
-      details: { reason: 'Contact form rate limit exceeded' }
+      details: { reason: 'Email rate limit exceeded' }
     });
     return rateLimitResult;
   }
 
   try {
     const body = await request.json();
-    const { name, email, subject, message } = body;
     
-    // Validate required fields
-    if (!name || !email || !subject || !message) {
-      logSecurityEvent({
-        type: 'validation_error',
-        ip: request.ip || 'unknown',
-        endpoint: '/api/contact',
-        details: { reason: 'Missing required fields' }
-      });
-      
+    // Validate the request data
+    const validationResult = contactSchema.safeParse(body);
+    if (!validationResult.success) {
       return NextResponse.json(
-        { success: false, error: 'All fields are required' },
-        { status: 400, headers: getSecurityHeaders() }
+        { 
+          success: false, 
+          error: 'Invalid form data',
+          details: validationResult.error.errors 
+        },
+        { status: 400 }
       );
     }
 
-    // Validate email format
-    if (!InputSanitizer.isValidEmail(email)) {
-      logSecurityEvent({
-        type: 'validation_error',
-        ip: request.ip || 'unknown',
-        endpoint: '/api/contact',
-        details: { reason: 'Invalid email format', email }
+    const { userName, userEmail, topic, message } = validationResult.data;
+
+    // OWASP: Sanitize inputs to prevent XSS
+    const sanitizedUserName = InputSanitizer.sanitizeHTML(sanitizeInput(userName, 100));
+    const sanitizedMessage = InputSanitizer.sanitizeHTML(sanitizeInput(message, 500));
+    
+    // OWASP: Validate email format
+    if (!InputSanitizer.isValidEmail(userEmail)) {
+      await SecurityLogger.logSecurityEvent({
+        type: 'suspicious_activity',
+        ipAddress: request.ip || 'unknown',
+        details: 'Invalid email format in contact form',
+        severity: 'low'
       });
-      
       return NextResponse.json(
         { success: false, error: 'Invalid email format' },
-        { status: 400, headers: getSecurityHeaders() }
+        { status: 400 }
       );
     }
 
-    // Validate field lengths
-    if (name.length > 100 || subject.length > 200 || message.length > 2000) {
-      logSecurityEvent({
-        type: 'validation_error',
-        ip: request.ip || 'unknown',
-        endpoint: '/api/contact',
-        details: { reason: 'Field length exceeded' }
-      });
-      
-      return NextResponse.json(
-        { success: false, error: 'Field length exceeded limits' },
-        { status: 400, headers: getSecurityHeaders() }
-      );
-    }
-
-    // Sanitize inputs
-    const sanitizedData = {
-      name: InputSanitizer.sanitizeInput(name),
-      email: email.trim().toLowerCase(),
-      subject: InputSanitizer.sanitizeInput(subject),
-      message: InputSanitizer.sanitizeInput(message),
-      ip: request.ip || 'unknown',
-      timestamp: new Date().toISOString()
-    };
-
-    // Log contact form submission
-    console.log('📧 Contact form submission:', {
-      from: sanitizedData.email,
-      subject: sanitizedData.subject,
-      ip: sanitizedData.ip
+    console.log('📧 Processing contact form submission:', {
+      userName: sanitizedUserName,
+      userEmail,
+      topic,
+      messageLength: sanitizedMessage.length,
+      ip: request.ip || 'unknown'
     });
 
-    // TODO: Send email notification to admin
-    // For now, just log it securely
-    
-    logSecurityEvent({
-      type: 'contact_form',
-      ip: request.ip || 'unknown',
-      endpoint: '/api/contact',
-      details: { 
-        email: sanitizedData.email,
-        subject: sanitizedData.subject
+    // Send notification to admin (tosin@harthio.com)
+    const adminNotificationSent = await emailService.sendContactUsNotification({
+      userName: sanitizedUserName,
+      userEmail,
+      topic,
+      message: sanitizedMessage,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com'
+    });
+
+    // Send auto-reply to user
+    const autoReplySent = await emailService.sendContactUsAutoReply(userEmail, {
+      userName: sanitizedUserName,
+      topic,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com'
+    });
+
+    // Log results
+    console.log('📧 Contact form email results:', {
+      adminNotificationSent,
+      autoReplySent,
+      userEmail
+    });
+
+    // Return success even if emails fail (for beta mode)
+    return NextResponse.json({
+      success: true,
+      message: 'Your message has been sent successfully. We\'ll get back to you soon!',
+      emailsSent: {
+        adminNotification: adminNotificationSent,
+        autoReply: autoReplySent
       }
+    }, {
+      headers: getSecurityHeaders()
     });
 
-    return NextResponse.json(
-      { success: true, message: 'Thank you for contacting us. We will respond shortly.' },
-      { headers: getSecurityHeaders() }
-    );
-    
   } catch (error) {
     const sanitized = sanitizeError(error);
     
@@ -113,10 +120,17 @@ export async function POST(request: NextRequest) {
       }
     });
     
-    console.error('Contact form error:', error);
+    console.error('❌ Contact form API error:', error);
+    
     return NextResponse.json(
-      { success: false, error: 'Failed to submit contact form' },
-      { status: 500, headers: getSecurityHeaders() }
+      { 
+        success: false, 
+        error: sanitized.message
+      },
+      { 
+        status: 500,
+        headers: getSecurityHeaders()
+      }
     );
   }
 }

@@ -8,6 +8,16 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
+  const hostname = request.headers.get('host') || '';
+  
+  // Handle admin subdomain routing
+  if (hostname.startsWith('admin.')) {
+    // Rewrite admin.harthio.com/* to /admin/*
+    if (!url.pathname.startsWith('/admin')) {
+      url.pathname = `/admin${url.pathname}`;
+      return NextResponse.rewrite(url);
+    }
+  }
   
   // Security: Protect admin routes
   if (url.pathname.startsWith('/admin') && url.pathname !== '/admin/login') {
