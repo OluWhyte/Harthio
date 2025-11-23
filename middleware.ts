@@ -13,9 +13,11 @@ export async function middleware(request: NextRequest) {
   // Handle admin subdomain routing
   if (hostname.startsWith('admin.')) {
     // Rewrite admin.harthio.com/* to /admin/*
+    // e.g., admin.harthio.com/login -> /admin/login
     if (!url.pathname.startsWith('/admin')) {
-      url.pathname = `/admin${url.pathname}`;
-      return NextResponse.rewrite(url);
+      const rewriteUrl = url.clone();
+      rewriteUrl.pathname = `/admin${url.pathname}`;
+      return NextResponse.rewrite(rewriteUrl);
     }
   }
   
