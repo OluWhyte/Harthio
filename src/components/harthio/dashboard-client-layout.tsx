@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import Link from 'next/link';
 import { Logo } from '@/components/common/logo';
+import { NavigationLoader } from '@/components/common/navigation-loader';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,9 @@ import { Badge } from '@/components/ui/badge';
 import { OngoingSessionIndicator } from './ongoing-session-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { MobileNavigation } from '@/components/harthio/mobile-navigation';
+import { useOptimizedRequests } from '@/hooks/use-optimized-requests';
+import { usePageTracking, useNoCheckinsDetection } from '@/hooks/useProactiveAI';
+import { ContactUsDialog } from '@/components/harthio/contact-us-dialog';
 
 function getInitials(name: string = '') {
   const names = name.split(' ');
@@ -29,19 +33,35 @@ function getInitials(name: string = '') {
 }
 
 const navItems = [
-    { href: '/home', label: 'Home', icon: Home },
-    { href: '/harthio', label: 'Harthio', icon: MessageCircle },
-    { href: '/sessions', label: 'Sessions', icon: Calendar },
-    { href: '/progress', label: 'Progress', icon: TrendingUp },
-    { href: '/requests', label: 'Requests', icon: BellRing },
-    { href: '/me', label: 'Profile', icon: User },
-    { href: '/history', label: 'History', icon: HistoryIcon },
+    { href: '/home', label: 'Home', icon: Home, showBadge: false },
+    { href: '/harthio', label: 'Harthio', icon: MessageCircle, showBadge: false },
+    { href: '/sessions', label: 'Sessions', icon: Calendar, showBadge: false },
+    { href: '/progress', label: 'Progress', icon: TrendingUp, showBadge: false },
+    { href: '/notifications', label: 'Notifications', icon: BellRing, showBadge: true },
+    { href: '/me', label: 'Profile', icon: User, showBadge: false },
 ]
 
 export function DashboardClientLayout({ children }: { children: ReactNode }) {
   const { user, userProfile, loading, logOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  
+  // Proactive AI hooks
+  usePageTracking(); // Track page views
+  useNoCheckinsDetection(); // Check for no check-ins (once on load)
+  
+  // Get pending requests count for badge
+  const { receivedRequests, refresh } = useOptimizedRequests({
+    enableCache: true,
+    enableRealtime: true,
+  });
+  
+  const notificationCount = receivedRequests.length;
+  
+  // Refresh requests when pathname changes (user navigates)
+  useEffect(() => {
+    refresh?.(false);
+  }, [pathname, refresh]);
 
   const handleLogout = async () => {
     try {
@@ -148,8 +168,8 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
             <Logo />
         </Link>
       </div>
-      <div className="flex-1 overflow-y-auto">
-        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+      <div className="flex-1 overflow-y-auto py-4">
+        <nav className="grid items-start px-2 text-sm font-medium lg:px-4 gap-1">
           {navItems.map(item => {
             const Icon = item.icon;
             if (item.isComingSoon) {
@@ -157,11 +177,11 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                  <button
                     key={item.label}
                     onClick={() => handleComingSoonClick(item.label)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+                    className="flex items-center gap-4 rounded-lg px-4 py-3 text-muted-foreground transition-all hover:text-primary hover:bg-muted/50"
                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                    <Badge variant="outline">Soon</Badge>
+                    <Icon className="h-6 w-6 flex-shrink-0" strokeWidth={2.5} />
+                    <span className="flex-1 text-left text-[15px]">{item.label}</span>
+                    <Badge variant="outline" className="text-[10px]">Soon</Badge>
                  </button>
               );
             }
@@ -170,15 +190,33 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                     key={item.label}
                     href={item.href}
                     className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+                        "flex items-center gap-4 rounded-lg px-4 py-3 text-muted-foreground transition-all hover:text-primary hover:bg-muted/50 relative",
                         pathname.startsWith(item.href) && "bg-muted text-primary"
                     )}
                 >
-                    <Icon className="h-4 w-4" />
-                    <span className="flex-1">{item.label}</span>
+                    <div className="relative flex-shrink-0">
+                        <Icon className="h-6 w-6" strokeWidth={2.5} />
+                        {item.showBadge && notificationCount > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute -top-1 -right-1 h-4 min-w-[16px] flex items-center justify-center p-0 px-1 text-[9px] font-bold rounded-full"
+                          >
+                            {notificationCount > 9 ? '9+' : notificationCount}
+                          </Badge>
+                        )}
+                    </div>
+                    <span className="flex-1 text-[15px]">{item.label}</span>
                 </Link>
             )
           })}
+          <div className="px-2 mt-2">
+            <ContactUsDialog>
+              <Button variant="ghost" className="w-full justify-start px-4 py-3 h-auto">
+                <MessageCircle className="h-6 w-6 mr-4 flex-shrink-0" strokeWidth={2.5} />
+                <span className="flex-1 text-left text-[15px]">Contact Us</span>
+              </Button>
+            </ContactUsDialog>
+          </div>
         </nav>
       </div>
         <div className="p-4 border-t flex-shrink-0">
@@ -193,13 +231,19 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
 
   return (
     <TooltipProvider>
-    <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-      <div className="hidden border-r bg-card md:block">
+    <div className="flex h-screen w-full overflow-hidden">
+      {/* Navigation Loading Indicator */}
+      <NavigationLoader />
+      
+      {/* Fixed Sidebar - Desktop Only */}
+      <div className="hidden border-r bg-card md:flex md:w-[220px] lg:w-[280px] flex-shrink-0">
         {sidebarContent}
       </div>
-      <div className="flex flex-col">
-          {/* Desktop Header - Hidden on mobile */}
-          <header className="hidden md:flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6">
+      
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1 min-w-0">
+          {/* Fixed Desktop Header */}
+          <header className="hidden md:flex h-16 items-center gap-4 border-b bg-card px-4 lg:px-6 flex-shrink-0">
                 <div className="flex-1">
                     <div className="relative w-full max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -215,9 +259,11 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                     <OngoingSessionIndicator />
                     <Tooltip>
                         <TooltipTrigger asChild>
-                             <Avatar>
+                             <Avatar className="cursor-pointer bg-background border border-border">
                                 <AvatarImage src={userProfile.avatar_url ?? ''} alt={userProfile.display_name ?? 'User'} />
-                                <AvatarFallback>{getInitials(userProfile.display_name ?? '')}</AvatarFallback>
+                                <AvatarFallback className="bg-background">
+                                  <User className="h-5 w-5 text-accent" />
+                                </AvatarFallback>
                             </Avatar>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -227,12 +273,18 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                     </Tooltip>
                 </div>
             </header>
-        <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
+        
+        {/* Scrollable Main Content - Full height for Harthio page */}
+        <main className={`flex-1 pb-16 md:pb-0 ${pathname === '/harthio' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}>
+          {children}
+        </main>
         
         {/* Mobile Session Indicator - Floating above bottom nav, left side */}
-        <div className="md:hidden fixed bottom-20 left-4 z-50">
-          <OngoingSessionIndicator />
-        </div>
+        {pathname === '/sessions' && (
+          <div className="md:hidden fixed bottom-20 left-4 z-50">
+            <OngoingSessionIndicator />
+          </div>
+        )}
         
         <MobileNavigation />
       </div>

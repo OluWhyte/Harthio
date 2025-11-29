@@ -208,9 +208,18 @@ export function RequestToJoinDialog({ topicId, onSuccess, children }: RequestToJ
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Request to Join Session</DialogTitle>
-          <DialogDescription>
-            {topic ? `Request to join "${topic.title}" hosted by ${topic.author?.display_name || 'Unknown'}` : 'Loading session details...'}
-          </DialogDescription>
+          {topic ? (
+            <div className="space-y-2 pt-2">
+              <div className="rounded-lg bg-muted/50 p-3 border">
+                <p className="text-sm font-semibold text-foreground mb-1">{topic.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  Hosted by {topic.author?.display_name || 'Unknown'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <DialogDescription>Loading session details...</DialogDescription>
+          )}
         </DialogHeader>
         
         {showSuccess ? (
@@ -269,7 +278,6 @@ export function RequestToJoinDialog({ topicId, onSuccess, children }: RequestToJ
                     <FormControl>
                       <Textarea
                         placeholder="Let the host know why you'd like to join..."
-                        className="resize-none"
                         disabled={isSubmitting}
                         {...field}
                       />

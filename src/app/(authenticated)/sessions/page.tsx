@@ -5,16 +5,18 @@ import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Plus, Radio, Loader2, Clock, Users, Bell, Search } from 'lucide-react';
+import { Calendar, Plus, Radio, Clock, Users, Bell, Search } from 'lucide-react';
 import { TopicCard, Topic } from '@/components/harthio/topic-card';
 import { ScheduleSessionDialog } from '@/components/harthio/schedule-session-dialog';
 import { topicService } from '@/lib/supabase-services';
 import { getSessionStatus } from '@/lib/time-utils';
 import { MobilePageHeader } from '@/components/harthio/mobile-page-header';
+import { LoadingSpinner } from '@/components/common/loading-spinner';
 
 import { SearchSessionsSheet, type SearchFilters } from '@/components/harthio/search-sessions-sheet';
 import { RequestsSheet } from '@/components/harthio/requests-sheet';
 import { useOptimizedRequests } from '@/hooks/use-optimized-requests';
+import { useSessionBrowsingDetection } from '@/hooks/useProactiveAI';
 
 // Convert Supabase topic to TopicCard format
 const convertTopic = (supabaseTopic: any): Topic => {
@@ -31,7 +33,7 @@ const convertTopic = (supabaseTopic: any): Topic => {
     author: {
       userId: author.id || 'unknown',
       name: displayName,
-      avatarUrl: author.avatar_url || "https://placehold.co/40x40.png",
+      avatarUrl: author.avatar_url || undefined,
       initials: displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2) || "U",
       rating: author.rating || 0,
       reviews: author.reviews_count || 0,
@@ -72,6 +74,9 @@ export default function SessionsPage() {
     timeFilter: 'all',
     sortBy: 'soonest',
   });
+
+  // Proactive AI: Detect session browsing
+  useSessionBrowsingDetection();
 
   // Get pending requests count for badge
   const { receivedRequests } = useOptimizedRequests({
@@ -144,93 +149,76 @@ export default function SessionsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile Header */}
+      {/* Unified Mobile Header with Search Bar */}
       <MobilePageHeader
-        title=""
         actions={[
           {
             icon: Bell,
-            onClick: () => setShowRequestsSheet(true),
-            label: 'Requests',
+            onClick: () => router.push('/notifications'),
+            label: 'Notifications',
             badge: receivedRequests.length,
           },
-          {
-            icon: Search,
-            onClick: () => setShowSearchSheet(true),
-            label: 'Search',
-          },
         ]}
-      />
-
-      {/* Requests Sheet (Mobile) */}
-      <RequestsSheet
-        open={showRequestsSheet}
-        onOpenChange={setShowRequestsSheet}
-      />
-
-      {/* Search Sheet */}
-      <SearchSessionsSheet
-        open={showSearchSheet}
-        onOpenChange={setShowSearchSheet}
-        onSearch={handleSearch}
+        showSearch={true}
+        searchPlaceholder="Search sessions..."
+        onSearchChange={(value) => setSearchQuery(value)}
       />
 
       {/* Desktop Schedule Button - Hidden on mobile */}
       <div className="hidden md:flex justify-end mb-6 max-w-4xl mx-auto px-6 pt-6">
         <ScheduleSessionDialog onSessionCreated={fetchSessions}>
-          <Button disabled={isInOngoingSession}>
+          <Button 
+            disabled={isInOngoingSession}
+            className="shadow-md hover:shadow-lg transition-all duration-300"
+          >
             <Plus className="mr-2 h-4 w-4" /> Schedule Session
           </Button>
         </ScheduleSessionDialog>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6 pb-20 md:pb-6">
         {loading ? (
-          <div className="text-center py-16">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-          </div>
+          <LoadingSpinner size="md" text="Loading sessions..." fullScreen={false} />
         ) : (
           <>
             {/* Active Session */}
             {myActiveSession && (
-              <Card className="border-2 border-green-500 bg-green-50 dark:bg-green-900/20">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-[17px] text-green-900 dark:text-green-100">
+              <div className="border-2 border-green-500 bg-green-50 dark:bg-green-900/20 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 border-b border-green-500/20">
+                  <h2 className="flex items-center gap-2 text-[17px] font-semibold text-green-900 dark:text-green-100">
                     <Radio className="h-5 w-5 animate-pulse" />
                     Your Active Session
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <TopicCard topic={myActiveSession} onUpdateRequest={fetchSessions} />
-                </CardContent>
-              </Card>
+                  </h2>
+                </div>
+                <TopicCard topic={myActiveSession} onUpdateRequest={fetchSessions} />
+              </div>
             )}
 
             {/* My Sessions */}
             {myUpcoming.length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-[17px]">
+              <div className="border rounded-lg overflow-hidden">
+                <div className="px-4 py-3 border-b bg-muted/30">
+                  <h2 className="flex items-center gap-2 text-[17px] font-semibold">
                     <Clock className="h-5 w-5 text-primary" />
-                    My Sessions ({myUpcoming.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {myUpcoming.map(session => (
-                    <TopicCard key={session.id} topic={session} onUpdateRequest={fetchSessions} />
-                  ))}
-                </CardContent>
-              </Card>
+                    My Sessions
+                  </h2>
+                </div>
+                {myUpcoming.map(session => (
+                  <TopicCard key={session.id} topic={session} onUpdateRequest={fetchSessions} />
+                ))}
+              </div>
             )}
 
             {/* Available Sessions */}
             {available.length > 0 && (
-              <div className="space-y-4">
-                <h2 className="text-[17px] font-semibold flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  Available Sessions ({available.length})
-                </h2>
+              <div className="border rounded-lg overflow-hidden">
+                <div className="px-4 py-3 border-b bg-muted/30">
+                  <h2 className="flex items-center gap-2 text-[17px] font-semibold">
+                    <Users className="h-5 w-5 text-primary" />
+                    Available Sessions
+                  </h2>
+                </div>
                 {available.map(session => (
                   <TopicCard key={session.id} topic={session} onUpdateRequest={fetchSessions} />
                 ))}
@@ -247,7 +235,11 @@ export default function SessionsPage() {
                     Be the first to schedule a meaningful conversation!
                   </p>
                   <ScheduleSessionDialog onSessionCreated={fetchSessions}>
-                    <Button disabled={isInOngoingSession}>
+                    <Button 
+                      disabled={isInOngoingSession}
+                      size="lg"
+                      className="shadow-md hover:shadow-lg transition-all duration-300"
+                    >
                       <Plus className="mr-2 h-4 w-4" /> Schedule Your First Session
                     </Button>
                   </ScheduleSessionDialog>
@@ -262,11 +254,10 @@ export default function SessionsPage() {
       <div className="md:hidden fixed bottom-20 right-4 z-40">
         <ScheduleSessionDialog onSessionCreated={fetchSessions}>
           <Button 
-            size="lg" 
-            className="h-14 w-14 rounded-full shadow-lg"
             disabled={isInOngoingSession}
+            className="shadow-md hover:shadow-lg transition-all duration-300"
           >
-            <Plus className="h-6 w-6" />
+            <Plus className="mr-2 h-4 w-4" /> New Session
           </Button>
         </ScheduleSessionDialog>
       </div>

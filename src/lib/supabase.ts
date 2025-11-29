@@ -40,6 +40,14 @@ export const supabase = (() => {
         debug: false, // Never debug in production
         storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         storageKey: 'harthio-auth',
+        // Add cookie options for better mobile support
+        cookieOptions: {
+          name: 'harthio-auth',
+          lifetime: 60 * 60 * 24 * 7, // 7 days
+          domain: typeof window !== 'undefined' ? window.location.hostname : undefined,
+          path: '/',
+          sameSite: 'lax', // Better mobile compatibility than 'strict'
+        },
       },
       realtime: {
         params: {

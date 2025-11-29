@@ -4,17 +4,34 @@ import Link from "next/link";
 import { Logo } from "@/components/common/logo";
 import { StructuredData } from "@/components/seo/structured-data";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  ArrowRight,
-  Heart,
-  Users,
-  Calendar,
-  Star,
-  CheckCircle,
-  Mail,
-} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { ArrowRight, Mail } from "lucide-react";
 import Image from "next/image";
+import dynamicImport from "next/dynamic";
+import { HeroCarousel } from "@/components/landing/HeroCarousel";
+import { ScrollReveal } from "@/components/landing/ScrollReveal";
+import "@/styles/landing-animations.css";
+
+// Lazy load below-the-fold components for better performance
+const AICompanionShowcase = dynamicImport(
+  () => import("@/components/landing/AICompanionShowcase").then(mod => ({ default: mod.AICompanionShowcase })),
+  { ssr: false, loading: () => <div className="h-[600px] animate-pulse bg-gray-50" /> }
+);
+
+const RecoveryTrackerShowcase = dynamicImport(
+  () => import("@/components/landing/RecoveryTrackerShowcase").then(mod => ({ default: mod.RecoveryTrackerShowcase })),
+  { ssr: false, loading: () => <div className="h-[600px] animate-pulse bg-gray-50" /> }
+);
+
+const ValuePropositionShowcase = dynamicImport(
+  () => import("@/components/landing/ValuePropositionShowcase").then(mod => ({ default: mod.ValuePropositionShowcase })),
+  { ssr: false, loading: () => <div className="h-[400px] animate-pulse bg-gray-50" /> }
+);
+
+const HowHarthioHelps = dynamicImport(
+  () => import("@/components/landing/HowHarthioHelps").then(mod => ({ default: mod.HowHarthioHelps })),
+  { ssr: false, loading: () => <div className="h-[600px] animate-pulse bg-gray-50" /> }
+);
 
 // Force dynamic rendering to avoid build issues
 export const dynamic = "force-dynamic";
@@ -41,7 +58,7 @@ export default function LandingPage() {
       />
       <div className="flex flex-col min-h-screen bg-background">
         {/* Header */}
-        <header className="px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <header className="px-3 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
           <Link
             href="/"
             className="flex items-center justify-center"
@@ -49,464 +66,294 @@ export default function LandingPage() {
           >
             <Logo />
           </Link>
-          <nav className="ml-auto flex gap-2 sm:gap-4 lg:gap-6 items-center">
+          <nav className="hidden lg:flex gap-4 lg:gap-6 items-center absolute left-1/2 -translate-x-1/2">
             <Button
               variant="ghost"
               asChild
-              className="hidden lg:inline-flex text-sm"
+              size="sm"
             >
               <Link href="/features">Features</Link>
             </Button>
             <Button
               variant="ghost"
               asChild
-              className="hidden lg:inline-flex text-sm"
+              size="sm"
             >
               <Link href="/pricing">Pricing</Link>
             </Button>
             <Button
               variant="ghost"
               asChild
-              className="hidden md:inline-flex text-sm"
+              size="sm"
             >
               <Link href="/blog">Blog</Link>
             </Button>
-            <Button variant="ghost" asChild className="text-sm px-2 sm:px-4">
+          </nav>
+          <div className="flex gap-2 sm:gap-4 items-center">
+            <Button variant="ghost" asChild size="sm">
               <Link href="/login">Log In</Link>
             </Button>
-            <Button
-              asChild
-              className="bg-primary hover:bg-primary/90 text-sm px-3 sm:px-4"
-              size="sm"
-            >
+            <Button asChild size="sm">
               <Link href="/signup">
                 <span className="hidden xs:inline">Join Free</span>
                 <span className="xs:hidden">Join</span>
                 <ArrowRight className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
               </Link>
             </Button>
-          </nav>
+          </div>
         </header>
 
         <main className="flex-1">
-          {/* Hero Section */}
+          {/* Hero Section with Carousel */}
           <section
-            className="w-full py-8 sm:py-12 md:py-16 lg:py-24 xl:py-32 bg-background"
+            className="w-full py-8 sm:py-12 md:py-16 lg:py-24 xl:py-32 bg-background relative overflow-hidden"
             aria-label="Hero section"
           >
-            <div className="container px-4 sm:px-6 md:px-8">
-              <div className="grid gap-6 sm:gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-16 items-center">
-                <div className="flex flex-col justify-center space-y-4 sm:space-y-6 order-2 lg:order-1">
-                  <div className="space-y-3 sm:space-y-4">
-                    <div className="inline-block px-3 py-1 text-xs sm:text-sm bg-primary/10 text-primary rounded-full font-medium">
-                      ✨ Never feel alone with your struggle again
-                    </div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl 2xl:text-7xl font-bold tracking-tight bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
-                      Find Someone Who Truly Gets It
-                    </h1>
-                    <p className="text-base sm:text-lg md:text-xl text-gray-600 leading-relaxed max-w-[600px]">
-                      <strong>
-                        Finally, someone who speaks your language.
-                      </strong>{" "}
-                      Schedule judgment-free conversations about business
-                      stress, life changes, or passion projects—with perfect
-                      matches who&apos;ve walked your path, not random
-                      strangers.
-                    </p>
-                    <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
-                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
-                      <span>
-                        Get connected to listeners for free emotional support.
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                    <Button
-                      size="lg"
-                      className="bg-primary hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 w-full sm:w-auto"
-                    >
-                      <Link
-                        href="/signup"
-                        className="flex items-center justify-center"
-                      >
-                        Join Free
-                        <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
+            {/* Subtle animated gradient background - Brand colors */}
+            <div className="absolute inset-0 animate-brand-gradient opacity-5 pointer-events-none" />
 
-                {/* Hero Image */}
-                <div className="relative order-1 lg:order-2">
-                  <div className="relative rounded-xl sm:rounded-2xl overflow-hidden shadow-xl sm:shadow-2xl h-[320px] sm:h-[380px] md:h-[420px] lg:h-[480px]">
-                    <Image
-                      src="https://images.unsplash.com/photo-1759593047536-5258c3c6a527?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
-                      fill
-                      alt="Two people having a meaningful conversation over video call"
-                      className="object-cover"
-                      style={{ objectPosition: "50% 25%" }}
-                      priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-                  </div>
-                  {/* Floating testimonial */}
-                  <div className="absolute -bottom-3 sm:-bottom-6 -left-3 sm:-left-6 bg-white rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 max-w-[280px] sm:max-w-xs hidden sm:block">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className="h-3 w-3 sm:h-4 sm:w-4 fill-yellow-400 text-yellow-400"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-gray-600 leading-tight">
-                      &quot;If speaking kindly to plants can make them grow,
-                      imagine what speaking kindly to humans can can do.&quot;
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="container px-4 sm:px-6 md:px-8 relative z-10">
+              <HeroCarousel />
             </div>
           </section>
 
-          {/* Value Proposition Grid */}
-          <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24">
-            <div className="container px-4 sm:px-6 md:px-8">
-              <div className="text-center mb-8 sm:mb-12">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
-                  Why Harthio Heals Loneliness
-                </h2>
-                <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto px-4">
-                  We understand the pain of feeling isolated in your struggles.
-                  Here&apos;s how we create genuine connections.
-                </p>
-              </div>
+          {/* Value Proposition Grid - Antigravity Style */}
+          <ValuePropositionShowcase />
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                <Card className="border-2 hover:border-primary/20 transition-colors sm:col-span-2 lg:col-span-1">
-                  <CardContent className="p-4 sm:p-6 text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                      <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-semibold mb-2">
-                      Perfect Matches, Not Randoms
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-                      &quot;I need advice but don&apos;t know who to ask&quot;
-                    </p>
-                    <p className="text-xs sm:text-sm font-medium text-primary">
-                      → Get matched with vetted mentors who&apos;ve been there
-                    </p>
-                  </CardContent>
-                </Card>
+          {/* AI Companion Showcase */}
+          <AICompanionShowcase />
 
-                <Card className="border-2 hover:border-accent/20 transition-colors">
-                  <CardContent className="p-4 sm:p-6 text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                      <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-accent" />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-semibold mb-2">
-                      Scheduled, Intentional Talks
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-                      &quot;Tired of flaky Zoom strangers&quot;
-                    </p>
-                    <p className="text-xs sm:text-sm font-medium text-accent">
-                      → Scheduled, intention-based calls that actually happen
-                    </p>
-                  </CardContent>
-                </Card>
+          {/* Recovery Tracker Showcase */}
+          <RecoveryTrackerShowcase />
 
-                <Card className="border-2 hover:border-primary/20 transition-colors">
-                  <CardContent className="p-4 sm:p-6 text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-                      <Heart className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-semibold mb-2">
-                      Safe Space to Be Vulnerable
-                    </h3>
-                    <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-                      &quot;Can&apos;t afford therapy but need to vent&quot;
-                    </p>
-                    <p className="text-xs sm:text-sm font-medium text-primary">
-                      → Free listener volunteers who truly care
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </section>
-
-          {/* How It Works */}
-          <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24 bg-gray-50">
-            <div className="container px-4 sm:px-6 md:px-8">
-              <div className="text-center mb-8 sm:mb-12">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
-                  How It Works
-                </h2>
-                <p className="text-base sm:text-lg md:text-xl text-gray-600">
-                  Three simple steps to meaningful connection
-                </p>
-              </div>
-
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
-                <div className="text-center sm:col-span-2 lg:col-span-1">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 text-white text-lg sm:text-2xl font-bold">
-                    1
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-semibold mb-2">
-                    Create or Find a Session
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 px-2">
-                    Schedule your own conversation about what&apos;s on your
-                    mind, or browse existing sessions to find someone facing
-                    similar challenges.
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 text-white text-lg sm:text-2xl font-bold">
-                    2
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-semibold mb-2">
-                    Get Matched & Approved
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 px-2">
-                    Request to join sessions that resonate with you, or approve
-                    others who want to join yours. Connect with the right
-                    person.
-                  </p>
-                </div>
-
-                <div className="text-center">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 text-white text-lg sm:text-2xl font-bold">
-                    3
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-semibold mb-2">
-                    Have Your Conversation
-                  </h3>
-                  <p className="text-sm sm:text-base text-gray-600 px-2">
-                    Meet via video call at your scheduled time. Share, listen,
-                    and support each other in a safe space.
-                  </p>
-                </div>
-              </div>
-
-              <div className="text-center mt-8 sm:mt-12">
-                <Button
-                  size="lg"
-                  className="bg-primary hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 w-full sm:w-auto"
-                >
-                  <Link
-                    href="/signup"
-                    className="flex items-center justify-center"
-                  >
-                    Start Connecting
-                    <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-                  </Link>
-                </Button>
-              </div>
-            </div>
-          </section>
+          {/* How Harthio Helps - Sticky Scroll Showcase */}
+          <HowHarthioHelps />
 
           {/* Social Proof */}
           <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24">
             <div className="container px-4 sm:px-6 md:px-8">
-              <div className="text-center mb-8 sm:mb-12">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
-                  Stories of Connection
+              <div className="text-center mb-10 sm:mb-14 md:mb-16">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-5 md:mb-6 leading-tight">
+                  Real Stories, Real Progress
                 </h2>
-                <p className="text-base sm:text-lg md:text-xl text-gray-600">
-                  Real people finding real solutions to loneliness
+                <p className="text-lg sm:text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+                  How Harthio is helping people overcome challenges and find support
                 </p>
               </div>
 
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <Image
-                      src="https://images.unsplash.com/photo-1759855698735-2b0fe3d25990?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                      width="40"
-                      height="40"
-                      alt="Marcus T."
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
-                    />
-                    <div>
-                      <p className="font-semibold text-sm sm:text-base">
-                        Bode Uche
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
-                        Single Dad, 42
-                      </p>
+                <ScrollReveal delay={0.1}>
+                  <Card className="p-5 sm:p-7 hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                      <Image
+                        src="https://images.unsplash.com/photo-1759855698735-2b0fe3d25990?w=96&h=96&fit=crop&auto=format"
+                        width={56}
+                        height={56}
+                        alt="Bode Uche"
+                        className="rounded-full w-12 h-12 sm:w-14 sm:h-14 object-cover ring-2 ring-primary/10"
+                        loading="lazy"
+                        quality={75}
+                      />
+                      <div>
+                        <p className="font-semibold text-base sm:text-lg">
+                          Bode Uche
+                        </p>
+                        <p className="text-sm sm:text-base text-gray-500">
+                          Single Dad, 42
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                    &quot;After my divorce, I found someone who truly understood
-                    my situation and put me through what to do and this fix my
-                    life as a black divorcee and single dad living in the
-                    UK.&quot;
-                  </p>
-                </Card>
+                    <p className="text-base sm:text-lg text-gray-700 italic leading-relaxed">
+                      &quot;After my divorce, I found someone who truly understood
+                      my situation and put me through what to do and this fix my
+                      life as a black divorcee and single dad living in the
+                      UK.&quot;
+                    </p>
+                  </Card>
+                </ScrollReveal>
 
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <Image
-                      src="https://images.unsplash.com/photo-1530785602389-07594beb8b73?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YWZyaWNhbiUyMHdvbWFufGVufDB8fDB8fHww=80"
-                      width="40"
-                      height="40"
-                      alt="Angela Haruna"
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
-                    />
-                    <div>
-                      <p className="font-semibold text-sm sm:text-base">
-                        Angela Haruna
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
-                        Entrepreneur, 29
-                      </p>
+                <ScrollReveal delay={0.2}>
+                  <Card className="p-5 sm:p-7 hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                      <Image
+                        src="https://images.unsplash.com/photo-1530785602389-07594beb8b73?w=96&h=96&fit=crop&auto=format"
+                        width={56}
+                        height={56}
+                        alt="Angela Haruna"
+                        className="rounded-full w-12 h-12 sm:w-14 sm:h-14 object-cover ring-2 ring-primary/10"
+                        loading="lazy"
+                        quality={75}
+                      />
+                      <div>
+                        <p className="font-semibold text-base sm:text-lg">
+                          Angela Haruna
+                        </p>
+                        <p className="text-sm sm:text-base text-gray-500">
+                          Entrepreneur, 29
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                    &quot;Building a startup felt impossibly lonely. I scheduled
-                    a session about founder burnout and connected with someone
-                    who had built and sold two companies. That conversation
-                    saved my sanity.&quot;
-                  </p>
-                </Card>
+                    <p className="text-base sm:text-lg text-gray-700 italic leading-relaxed">
+                      &quot;Building a startup felt impossibly lonely. I scheduled
+                      a session about founder burnout and connected with someone
+                      who had built and sold two companies. That conversation
+                      saved my sanity.&quot;
+                    </p>
+                  </Card>
+                </ScrollReveal>
 
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <Image
-                      src="https://images.unsplash.com/photo-1573497019418-b400bb3ab074?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
-                      width="40"
-                      height="40"
-                      alt="Kemi Badmus"
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
-                    />
-                    <div>
-                      <p className="font-semibold text-sm sm:text-base">
-                        Kemi Badmus
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
-                        Working Mom, 34
-                      </p>
+                <ScrollReveal delay={0.3}>
+                  <Card className="p-5 sm:p-7 hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                      <Image
+                        src="https://images.unsplash.com/photo-1573497019418-b400bb3ab074?w=96&h=96&fit=crop&auto=format"
+                        width={56}
+                        height={56}
+                        alt="Kemi Badmus"
+                        className="rounded-full w-12 h-12 sm:w-14 sm:h-14 object-cover ring-2 ring-primary/10"
+                        loading="lazy"
+                        quality={75}
+                      />
+                      <div>
+                        <p className="font-semibold text-base sm:text-lg">
+                          Kemi Badmus
+                        </p>
+                        <p className="text-sm sm:text-base text-gray-500">
+                          Survivor, 29
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                    &quot;Balancing motherhood and my career felt overwhelming.
-                    I connected with another working mom who shared practical
-                    strategies that transformed how I manage both. I finally
-                    feel like I can breathe again.&quot;
-                  </p>
-                </Card>
+                    <p className="text-base sm:text-lg text-gray-700 italic leading-relaxed">
+                      &quot;I saw a screenshot of a session about sexual assault on WhatsApp. Someone was brave enough to share their story. That gave me the courage to join Harthio, request to join that session, and finally speak about what happened to me. I wasn&apos;t alone anymore.&quot;
+                    </p>
+                  </Card>
+                </ScrollReveal>
 
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <Image
-                      src="https://images.unsplash.com/photo-1533108344127-a586d2b02479?q=80&w=388&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
-                      width="40"
-                      height="40"
-                      alt="David L."
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
-                    />
-                    <div>
-                      <p className="font-semibold text-sm sm:text-base">
-                        Mohamad Kareem
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
-                        Career Changer, 35
-                      </p>
+                <ScrollReveal delay={0.4}>
+                  <Card className="p-5 sm:p-7 hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                      <Image
+                        src="https://images.unsplash.com/photo-1533108344127-a586d2b02479?w=96&h=96&fit=crop&auto=format"
+                        width={56}
+                        height={56}
+                        alt="Mohamad Kareem"
+                        className="rounded-full w-12 h-12 sm:w-14 sm:h-14 object-cover ring-2 ring-primary/10"
+                        loading="lazy"
+                        quality={75}
+                      />
+                      <div>
+                        <p className="font-semibold text-base sm:text-lg">
+                          Mohamad Kareem
+                        </p>
+                        <p className="text-sm sm:text-base text-gray-500">
+                          In Recovery, 35
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                    &quot;Switching careers at 35 felt impossible. I posted
-                    about my fears and connected with someone who had made the
-                    same transition. They showed me it wasn&apos;t crazy—it was
-                    possible.&quot;
-                  </p>
-                </Card>
+                    <p className="text-base sm:text-lg text-gray-700 italic leading-relaxed">
+                      &quot;The sobriety tracker and AI companion kept me accountable during my darkest moments. Seeing my progress grow day by day gave me hope. 90 days sober and counting—I couldn&apos;t have done it without this support.&quot;
+                    </p>
+                  </Card>
+                </ScrollReveal>
 
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <Image
-                      src="https://images.unsplash.com/photo-1759852692971-a2abc6799cbd?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                      width="40"
-                      height="40"
-                      alt="Sarah M."
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
-                    />
-                    <div>
-                      <p className="font-semibold text-sm sm:text-base">
-                        Opeyemi Adebayo
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
-                        University Student, 21
-                      </p>
+                <ScrollReveal delay={0.5}>
+                  <Card className="p-5 sm:p-7 hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                      <Image
+                        src="https://images.unsplash.com/photo-1759852692971-a2abc6799cbd?w=96&h=96&fit=crop&auto=format"
+                        width={56}
+                        height={56}
+                        alt="Opeyemi Adebayo"
+                        className="rounded-full w-12 h-12 sm:w-14 sm:h-14 object-cover ring-2 ring-primary/10"
+                        loading="lazy"
+                        quality={75}
+                      />
+                      <div>
+                        <p className="font-semibold text-base sm:text-lg">
+                          Opeyemi Adebayo
+                        </p>
+                        <p className="text-sm sm:text-base text-gray-500">
+                          University Student, 21
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                    &quot;College stress was eating me alive. I found someone
-                    who had just graduated and understood the pressure of
-                    finals, job hunting, and student loans. They helped me see
-                    that I wasn&apos;t alone in feeling overwhelmed.&quot;
-                  </p>
-                </Card>
+                    <p className="text-base sm:text-lg text-gray-700 italic leading-relaxed">
+                      &quot;The AI companion is like having a therapist in my pocket. When anxiety hits at 2am, I can talk through it immediately. It helped me identify my triggers and gave me coping techniques that actually work.&quot;
+                    </p>
+                  </Card>
+                </ScrollReveal>
 
-                <Card className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <Image
-                      src="https://images.unsplash.com/photo-1616805765352-beedbad46b2a?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D=80"
-                      width="40"
-                      height="40"
-                      alt="James R."
-                      className="rounded-full w-10 h-10 sm:w-12 sm:h-12 object-cover"
-                    />
-                    <div>
-                      <p className="font-semibold text-sm sm:text-base">
-                        James Emeka
-                      </p>
-                      <p className="text-xs sm:text-sm text-gray-500">
-                        Office Worker, 35
-                      </p>
+                <ScrollReveal delay={0.6}>
+                  <Card className="p-5 sm:p-7 hover:shadow-xl transition-shadow duration-300">
+                    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-5">
+                      <Image
+                        src="https://images.unsplash.com/photo-1616805765352-beedbad46b2a?w=96&h=96&fit=crop&auto=format"
+                        width={56}
+                        height={56}
+                        alt="James Emeka"
+                        className="rounded-full w-12 h-12 sm:w-14 sm:h-14 object-cover ring-2 ring-primary/10"
+                        loading="lazy"
+                        quality={75}
+                      />
+                      <div>
+                        <p className="font-semibold text-base sm:text-lg">
+                          James Emeka
+                        </p>
+                        <p className="text-sm sm:text-base text-gray-500">
+                          Recovering Addict, 28
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <p className="text-sm sm:text-base text-gray-600 italic leading-relaxed">
-                    &quot;Despite having several social media accounts, I still
-                    felt lonely. Sometimes you just need someone to listen
-                    without judgment. I was having a rough week and found
-                    someone who let me vent about work stress. No advice
-                    needed—just someone who truly heard me.&quot;
-                  </p>
-                </Card>
+                    <p className="text-base sm:text-lg text-gray-700 italic leading-relaxed">
+                      &quot;After years of hiding my addiction, I finally found a safe space to be honest. The recovery tracker shows me how far I&apos;ve come, and when cravings hit, the AI companion talks me through it. 60 days clean—I never thought I&apos;d make it this far.&quot;
+                    </p>
+                  </Card>
+                </ScrollReveal>
               </div>
             </div>
           </section>
 
-          {/* Final CTA */}
-          <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24 bg-gradient-to-r from-primary via-accent to-primary text-white">
-            <div className="container px-4 sm:px-6 md:px-8 text-center">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6 leading-tight">
+          {/* Final CTA - Enhanced with Animated Gradient */}
+          <section className="w-full py-12 sm:py-16 md:py-20 lg:py-24 relative overflow-hidden">
+            {/* Animated brand gradient background */}
+            <div className="absolute inset-0 animate-brand-gradient" />
+
+            {/* Floating particles */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              {[...Array(8)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 bg-white/30 rounded-full animate-float"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDelay: `${i * 0.5}s`,
+                    animationDuration: `${3 + Math.random() * 2}s`,
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="container px-4 sm:px-6 md:px-8 text-center relative z-10">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-5 sm:mb-6 md:mb-8 leading-tight text-white">
                 There&apos;s Always Someone Who Gets It
               </h2>
-              <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 max-w-2xl mx-auto opacity-90 px-4">
+              <p className="text-xl sm:text-xl md:text-2xl mb-8 sm:mb-10 max-w-3xl mx-auto opacity-95 px-4 text-white leading-relaxed">
                 Your perfect conversation partner is waiting. Start your first
                 meaningful connection today.
               </p>
               <Button
                 size="lg"
-                className="bg-white text-primary hover:bg-gray-100 text-base sm:text-lg px-6 sm:px-8 py-4 sm:py-6 mb-3 sm:mb-4 w-full sm:w-auto"
+                variant="outline"
+                className="bg-white border-white text-primary hover:bg-white/90 hover:scale-105 transition-all duration-apple ease-apple-spring mb-4 sm:mb-5 w-full sm:w-auto shadow-xl text-lg px-8 py-6 h-auto"
+                asChild
               >
-                <Link
-                  href="/signup"
-                  className="flex items-center justify-center"
-                >
+                <Link href="/signup" className="flex items-center justify-center">
                   Join Free
-                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
-              <p className="text-xs sm:text-sm opacity-75">
+              <p className="text-sm sm:text-base opacity-80 text-white">
                 Start connecting today
               </p>
             </div>

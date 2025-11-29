@@ -21,41 +21,13 @@ export async function middleware(request: NextRequest) {
     }
   }
   
-  // Security: Protect admin routes
+  // Security: Protect admin routes - just check if logged in
+  // Admin role check happens in the pages themselves via AdminAuthService
   if (url.pathname.startsWith('/admin') && url.pathname !== '/admin/login') {
     const token = request.cookies.get('sb-access-token')?.value || 
                   request.cookies.get('supabase-auth-token')?.value;
     
     if (!token) {
-      url.pathname = '/admin/login';
-      url.searchParams.set('redirect', request.nextUrl.pathname);
-      return NextResponse.redirect(url);
-    }
-
-    // Verify admin role server-side
-    try {
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-      
-      if (error || !user) {
-        url.pathname = '/admin/login';
-        url.searchParams.set('redirect', request.nextUrl.pathname);
-        return NextResponse.redirect(url);
-      }
-
-      // Check admin role
-      const { data: adminRole } = await supabase
-        .from('admin_roles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!adminRole) {
-        // Not an admin, redirect to main site
-        return NextResponse.redirect(new URL('/', request.url));
-      }
-    } catch (error) {
-      // Authentication failed, redirect to login
       url.pathname = '/admin/login';
       url.searchParams.set('redirect', request.nextUrl.pathname);
       return NextResponse.redirect(url);

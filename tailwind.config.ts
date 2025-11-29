@@ -29,10 +29,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'sans-serif'],
-        body: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        headline: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        inter: ['Inter', 'sans-serif'],
+        sans: ['var(--font-inter)', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'sans-serif'],
+        body: ['var(--font-inter)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        headline: ['var(--font-inter)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        inter: ['var(--font-inter)', 'Inter', 'sans-serif'],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -87,9 +87,30 @@ export default {
         },
       },
       borderRadius: {
+        'apple-sm': 'var(--radius-sm)', // 8px
+        'apple': 'var(--radius)', // 12px
+        'apple-lg': 'var(--radius-lg)', // 16px
+        'apple-xl': 'var(--radius-xl)', // 20px
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      boxShadow: {
+        'apple-sm': 'var(--shadow-sm)',
+        'apple': 'var(--shadow-md)',
+        'apple-lg': 'var(--shadow-lg)',
+        'apple-xl': 'var(--shadow-xl)',
+      },
+      transitionTimingFunction: {
+        'apple': 'var(--ease-standard)',
+        'apple-decelerate': 'var(--ease-decelerate)',
+        'apple-accelerate': 'var(--ease-accelerate)',
+        'apple-spring': 'var(--ease-spring)',
+      },
+      transitionDuration: {
+        'apple-fast': 'var(--duration-fast)',
+        'apple': 'var(--duration-normal)',
+        'apple-slow': 'var(--duration-slow)',
       },
       keyframes: {
         'accordion-down': {

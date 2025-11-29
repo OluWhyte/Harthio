@@ -7,17 +7,17 @@ import Image from 'next/image';
 import { Logo } from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Calendar, User, Heart, MessageCircle, ExternalLink, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Calendar, User, ExternalLink, ArrowRight } from 'lucide-react';
 import { BlogService } from '@/lib/services/blog-service';
 import { BlogPostWithAuthor } from '@/lib/database-types';
+import { formatContentForDisplay } from '@/lib/blog-formatter';
+import { LoadingSpinner } from '@/components/common/loading-spinner';
 
 export default function BlogPostPage() {
   const params = useParams();
   const slug = params.slug as string;
   const [post, setPost] = useState<BlogPostWithAuthor | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasLiked, setHasLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
   const [relatedPosts, setRelatedPosts] = useState<BlogPostWithAuthor[]>([]);
 
   useEffect(() => {
@@ -37,12 +37,6 @@ export default function BlogPostPage() {
       }
 
       setPost(postData);
-      setLikeCount(postData.like_count || 0);
-
-      // Check if user has liked this post
-      const userIP = await getUserIP();
-      const liked = await BlogService.hasUserLiked(postData.id, userIP);
-      setHasLiked(liked);
 
       // Load related posts from same category
       const related = await BlogService.getPostsByCategory(postData.category, 4);
@@ -51,36 +45,6 @@ export default function BlogPostPage() {
       console.error('Error loading post:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getUserIP = async (): Promise<string> => {
-    try {
-      const response = await fetch('/api/ip');
-      const data = await response.json();
-      return data.ip;
-    } catch (error) {
-      return '127.0.0.1';
-    }
-  };
-
-  const handleLike = async () => {
-    if (!post) return;
-
-    try {
-      const userIP = await getUserIP();
-      
-      if (hasLiked) {
-        await BlogService.unlikePost(post.id, userIP);
-        setHasLiked(false);
-        setLikeCount(prev => prev - 1);
-      } else {
-        await BlogService.likePost(post.id, userIP, navigator.userAgent);
-        setHasLiked(true);
-        setLikeCount(prev => prev + 1);
-      }
-    } catch (error) {
-      console.error('Error toggling like:', error);
     }
   };
 
@@ -102,10 +66,7 @@ export default function BlogPostPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 sm:h-24 sm:w-24 md:h-32 md:w-32 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-sm sm:text-base text-gray-600">Loading blog post...</p>
-        </div>
+        <LoadingSpinner size="lg" text="Loading blog post..." />
       </div>
     );
   }
@@ -198,24 +159,14 @@ export default function BlogPostPage() {
               </p>
             )}
 
-            {/* Engagement Actions */}
-            <div className="flex flex-col xs:flex-row gap-2 mb-3 sm:mb-4 md:mb-6 lg:mb-8">
-              <button
-                onClick={handleLike}
-                className="flex items-center justify-center xs:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg border hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-              >
-                <Heart className={`h-3 w-3 sm:h-4 sm:w-4 ${hasLiked ? 'fill-primary text-primary' : 'text-gray-500'}`} />
-                <span className="font-medium">{likeCount}</span>
-                <span className="text-gray-500">likes</span>
-              </button>
-              
+            {/* Share Action */}
+            <div className="flex gap-2 mb-3 sm:mb-4 md:mb-6 lg:mb-8">
               <button
                 onClick={shareOnTwitter}
                 className="flex items-center justify-center xs:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg border hover:bg-gray-50 transition-colors text-xs sm:text-sm"
               >
-                <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
-                <span>Ask on X</span>
-                <ExternalLink className="h-3 w-3 text-gray-400" />
+                <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+                <span>Share on X</span>
               </button>
             </div>
           </div>
@@ -243,11 +194,7 @@ export default function BlogPostPage() {
         <section className="w-full py-4 sm:py-6 md:py-8 lg:py-12">
           <div className="container px-3 sm:px-4 md:px-6 max-w-4xl mx-auto">
             <article className="prose prose-sm sm:prose-base md:prose-lg max-w-none prose-gray prose-headings:font-bold prose-headings:text-gray-900 prose-p:text-gray-700 prose-p:leading-relaxed prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-gray-900 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:px-3 prose-blockquote:py-2 prose-blockquote:rounded-lg">
-              {post.content.split('\n').filter(paragraph => paragraph.trim()).map((paragraph, index) => (
-                <p key={index} className="mb-3 sm:mb-4 md:mb-6 text-sm sm:text-base md:text-lg leading-relaxed text-gray-700 break-words">
-                  {paragraph}
-                </p>
-              ))}
+              {formatContentForDisplay(post.content)}
             </article>
           </div>
         </section>

@@ -12,8 +12,6 @@ import {
   Calendar,
   User,
   ArrowLeft,
-  Heart,
-  MessageCircle,
   ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
@@ -25,7 +23,6 @@ export default function BlogPage() {
   const [blogPosts, setBlogPosts] = useState<BlogPostWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
 
   const categories = [
     "All",
@@ -51,63 +48,10 @@ export default function BlogPage() {
       }
 
       setBlogPosts(posts);
-
-      // Load liked posts from localStorage (client-side only)
-      const savedLikes = localStorage.getItem("harthio-blog-likes");
-      if (savedLikes) {
-        setLikedPosts(new Set(JSON.parse(savedLikes)));
-      }
     } catch (error) {
       console.error("Error loading blog posts:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getUserIP = async (): Promise<string> => {
-    try {
-      const response = await fetch("/api/ip");
-      const data = await response.json();
-      return data.ip;
-    } catch (error) {
-      return "127.0.0.1"; // Fallback IP
-    }
-  };
-
-  const handleLike = async (postId: string) => {
-    try {
-      const userIP = await getUserIP();
-      const hasLiked = likedPosts.has(postId);
-
-      if (hasLiked) {
-        await BlogService.unlikePost(postId, userIP);
-        setLikedPosts((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(postId);
-          // Save to localStorage
-          localStorage.setItem(
-            "harthio-blog-likes",
-            JSON.stringify([...newSet])
-          );
-          return newSet;
-        });
-      } else {
-        await BlogService.likePost(postId, userIP, navigator.userAgent);
-        setLikedPosts((prev) => {
-          const newSet = new Set(prev).add(postId);
-          // Save to localStorage
-          localStorage.setItem(
-            "harthio-blog-likes",
-            JSON.stringify([...newSet])
-          );
-          return newSet;
-        });
-      }
-
-      // Refresh posts to get updated like counts
-      loadBlogPosts();
-    } catch (error) {
-      console.error("Error toggling like:", error);
     }
   };
 
@@ -239,26 +183,11 @@ export default function BlogPage() {
                       {blogPosts[0].excerpt}
                     </p>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm text-gray-600">
-                            {blogPosts[0].author?.full_name || "Harthio Team"}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => handleLike(blogPosts[0].id)}
-                          className="flex items-center gap-1 text-sm text-gray-500 hover:text-primary transition-colors"
-                        >
-                          <Heart
-                            className={`h-4 w-4 ${
-                              likedPosts.has(blogPosts[0].id)
-                                ? "fill-primary text-primary"
-                                : ""
-                            }`}
-                          />
-                          {blogPosts[0].like_count || 0}
-                        </button>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-600">
+                          {blogPosts[0].author?.full_name || "Harthio Team"}
+                        </span>
                       </div>
                       <Button variant="outline" className="group">
                         <Link
@@ -351,47 +280,11 @@ export default function BlogPage() {
                       <p className="text-gray-600 text-sm mb-4 leading-relaxed line-clamp-3">
                         {post.excerpt}
                       </p>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="flex items-center gap-3 sm:gap-4">
-                          <div className="flex items-center gap-2">
-                            <User className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-                            <span className="text-xs sm:text-sm text-gray-600 truncate">
-                              {post.author?.full_name || "Harthio Team"}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => handleLike(post.id)}
-                            className="flex items-center gap-1 text-xs sm:text-sm text-gray-500 hover:text-primary transition-colors"
-                          >
-                            <Heart
-                              className={`h-3 w-3 sm:h-4 sm:w-4 ${
-                                likedPosts.has(post.id)
-                                  ? "fill-primary text-primary"
-                                  : ""
-                              }`}
-                            />
-                            {post.like_count || 0}
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            asChild
-                            className="text-xs sm:text-sm px-2 sm:px-3"
-                          >
-                            <Link
-                              href={`https://twitter.com/intent/tweet?text=Check out this update from @harthio_: ${post.title}&url=${window.location.origin}/blog/${post.slug}`}
-                              target="_blank"
-                              className="flex items-center gap-1"
-                            >
-                              <MessageCircle className="h-3 w-3" />
-                              <span className="hidden sm:inline">Ask on X</span>
-                              <span className="sm:hidden">X</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </Link>
-                          </Button>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <User className="h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
+                        <span className="text-xs sm:text-sm text-gray-600 truncate">
+                          {post.author?.full_name || "Harthio Team"}
+                        </span>
                       </div>
                     </CardContent>
                   </Card>

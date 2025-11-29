@@ -22,11 +22,13 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
+  User,
 } from "lucide-react";
 import { useRequestErrorHandler } from "@/hooks/use-error-handler";
 import { ErrorType, validateTopicId, validateUserId } from "@/lib/error-utils";
 import { useRequestSuccessFeedback } from "@/hooks/use-success-feedback";
 import { RequestErrorBoundary } from "@/components/common/error-boundary";
+import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { 
   validateApprovalPreconditions, 
   checkNetworkConnectivity, 
@@ -331,16 +333,13 @@ function RequestsPageContent() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading requests...</p>
-            {!isOnline && (
-              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-destructive">
-                <WifiOff className="h-4 w-4" />
-                <span>You appear to be offline</span>
-              </div>
-            )}
-          </div>
+          <LoadingSpinner size="md" text="Loading requests..." fullScreen={false} />
+          {!isOnline && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-destructive">
+              <WifiOff className="h-4 w-4" />
+              <span>You appear to be offline</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -350,7 +349,7 @@ function RequestsPageContent() {
     <div className="min-h-screen bg-background">
       {/* Page header - same on mobile and desktop */}
       <div className="sticky top-0 z-40 bg-background border-b">
-        <div className="container mx-auto max-w-4xl px-4 pt-6 pb-4">
+        <div className="container mx-auto max-w-4xl px-6 py-4">
           <h1 className="text-2xl font-bold">Requests</h1>
           <p className="text-[15px] text-muted-foreground mt-1">
             Manage session join requests
@@ -362,7 +361,7 @@ function RequestsPageContent() {
       <div className="container mx-auto max-w-4xl">
         <Tabs defaultValue="received" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mx-4 mt-3 mb-2">
-          <TabsTrigger value="received" className="text-sm">
+          <TabsTrigger value="received" className="text-[15px]">
             Received
             {receivedRequests.length > 0 && (
               <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 h-4">
@@ -370,7 +369,7 @@ function RequestsPageContent() {
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="sent" className="text-sm">
+          <TabsTrigger value="sent" className="text-[15px]">
             Sent
             {sentRequests.length > 0 && (
               <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 h-4">
@@ -385,22 +384,22 @@ function RequestsPageContent() {
               {receivedRequests.length === 0 ? (
                 <div className="text-center py-16">
                   <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">No pending requests</p>
+                  <p className="text-[15px] text-muted-foreground">No pending requests</p>
                 </div>
               ) : (
                 receivedRequests.map((request) => (
                   <div key={request.id} className="bg-card border rounded-lg p-3 space-y-2.5">
                     <div className="flex items-center gap-2.5">
-                      <Avatar className="h-9 w-9 flex-shrink-0">
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {request.requester_name.charAt(0).toUpperCase()}
+                      <Avatar className="h-9 w-9 flex-shrink-0 bg-background border border-border">
+                        <AvatarFallback className="bg-background">
+                          <User className="h-4 w-4 text-accent" />
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
+                        <p className="text-[15px] font-medium truncate">
                           {request.requester_name}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-[13px] text-muted-foreground truncate">
                           {request.topic.title}
                         </p>
                       </div>
@@ -414,15 +413,15 @@ function RequestsPageContent() {
                     </Badge>
                     
                     {request.message && (
-                      <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-md leading-relaxed">
+                      <p className="text-[13px] text-muted-foreground bg-muted/50 p-2 rounded-md leading-relaxed">
                         "{request.message}"
                       </p>
                     )}
                     
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-1 justify-end">
                       <Button
                         size="sm"
-                        className="flex-1 h-9 text-xs"
+                        className="md:px-3"
                         onClick={() =>
                           handleApproveRequest(
                             request.topic_id,
@@ -444,7 +443,7 @@ function RequestsPageContent() {
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <>
-                            <Check className="h-3.5 w-3.5 mr-1.5" />
+                            <Check className="h-3.5 w-3.5 mr-1" />
                             Approve
                           </>
                         )}
@@ -452,7 +451,7 @@ function RequestsPageContent() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 h-9 text-xs"
+                        className="md:px-3"
                         onClick={() =>
                           handleRejectRequest(
                             request.topic_id,
@@ -474,7 +473,7 @@ function RequestsPageContent() {
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <>
-                            <X className="h-3.5 w-3.5 mr-1.5" />
+                            <X className="h-3.5 w-3.5 mr-1" />
                             Decline
                           </>
                         )}
@@ -491,16 +490,16 @@ function RequestsPageContent() {
               {sentRequests.length === 0 ? (
                 <div className="text-center py-16">
                   <Clock className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">No sent requests</p>
+                  <p className="text-[15px] text-muted-foreground">No sent requests</p>
                 </div>
               ) : (
                 sentRequests.map((request) => (
                   <div key={request.id} className="bg-card border rounded-lg p-3 space-y-2">
                     <div>
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-[15px] font-medium truncate">
                         {request.topic.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-[13px] text-muted-foreground mt-0.5">
                         Host: {request.topic.author?.display_name || "Unknown"}
                       </p>
                     </div>
@@ -522,7 +521,6 @@ function RequestsPageContent() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="w-full h-9 text-xs"
                         onClick={() =>
                           handleCancelRequest(
                             request.topic_id,

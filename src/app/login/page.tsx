@@ -152,20 +152,18 @@ export default function LoginPage() {
           </Button>
         </nav>
       </header>
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <Card className="w-full max-w-sm sm:max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl sm:text-2xl bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              Welcome Back
-            </CardTitle>
-            <CardDescription className="text-sm sm:text-base">
-              Log in to your Harthio account to continue connecting.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6">
-            <form onSubmit={onSubmit} className="space-y-4 sm:space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm sm:text-base">
+      <main className="flex-1 flex items-center justify-center p-4 py-6">
+        <div className="w-full max-w-md space-y-4 animate-scale-in">
+          {/* Title outside card */}
+          <div className="text-center">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">Welcome Back</h1>
+          </div>
+          
+          <Card className="shadow-apple-lg">
+          <CardContent className="p-5">
+            <form onSubmit={onSubmit} className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm">
                   Email
                 </Label>
                 <Input
@@ -176,24 +174,24 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
                   required
-                  className="text-sm sm:text-base"
+                  className="h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm sm:text-base">
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-sm">
                   Password
                 </Label>
                 <PasswordInput
                   id="password"
-                  placeholder="********"
+                  placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
                   required
-                  className="text-sm sm:text-base"
+                  className="h-9"
                 />
               </div>
-              <div className="text-right text-xs sm:text-sm">
+              <div className="text-right text-xs">
                 <Link
                   href="/forgot-password"
                   className="text-primary hover:text-primary/80 transition-colors"
@@ -203,16 +201,16 @@ export default function LoginPage() {
               </div>
               <Button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-sm sm:text-base py-2 sm:py-3"
+                className="w-full h-9"
+                size="sm"
                 disabled={loading}
               >
                 {loading ? "Logging In..." : "Log In"}
               </Button>
               {showResendVerification && (
-                <div className="mt-4 p-3 sm:p-4 bg-accent/10 border border-accent/20 rounded-md">
-                  <p className="text-xs sm:text-sm text-accent mb-2">
-                    Your email address needs to be verified before you can log
-                    in.
+                <div className="p-3 bg-accent/10 border border-accent/20 rounded-apple">
+                  <p className="text-xs text-accent mb-2">
+                    Your email address needs to be verified before you can log in.
                   </p>
                   <Button
                     type="button"
@@ -220,24 +218,27 @@ export default function LoginPage() {
                     size="sm"
                     onClick={handleResendVerification}
                     disabled={resendLoading}
-                    className="w-full text-xs sm:text-sm"
+                    className="w-full h-8"
                   >
                     {resendLoading ? "Sending..." : "Resend Verification Email"}
                   </Button>
                 </div>
               )}
             </form>
-            <p className="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/signup"
-                className="text-primary hover:text-primary/80 transition-colors font-medium"
-              >
-                Sign Up
-              </Link>
-            </p>
           </CardContent>
         </Card>
+        
+        {/* Footer outside card */}
+        <p className="text-center text-sm text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/signup"
+            className="text-primary hover:text-primary/80 transition-colors duration-apple font-medium"
+          >
+            Sign Up
+          </Link>
+        </p>
+        </div>
       </main>
     </div>
   );

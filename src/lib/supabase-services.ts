@@ -101,6 +101,63 @@ export const topicService = {
     }
   },
 
+  // Get user's session history (combines active and archived sessions)
+  async getUserSessionHistory(userId: string): Promise<TopicWithAuthor[]> {
+    try {
+      // Query both tables in parallel
+      const [activeTopics, archivedTopics] = await Promise.all([
+        // Get past sessions from active topics table
+        typedSupabase
+          .from("topics")
+          .select(`
+            *,
+            author:users!topics_author_id_fkey(*)
+          `)
+          .or(`author_id.eq.${userId},participants.cs.{${userId}}`)
+          .lt('end_time', new Date().toISOString())
+          .order("end_time", { ascending: false }),
+        
+        // Get archived sessions
+        typedSupabase
+          .from("topics_archive")
+          .select(`
+            *,
+            author:users!topics_archive_author_id_fkey(*)
+          `)
+          .or(`author_id.eq.${userId},participants.cs.{${userId}}`)
+          .order("archived_at", { ascending: false })
+      ]);
+
+      if (activeTopics.error) {
+        console.error("Error fetching active topics:", activeTopics.error);
+      }
+      
+      if (archivedTopics.error) {
+        console.error("Error fetching archived topics:", archivedTopics.error);
+        // Don't fail if archive doesn't exist yet
+      }
+
+      // Combine both results
+      const combined = [
+        ...(activeTopics.data || []),
+        ...(archivedTopics.data || [])
+      ];
+
+      // Sort by end_time/archived_at descending (most recent first)
+      combined.sort((a, b) => {
+        const aTime = new Date(a.archived_at || a.end_time).getTime();
+        const bTime = new Date(b.archived_at || b.end_time).getTime();
+        return bTime - aTime;
+      });
+
+      return combined as TopicWithAuthor[];
+    } catch (error) {
+      logError("getUserSessionHistory", error, { userId });
+      // Return empty array on error to prevent UI breakage
+      return [];
+    }
+  },
+
   // Get a single topic by ID
   async getTopicById(topicId: string): Promise<TopicWithAuthor | null> {
     try {

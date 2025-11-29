@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Check, X, Loader2, Clock, Users } from 'lucide-react';
+import { Check, X, Loader2, Clock, Users, User } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useOptimizedRequests } from '@/hooks/use-optimized-requests';
 import { topicService } from '@/lib/supabase-services';
@@ -128,9 +128,9 @@ export function RequestsSheet({ open, onOpenChange }: RequestsSheetProps) {
                 receivedRequests.map((request) => (
                   <div key={request.id} className="bg-card border rounded-lg p-3 space-y-2.5">
                     <div className="flex items-center gap-2.5">
-                      <Avatar className="h-9 w-9 flex-shrink-0">
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {request.requester_name.charAt(0).toUpperCase()}
+                      <Avatar className="h-9 w-9 flex-shrink-0 bg-background border border-border">
+                        <AvatarFallback className="bg-background">
+                          <User className="h-4 w-4 text-accent" />
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
@@ -156,10 +156,10 @@ export function RequestsSheet({ open, onOpenChange }: RequestsSheetProps) {
                       </p>
                     )}
                     
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex gap-2 pt-1 justify-end">
                       <Button
                         size="sm"
-                        className="flex-1 h-9 text-xs"
+                        className="md:px-3"
                         onClick={() => handleApprove(request.topic_id, request.requester_id)}
                         disabled={actionLoading[`approve-${request.topic_id}-${request.requester_id}`]}
                       >
@@ -167,7 +167,7 @@ export function RequestsSheet({ open, onOpenChange }: RequestsSheetProps) {
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <>
-                            <Check className="h-3.5 w-3.5 mr-1.5" />
+                            <Check className="h-3.5 w-3.5 mr-1" />
                             Approve
                           </>
                         )}
@@ -175,7 +175,7 @@ export function RequestsSheet({ open, onOpenChange }: RequestsSheetProps) {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 h-9 text-xs"
+                        className="md:px-3"
                         onClick={() => handleReject(request.topic_id, request.requester_id)}
                         disabled={actionLoading[`reject-${request.topic_id}-${request.requester_id}`]}
                       >
@@ -183,7 +183,7 @@ export function RequestsSheet({ open, onOpenChange }: RequestsSheetProps) {
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <>
-                            <X className="h-3.5 w-3.5 mr-1.5" />
+                            <X className="h-3.5 w-3.5 mr-1" />
                             Decline
                           </>
                         )}

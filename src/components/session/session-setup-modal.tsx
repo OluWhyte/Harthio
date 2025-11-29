@@ -454,7 +454,6 @@ export function SessionSetupModal({
             <Button
               variant="outline"
               onClick={onClose}
-              className="flex-1"
             >
               Cancel
             </Button>
@@ -462,7 +461,7 @@ export function SessionSetupModal({
             <Button
               onClick={handleJoin}
               disabled={!canJoin}
-              className="flex-2 bg-gradient-to-r from-rose-500 to-teal-500 hover:from-rose-600 hover:to-teal-600 disabled:from-gray-400 disabled:to-gray-500"
+              className="flex-1 bg-gradient-to-r from-rose-500 to-teal-500 hover:from-rose-600 hover:to-teal-600 disabled:from-gray-400 disabled:to-gray-500"
             >
               {!canJoin ? (
                 "Allow Access First"

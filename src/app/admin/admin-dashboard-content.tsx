@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ResponsiveAdminHeader } from '@/components/admin/responsive-admin-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BlogService } from '@/lib/services/blog-service';
 import { AdminService } from '@/lib/services/admin-service';
+import { AdminAuthService } from '@/lib/services/admin-auth-service';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -70,7 +70,7 @@ export default function AdminDashboardContent() {
     if (!user) return;
 
     try {
-      const adminStatus = await BlogService.isUserAdmin(user.uid);
+      const adminStatus = await AdminAuthService.isUserAdmin(user.uid);
       if (!adminStatus) {
         toast({
           title: 'Access Denied',
@@ -193,27 +193,6 @@ export default function AdminDashboardContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ResponsiveAdminHeader
-        title="Admin Dashboard"
-        actions={[
-          {
-            label: 'View Site',
-            icon: <Eye className="h-4 w-4" />,
-            onClick: () => window.open('/', '_blank'),
-            variant: 'outline'
-          }
-        ]}
-      />
-      
-      {/* Welcome Message - Mobile Friendly */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-right">
-            Welcome, <span className="font-medium">{user?.email}</span>
-          </div>
-        </div>
-      </div>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Export Actions */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">

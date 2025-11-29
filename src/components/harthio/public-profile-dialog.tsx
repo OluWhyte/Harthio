@@ -12,7 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Calendar, Star, MessageCircle, Users } from "lucide-react";
+import { Loader2, Calendar, Star, MessageCircle, Users, User } from "lucide-react";
 import { userService } from "@/lib/supabase-services";
 import { formatMemberSince, generateInitials } from "@/lib/profile-utils";
 
@@ -127,13 +127,13 @@ export function PublicProfileDialog({
           <div className="space-y-6 py-4">
             {/* Profile Header */}
             <div className="flex flex-col items-center gap-4">
-              <Avatar className="h-24 w-24 ring-4 ring-gray-100">
+              <Avatar className="h-24 w-24 bg-background border border-border">
                 <AvatarImage
                   src={profile.avatarUrl || undefined}
                   alt={profile.displayName}
                 />
-                <AvatarFallback className="text-lg">
-                  {generateInitials(profile.displayName)}
+                <AvatarFallback className="bg-background">
+                  <User className="h-12 w-12 text-accent" />
                 </AvatarFallback>
               </Avatar>
 

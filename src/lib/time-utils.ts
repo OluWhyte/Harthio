@@ -36,6 +36,24 @@ export function formatFullDateTime12h(date: Date | string): string {
   return format(dateObj, FULL_DATETIME_FORMAT_12H);
 }
 
+// Format duration in exact hours and minutes
+export function formatExactDuration(startTime: Date | string, endTime: Date | string): string {
+  const start = typeof startTime === 'string' ? new Date(startTime) : startTime;
+  const end = typeof endTime === 'string' ? new Date(endTime) : endTime;
+  
+  const diffInMinutes = Math.floor((end.getTime() - start.getTime()) / (1000 * 60));
+  const hours = Math.floor(diffInMinutes / 60);
+  const minutes = diffInMinutes % 60;
+  
+  if (hours === 0) {
+    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  } else if (minutes === 0) {
+    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+  } else {
+    return `${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  }
+}
+
 // Format session time range (start - end)
 export function formatSessionTimeRange(startTime: Date | string, endTime: Date | string): string {
   const start = typeof startTime === 'string' ? new Date(startTime) : startTime;
@@ -43,9 +61,21 @@ export function formatSessionTimeRange(startTime: Date | string, endTime: Date |
   
   const startFormatted = format(start, DATETIME_FORMAT_12H);
   const endTimeFormatted = format(end, TIME_FORMAT_12H);
-  const duration = formatDistanceStrict(end, start);
+  const duration = formatExactDuration(start, end);
   
   return `${startFormatted} - ${endTimeFormatted} (${duration})`;
+}
+
+// Format session time range for mobile (compact)
+export function formatSessionTimeRangeMobile(startTime: Date | string, endTime: Date | string): string {
+  const start = typeof startTime === 'string' ? new Date(startTime) : startTime;
+  const end = typeof endTime === 'string' ? new Date(endTime) : endTime;
+  
+  // Compact format: "Mon, Jan 15 @ 2:30 PM"
+  const startFormatted = format(start, 'EEE, MMM d @ h:mm a');
+  const duration = formatExactDuration(start, end);
+  
+  return `${startFormatted} • ${duration}`;
 }
 
 // Format time remaining in session
@@ -63,10 +93,39 @@ export function formatTimeRemaining(endTime: Date | string): string | null {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-// Format relative time (e.g., "2 minutes ago", "in 5 minutes")
+// Format relative time (e.g., "7m", "7h", "15 NOV", "May 15, 2024")
 export function formatRelativeTime(date: Date | string): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
-  return formatDistanceToNow(dateObj, { addSuffix: true });
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
+  
+  // Less than 1 minute
+  if (diffInSeconds < 60) {
+    return 'now';
+  }
+  
+  // Less than 1 hour - show minutes
+  if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes}m`;
+  }
+  
+  // Less than 24 hours - show hours
+  if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours}h`;
+  }
+  
+  // Less than 1 year - show "15 NOV"
+  const oneYearAgo = new Date(now);
+  oneYearAgo.setFullYear(now.getFullYear() - 1);
+  
+  if (dateObj > oneYearAgo) {
+    return format(dateObj, 'd MMM').toUpperCase();
+  }
+  
+  // Over 1 year - show "May 15, 2024"
+  return format(dateObj, 'MMM d, yyyy');
 }
 
 // Check if session is currently active

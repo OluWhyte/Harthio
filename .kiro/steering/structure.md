@@ -19,8 +19,18 @@
 - **Harthio Components**: `harthio/` - app-specific components (session dialogs, profile cards)
 - **Common Components**: `common/` - shared utility components
 
+### AI Module (`src/ai/`)
+Self-contained AI functionality module:
+- **Core Service**: `ai-service.ts` - Main AI chat service with crisis detection, tracker intent, CBT tools
+- **Services**: 
+  - `ai-chat-history-service.ts` - Conversation persistence
+  - `ai-feedback-service.ts` - User feedback on AI responses
+  - `ai-rate-limit-service.ts` - Usage limits and tier enforcement
+  - `proactive-ai-service.ts` - Proactive interventions and prompts
+- **Export**: All services exported via `index.ts` for clean imports
+
 ### Library (`src/lib/`)
-- **Services**: Database services, notification service, presence service
+- **Services**: Database services, notification service, presence service, tier service
 - **Utilities**: Time utils, crypto utils, profile utils
 - **Real-time**: WebRTC manager, signaling service, realtime manager
 - **Core**: Supabase client, database types, utility functions
@@ -31,9 +41,6 @@
 ### Functions (`src/functions/`)
 - Serverless functions and edge functions
 
-### AI (`src/ai/`)
-- AI-related functionality and development tools
-
 ## Naming Conventions
 - **Files**: kebab-case for components and utilities
 - **Components**: PascalCase for React components
@@ -43,4 +50,7 @@
 ## Import Aliases
 - `@/*` maps to `./src/*`
 - Use absolute imports with aliases instead of relative paths
-- Example: `import { Button } from '@/components/ui/button'`
+- Examples:
+  - `import { Button } from '@/components/ui/button'`
+  - `import { aiService } from '@/ai'`
+  - `import { detectMoodChange } from '@/ai/services/proactive-ai-service'`

@@ -48,6 +48,10 @@ import {
   CheckCircle,
   AlertTriangle,
   RefreshCw,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  X,
 } from "lucide-react";
 import { Calendar } from "../ui/calendar";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,6 +72,7 @@ import {
   FormValidationSummary,
 } from "@/components/common/form-validation-feedback";
 import { useSessionSuccessFeedback } from "@/hooks/use-success-feedback";
+import { aiService } from "@/ai/ai-service";
 
 // Helper function to convert 12-hour format to 24-hour
 function convertTo24Hour(time12h: string): string {
@@ -172,6 +177,7 @@ export function ScheduleSessionDialog({
   );
   const { user, userProfile } = useAuth();
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState<'start' | 'end' | null>(null);
   const {
     handleError,
     executeWithRetry,
@@ -185,6 +191,12 @@ export function ScheduleSessionDialog({
     logErrors: true,
   });
   const { showSessionCreatedSuccess } = useSessionSuccessFeedback();
+  
+  // AI Topic Helper state
+  const [showAIHelper, setShowAIHelper] = useState(false);
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   // Get current time for default values
   const getCurrentTime = () => {
@@ -437,12 +449,109 @@ export function ScheduleSessionDialog({
     }
   };
 
+  // AI Topic Helper function
+  const handleAIHelp = async () => {
+    if (!aiInput.trim()) {
+      toast({
+        title: "Input required",
+        description: "Please describe what you'd like to talk about",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAiLoading(true);
+    setAiSuggestions([]);
+
+    try {
+      const response = await aiService.chat([
+        {
+          role: "system",
+          content: `You are a helpful assistant for Harthio, a platform for meaningful conversations. Your task is to help users create session topics.
+
+When a user provides rough thoughts about what they want to discuss, you should:
+1. Generate a clear, concise session topic (5-15 words)
+2. Write a helpful description (20-50 words)
+3. Suggest 2-3 alternative topic ideas based on their input
+
+Format your response EXACTLY like this:
+TOPIC: [clear topic title]
+DESCRIPTION: [helpful description]
+SUGGESTIONS:
+- [alternative topic 1]
+- [alternative topic 2]
+- [alternative topic 3]
+
+Keep topics professional, empathetic, and focused on meaningful conversation. Avoid clinical language.`,
+        },
+        {
+          role: "user",
+          content: `Help me create a session topic. Here's what I'm thinking: ${aiInput}`,
+        },
+      ]);
+
+      if (response.success && response.message) {
+        // Parse the AI response
+        const topicMatch = response.message.match(/TOPIC:\s*(.+)/);
+        const descMatch = response.message.match(/DESCRIPTION:\s*(.+)/);
+        const suggestionsMatch = response.message.match(/SUGGESTIONS:\s*([\s\S]+)/);
+
+        if (topicMatch && descMatch) {
+          // Auto-fill the form
+          form.setValue("topic", topicMatch[1].trim());
+          form.setValue("description", descMatch[1].trim());
+
+          // Extract suggestions
+          if (suggestionsMatch) {
+            const suggestions = suggestionsMatch[1]
+              .split("\n")
+              .filter((line) => line.trim().startsWith("-"))
+              .map((line) => line.replace(/^-\s*/, "").trim())
+              .filter((s) => s.length > 0);
+            setAiSuggestions(suggestions);
+          }
+
+          toast({
+            title: "✨ Topic generated!",
+            description: "Review and edit as needed",
+          });
+        } else {
+          throw new Error("Could not parse AI response");
+        }
+      } else {
+        throw new Error(response.error || "AI request failed");
+      }
+    } catch (error: any) {
+      console.error("AI helper error:", error);
+      toast({
+        title: "AI helper unavailable",
+        description: "Please create your topic manually",
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const applySuggestion = (suggestion: string) => {
+    form.setValue("topic", suggestion);
+    setAiSuggestions([]);
+    toast({
+      title: "Topic applied",
+      description: "Feel free to edit it further",
+    });
+  };
+
   // Reset states when dialog closes
   useEffect(() => {
     if (!open) {
       setShowSuccess(false);
       setValidationErrors({});
       setShowCalendar(false);
+      setShowTimePicker(null);
+      setShowAIHelper(false);
+      setAiInput("");
+      setAiSuggestions([]);
       clearError();
     }
   }, [open, clearError]);
@@ -450,38 +559,100 @@ export function ScheduleSessionDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col p-4 sm:p-6">
-        <DialogHeader className="flex-shrink-0 space-y-2">
-          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
-            <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+      <DialogContent className="sm:max-w-lg flex flex-col p-0">
+        {/* Header - Fixed at top */}
+        <DialogHeader className="flex-shrink-0 px-4 pt-8 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b border-gray-100">
+          <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl font-semibold">
+            <CalendarIcon className="h-5 w-5 text-primary" />
             Schedule a Session
           </DialogTitle>
-          <DialogDescription className="space-y-2 text-xs sm:text-sm">
-            <p className="hidden sm:block">Create a meaningful conversation space for others to join.</p>
-            <div className="flex items-center gap-2 text-[10px] sm:text-xs bg-primary/5 text-primary px-2 py-1.5 sm:px-3 sm:py-2 rounded-md border border-primary/20">
-              <span className="font-semibold whitespace-nowrap">✨ Coming Soon:</span>
-              <span className="line-clamp-1">AI Topic Helper</span>
-            </div>
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-grow overflow-y-auto pr-1 sm:pr-2">
+        {/* Scrollable form content */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
               <FormField
                 control={form.control}
                 name="topic"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-sm">
-                      <span>Session Topic</span>
-                      <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">(Required)</span>
-                    </FormLabel>
+                    <div className="flex items-center justify-between mb-2">
+                      <FormLabel className="text-sm font-medium text-gray-900 mb-0">
+                        Session Topic <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowAIHelper(!showAIHelper)}
+                        className="h-6 px-2 sm:h-7 sm:px-2.5 text-xs text-accent hover:text-accent/80 hover:bg-accent/10 gap-1"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        <span>Write with AI</span>
+                      </Button>
+                    </div>
+                    {showAIHelper && (
+                      <div className="space-y-4 p-4 sm:p-5 mb-4 bg-gradient-to-br from-accent/5 to-accent/10 rounded-xl border border-accent/20 shadow-apple-sm animate-in slide-in-from-top-2 duration-apple">
+                        <div className="space-y-2.5">
+                          <label className="text-sm font-medium text-gray-900">
+                            What's on your mind?
+                          </label>
+                          <Textarea
+                            placeholder="Type anything you're thinking... AI will help organize it into a clear topic and description"
+                            value={aiInput}
+                            onChange={(e) => setAiInput(e.target.value)}
+                            disabled={aiLoading}
+                            className="min-h-[100px] sm:min-h-[120px] text-sm sm:text-base resize-none"
+                          />
+                        </div>
+
+                        <Button
+                          type="button"
+                          onClick={handleAIHelp}
+                          disabled={aiLoading || !aiInput.trim()}
+                          className="w-full h-10 sm:h-11 text-sm font-medium bg-accent hover:bg-accent/90 text-accent-foreground active:scale-[0.98] transition-all duration-apple"
+                        >
+                          {aiLoading ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Generate
+                            </>
+                          )}
+                        </Button>
+
+                        {aiSuggestions.length > 0 && (
+                          <div className="space-y-2.5 pt-3 border-t border-accent/20">
+                            <p className="text-sm font-medium text-gray-900">
+                              Alternative topics:
+                            </p>
+                            <div className="space-y-2">
+                              {aiSuggestions.map((suggestion, index) => (
+                                <button
+                                  key={index}
+                                  type="button"
+                                  onClick={() => applySuggestion(suggestion)}
+                                  className="w-full text-left text-sm sm:text-base p-3 sm:p-3.5 rounded-lg bg-white hover:bg-accent/5 border border-accent/30 hover:border-accent/50 transition-all duration-apple active:scale-[0.98] shadow-apple-sm"
+                                >
+                                  {suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <FormControl>
                       <Input
                         placeholder="e.g., Venting about a co-founder"
                         disabled={form.formState.isSubmitting}
-                        className="text-sm"
+                        className="h-11 text-base"
                         {...field}
                       />
                     </FormControl>
@@ -491,8 +662,7 @@ export function ScheduleSessionDialog({
                         {validationErrors.title}
                       </p>
                     )}
-                    <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
-                      <span className="hidden sm:inline">Be clear and specific</span>
+                    <div className="flex justify-end text-xs text-muted-foreground">
                       <span>{field.value?.length || 0}/100</span>
                     </div>
                   </FormItem>
@@ -503,15 +673,14 @@ export function ScheduleSessionDialog({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center gap-2 text-sm">
-                      <span>Description</span>
-                      <span className="text-[10px] sm:text-xs font-normal text-muted-foreground">(Optional)</span>
+                    <FormLabel className="text-sm font-medium text-gray-900">
+                      Description <span className="text-xs font-normal text-gray-500">(Optional)</span>
                     </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="What's the session about?"
-                        className="resize-none min-h-[80px] sm:min-h-[100px] text-sm"
                         disabled={form.formState.isSubmitting}
+                        className="min-h-[100px] text-base resize-none"
                         {...field}
                       />
                     </FormControl>
@@ -521,8 +690,7 @@ export function ScheduleSessionDialog({
                         {validationErrors.description}
                       </p>
                     )}
-                    <div className="flex justify-between text-[10px] sm:text-xs text-muted-foreground">
-                      <span className="hidden sm:inline">Help others understand your session</span>
+                    <div className="flex justify-end text-xs text-muted-foreground">
                       <span>{field.value?.length || 0}/500</span>
                     </div>
                   </FormItem>
@@ -533,15 +701,15 @@ export function ScheduleSessionDialog({
                 name="date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel className="text-sm font-medium text-gray-900">Date <span className="text-red-500">*</span></FormLabel>
                     <Button
                       type="button"
                       variant={"outline"}
                       className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "w-full h-11 justify-start text-left font-normal text-base",
                         !field.value && "text-muted-foreground"
                       )}
-                      onClick={() => setShowCalendar(!showCalendar)}
+                      onClick={() => setShowCalendar(true)}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {field.value ? (
@@ -550,39 +718,57 @@ export function ScheduleSessionDialog({
                         <span>Pick a date</span>
                       )}
                     </Button>
-                    {showCalendar && (
-                      <Calendar
-                        mode="single"
-                        captionLayout="buttons"
-                        fromDate={new Date()}
-                        toDate={
-                          new Date(
-                            new Date().setFullYear(new Date().getFullYear() + 2)
-                          )
-                        }
-                        selected={field.value}
-                        onSelect={(date) => {
-                          if (date) field.onChange(date);
-                          setShowCalendar(false);
-                        }}
-                        disabled={(date) =>
-                          date <
-                          new Date(new Date().setDate(new Date().getDate() - 1))
-                        }
-                        initialFocus
-                      />
-                    )}
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="startTime"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Time</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-900">Start Time <span className="text-red-500">*</span></FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-11 justify-start text-left font-normal text-base"
+                        onClick={() => setShowTimePicker('start')}
+                      >
+                        {field.value || "Select time"}
+                      </Button>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-900">End Time <span className="text-red-500">*</span></FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-11 justify-start text-left font-normal text-base"
+                        onClick={() => setShowTimePicker('end')}
+                      >
+                        {field.value || "Select time"}
+                      </Button>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              {/* Hidden old time picker - keeping the Select logic for desktop fallback */}
+              <div className="hidden">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-gray-900">Start Time <span className="text-red-500">*</span></FormLabel>
                       <Select
                         onValueChange={(value) => {
                           field.onChange(value);
@@ -732,7 +918,7 @@ export function ScheduleSessionDialog({
                   name="endTime"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>End Time</FormLabel>
+                      <FormLabel className="text-sm font-medium text-gray-900">End Time <span className="text-red-500">*</span></FormLabel>
                       <Select
                         onValueChange={(value) => {
                           field.onChange(value);
@@ -879,8 +1065,8 @@ export function ScheduleSessionDialog({
                 />
               </div>
               {calculatedDuration && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm p-2 sm:p-3 bg-primary/5 text-primary rounded-md border border-primary/20">
-                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                <div className="flex items-center gap-2.5 text-sm p-3 bg-primary/5 text-primary rounded-xl border border-primary/20">
+                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
                   <span><span className="font-semibold">Duration:</span> {calculatedDuration}</span>
                 </div>
               )}
@@ -889,43 +1075,272 @@ export function ScheduleSessionDialog({
               {conflictResult?.hasConflict && (
                 <ScheduleConflictWarning 
                   conflictResult={conflictResult}
-                  className="mt-4"
                 />
               )}
-              <DialogFooter className="flex-shrink-0 pt-3 sm:pt-4 flex-row justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setOpen(false)}
-                  disabled={form.formState.isSubmitting}
-                  className="px-3 sm:px-4 text-xs sm:text-sm"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={
-                    form.formState.isSubmitting ||
-                    Object.keys(validationErrors).length > 0 ||
-                    conflictResult?.hasConflict
-                  }
-                  className="px-4 sm:px-6 text-xs sm:text-sm"
-                >
-                  {form.formState.isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Schedule"
-                  )}
-                </Button>
-              </DialogFooter>
             </form>
           </Form>
         </div>
+
+        {/* Footer - Fixed at bottom */}
+        <div className="flex-shrink-0 px-4 py-3 sm:px-6 sm:py-4 border-t border-gray-100 bg-gray-50/50">
+          <div className="flex gap-3 justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={form.formState.isSubmitting}
+              className="px-5 h-11 text-sm font-medium"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={form.handleSubmit(onSubmit)}
+              disabled={
+                form.formState.isSubmitting ||
+                Object.keys(validationErrors).length > 0 ||
+                conflictResult?.hasConflict
+              }
+              className="px-6 h-11 text-sm font-medium active:scale-[0.98] transition-all duration-apple"
+            >
+              {form.formState.isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Schedule Session"
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Full-screen Calendar Overlay (Mobile only) */}
+        {showCalendar && (
+          <div className="sm:hidden fixed inset-0 z-[100] bg-white animate-in slide-in-from-bottom duration-apple">
+            <div className="flex flex-col h-full">
+              {/* Calendar Header */}
+              <div className="flex-shrink-0 px-4 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Select Date</h3>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCalendar(false)}
+                  className="h-9 w-9 p-0"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              
+              {/* Calendar Content */}
+              <div className="flex-1 flex items-center justify-center p-4">
+                <Calendar
+                  mode="single"
+                  captionLayout="buttons"
+                  fromDate={new Date()}
+                  toDate={
+                    new Date(
+                      new Date().setFullYear(new Date().getFullYear() + 2)
+                    )
+                  }
+                  selected={form.watch("date")}
+                  onSelect={(date) => {
+                    if (date) {
+                      form.setValue("date", date);
+                      setShowCalendar(false);
+                    }
+                  }}
+                  disabled={(date) =>
+                    date <
+                    new Date(new Date().setDate(new Date().getDate() - 1))
+                  }
+                  className="scale-110"
+                  initialFocus
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Desktop Calendar Popover */}
+        {showCalendar && (
+          <div className="hidden sm:block absolute inset-0 z-[60] bg-black/20 backdrop-blur-sm" onClick={() => setShowCalendar(false)}>
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 p-4 bg-white rounded-xl border border-gray-200 shadow-apple animate-in zoom-in-95 duration-apple" onClick={(e) => e.stopPropagation()}>
+              <Calendar
+                mode="single"
+                captionLayout="buttons"
+                fromDate={new Date()}
+                toDate={
+                  new Date(
+                    new Date().setFullYear(new Date().getFullYear() + 2)
+                  )
+                }
+                selected={form.watch("date")}
+                onSelect={(date) => {
+                  if (date) {
+                    form.setValue("date", date);
+                    setShowCalendar(false);
+                  }
+                }}
+                disabled={(date) =>
+                  date <
+                  new Date(new Date().setDate(new Date().getDate() - 1))
+                }
+                initialFocus
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Full-screen Time Picker Overlay (Mobile) / Centered Modal (Desktop) */}
+        {showTimePicker && (
+          <div className="fixed inset-0 z-[100] bg-white sm:bg-black/20 sm:backdrop-blur-sm animate-in slide-in-from-bottom sm:fade-in duration-apple" onClick={(e) => {
+            if (e.target === e.currentTarget) setShowTimePicker(null);
+          }}>
+            <div className="flex flex-col h-full sm:h-auto sm:absolute sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:bg-white sm:rounded-xl sm:shadow-apple sm:max-w-md sm:w-full sm:mx-4">
+              {/* Time Picker Header */}
+              <div className="flex-shrink-0 px-4 py-4 border-b border-gray-200 flex items-center justify-between sm:rounded-t-xl">
+                <h3 className="text-lg font-semibold">
+                  {showTimePicker === 'start' ? 'Start Time' : 'End Time'}
+                </h3>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTimePicker(null)}
+                  className="h-9 w-9 p-0"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              
+              {/* Time Picker Content */}
+              <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+                <div className="w-full max-w-sm">
+                  <div className="grid grid-cols-3 gap-4 text-center text-sm font-medium text-gray-600 mb-4">
+                    <div>Hour</div>
+                    <div>Minute</div>
+                    <div>AM/PM</div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    {/* Hours */}
+                    <div className="h-64 overflow-y-auto border border-gray-200 rounded-xl bg-gray-50">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((hour) => {
+                        const fieldName = showTimePicker === 'start' ? 'startHour' : 'endHour';
+                        const isSelected = form.getValues(fieldName) === hour.toString();
+                        return (
+                          <button
+                            key={hour}
+                            type="button"
+                            className={cn(
+                              "w-full py-4 text-lg transition-all duration-apple",
+                              isSelected
+                                ? "bg-primary text-white font-semibold"
+                                : "hover:bg-gray-100 active:bg-gray-200"
+                            )}
+                            onClick={() => {
+                              const minuteField = showTimePicker === 'start' ? 'startMinute' : 'endMinute';
+                              const periodField = showTimePicker === 'start' ? 'startPeriod' : 'endPeriod';
+                              const timeField = showTimePicker === 'start' ? 'startTime' : 'endTime';
+                              
+                              const minute = form.getValues(minuteField) || "00";
+                              const period = form.getValues(periodField) || "AM";
+                              const timeValue = `${hour.toString().padStart(2, "0")}:${minute} ${period}`;
+                              
+                              form.setValue(fieldName, hour.toString());
+                              form.setValue(timeField, timeValue);
+                            }}
+                          >
+                            {hour.toString().padStart(2, "0")}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Minutes */}
+                    <div className="h-64 overflow-y-auto border border-gray-200 rounded-xl bg-gray-50">
+                      {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => {
+                        const minuteStr = minute.toString().padStart(2, "0");
+                        const fieldName = showTimePicker === 'start' ? 'startMinute' : 'endMinute';
+                        const isSelected = form.getValues(fieldName) === minuteStr;
+                        return (
+                          <button
+                            key={minute}
+                            type="button"
+                            className={cn(
+                              "w-full py-4 text-lg transition-all duration-apple",
+                              isSelected
+                                ? "bg-primary text-white font-semibold"
+                                : "hover:bg-gray-100 active:bg-gray-200"
+                            )}
+                            onClick={() => {
+                              const hourField = showTimePicker === 'start' ? 'startHour' : 'endHour';
+                              const periodField = showTimePicker === 'start' ? 'startPeriod' : 'endPeriod';
+                              const timeField = showTimePicker === 'start' ? 'startTime' : 'endTime';
+                              
+                              const hour = form.getValues(hourField) || "1";
+                              const period = form.getValues(periodField) || "AM";
+                              const timeValue = `${hour.padStart(2, "0")}:${minuteStr} ${period}`;
+                              
+                              form.setValue(fieldName, minuteStr);
+                              form.setValue(timeField, timeValue);
+                            }}
+                          >
+                            {minuteStr}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* AM/PM */}
+                    <div className="h-64 overflow-y-auto border border-gray-200 rounded-xl bg-gray-50">
+                      {["AM", "PM"].map((period) => {
+                        const fieldName = showTimePicker === 'start' ? 'startPeriod' : 'endPeriod';
+                        const isSelected = form.getValues(fieldName) === period;
+                        return (
+                          <button
+                            key={period}
+                            type="button"
+                            className={cn(
+                              "w-full py-4 text-lg transition-all duration-apple",
+                              isSelected
+                                ? "bg-primary text-white font-semibold"
+                                : "hover:bg-gray-100 active:bg-gray-200"
+                            )}
+                            onClick={() => {
+                              const hourField = showTimePicker === 'start' ? 'startHour' : 'endHour';
+                              const minuteField = showTimePicker === 'start' ? 'startMinute' : 'endMinute';
+                              const timeField = showTimePicker === 'start' ? 'startTime' : 'endTime';
+                              
+                              const hour = form.getValues(hourField) || "1";
+                              const minute = form.getValues(minuteField) || "00";
+                              const timeValue = `${hour.padStart(2, "0")}:${minute} ${period}`;
+                              
+                              form.setValue(fieldName, period);
+                              form.setValue(timeField, timeValue);
+                            }}
+                          >
+                            {period}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Done Button */}
+                  <Button
+                    type="button"
+                    onClick={() => setShowTimePicker(null)}
+                    className="w-full mt-6 h-12 text-base"
+                  >
+                    Done
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

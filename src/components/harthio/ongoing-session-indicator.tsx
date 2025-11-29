@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -17,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format } from 'date-fns';
 import { topicService, dbUtils } from '@/lib/supabase-services';
+import { Calendar, Video } from 'lucide-react';
 
 export function OngoingSessionIndicator() {
   const [activeSession, setActiveSession] = useState<any | null>(null);
@@ -126,9 +126,9 @@ export function OngoingSessionIndicator() {
         <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
         <Button 
           variant="destructive" 
-          size="sm" 
           onClick={handleJoinSession}
           disabled={isNavigating}
+          className="shadow-md hover:shadow-lg transition-all duration-300"
         >
           {isNavigating ? 'Joining...' : 'Join Session'}
         </Button>
@@ -142,7 +142,7 @@ export function OngoingSessionIndicator() {
     return (
        <AlertDialog>
         <AlertDialogTrigger asChild>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" className="shadow-md hover:shadow-lg transition-all duration-300 px-6">
             Upcoming Session
           </Button>
         </AlertDialogTrigger>

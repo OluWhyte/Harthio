@@ -10,6 +10,7 @@ import {
   Clock,
   Wifi,
   AlertTriangle,
+  User,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
@@ -27,7 +28,7 @@ import {
 
 import { PublicProfileDialog } from "./public-profile-dialog";
 import { RequestToJoinDialog } from "./request-to-join-dialog";
-import { formatSessionTimeRange, formatRelativeTime } from "@/lib/time-utils";
+import { formatSessionTimeRange, formatSessionTimeRangeMobile, formatRelativeTime } from "@/lib/time-utils";
 
 import {
   Accordion,
@@ -79,6 +80,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
   const [retryCount, setRetryCount] = useState(0);
   const { handleError, executeWithRetry, clearError } = useTopicErrorHandler();
   const timeString = formatSessionTimeRange(topic.startTime, topic.endTime);
+  const timeStringMobile = formatSessionTimeRangeMobile(topic.startTime, topic.endTime);
 
   // Optimistic UI state for request status
   const [optimisticRequestSent, setOptimisticRequestSent] = useState(false);
@@ -184,103 +186,101 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow w-full">
-      <CardContent className="p-4 flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <PublicProfileDialog userId={topic.author.userId}>
-              <div className="cursor-pointer">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage
-                    src={topic.author.avatarUrl || undefined}
-                    alt={topic.author.name}
-                    data-ai-hint="person"
-                  />
-                  <AvatarFallback>{topic.author.initials}</AvatarFallback>
-                </Avatar>
-              </div>
-            </PublicProfileDialog>
-            <div>
+    <div className="w-full border-b border-border hover:bg-muted/30 transition-colors">
+      <div className="p-4 flex gap-3">
+        {/* Left: Avatar */}
+        <div className="flex-shrink-0">
+          <PublicProfileDialog userId={topic.author.userId}>
+            <div className="cursor-pointer">
+              <Avatar className="h-10 w-10 bg-background border border-border">
+                <AvatarImage
+                  src={topic.author.avatarUrl || undefined}
+                  alt={topic.author.name}
+                  data-ai-hint="person"
+                />
+                <AvatarFallback className="bg-background">
+                  <User className="h-5 w-5 text-accent" />
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </PublicProfileDialog>
+        </div>
+
+        {/* Right: Content */}
+        <div className="flex-1 min-w-0">
+          {/* Header: Name, Rating, Time */}
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
               <PublicProfileDialog userId={topic.author.userId}>
-                <span className="text-[15px] font-semibold hover:underline cursor-pointer">
+                <span className="text-[15px] font-semibold hover:underline cursor-pointer truncate">
                   {topic.author.name}
                 </span>
               </PublicProfileDialog>
-              <div className="flex items-center gap-1 text-[13px] text-muted-foreground">
-                <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                <span>
-                  {topic.author.rating > 0
-                    ? `${topic.author.rating.toFixed(1)}`
-                    : "New"}
-                </span>
-                <span>
-                  ({topic.author.reviews} ratings)
-                </span>
-              </div>
+            </div>
+            <div className="flex items-center gap-1 text-[13px] text-muted-foreground flex-shrink-0">
+              <Clock className="h-3 w-3" />
+              <span>{timeSinceCreation}</span>
             </div>
           </div>
-          <div className="flex items-center gap-1 text-[13px] text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>posted {timeSinceCreation}</span>
+
+          {/* Title */}
+          <h3 className="text-[17px] leading-snug font-semibold mb-2 break-words">{topic.title}</h3>
+
+          {/* Enhanced operation feedback */}
+          <OperationFeedback
+            isLoading={isUpdating}
+            error={actionError}
+            success={actionSuccess}
+            loadingMessage="Updating session..."
+            onRetry={handleRetry}
+            onDismissError={handleClearError}
+            onDismissSuccess={() => setActionSuccess(null)}
+          />
+
+          {/* Metadata */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-muted-foreground mb-2">
+            <div className="flex items-center gap-1">
+              <Users className="w-4 h-4" />
+              <span>
+                {totalParticipants} participant
+                {totalParticipants !== 1 ? "s" : ""}
+                {hasEnoughParticipants
+                  ? " (ready)"
+                  : " (waiting for 1 more)"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Calendar className="w-4 h-4 flex-shrink-0" />
+              <span className="hidden sm:inline text-[13px]">{timeString}</span>
+              <span className="sm:hidden text-[13px]">{timeStringMobile}</span>
+            </div>
           </div>
-        </div>
 
-        <h3 className="text-[17px] leading-snug font-semibold">{topic.title}</h3>
+          {/* Description Accordion */}
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1" className="border-b-0">
+              <AccordionTrigger className="p-0 text-[13px] hover:no-underline text-accent justify-start gap-1">
+                <Info className="w-3.5 h-3.5" />
+                <span>Read Description</span>
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 text-[15px] leading-relaxed text-muted-foreground">
+                {topic.description}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
-        {/* Enhanced operation feedback */}
-        <OperationFeedback
-          isLoading={isUpdating}
-          error={actionError}
-          success={actionSuccess}
-          loadingMessage="Updating session..."
-          onRetry={handleRetry}
-          onDismissError={handleClearError}
-          onDismissSuccess={() => setActionSuccess(null)}
-        />
-
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
-            <span>
-              {totalParticipants} participant
-              {totalParticipants !== 1 ? "s" : ""}
-              {hasEnoughParticipants
-                ? " (ready)"
-                : " (waiting for 1 more participant)"}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            <span>{timeString}</span>
-          </div>
-        </div>
-
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="item-1" className="border-b-0">
-            <AccordionTrigger className="p-0 text-[15px] hover:no-underline text-accent justify-start gap-1">
-              <Info className="w-4 h-4" />
-              <span>Read Description</span>
-            </AccordionTrigger>
-            <AccordionContent className="pt-2 text-[15px] leading-relaxed text-muted-foreground">
-              {topic.description}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
-        {isUserHost ? (
-          // Host view - show "You are hosting this session" and pending request count
-          <div className="mt-2 space-y-2">
+          {isUserHost ? (
+            // Host view - show "You are hosting this session" and pending request count
+            <div className="mt-3 space-y-2">
             <div className="text-[15px] text-green-600 font-semibold">
               You are hosting this session
             </div>
             {pendingRequestCount > 0 && (
               <div className="text-[15px] text-primary font-semibold">
-                You have {pendingRequestCount} pending request
-                {pendingRequestCount > 1 ? "s" : ""}.{" "}
-                <Link href="/requests" className="underline">
-                  View now
+                {pendingRequestCount} pending request{pendingRequestCount > 1 ? "s" : ""} •{" "}
+                <Link href="/notifications" className="underline">
+                  View
                 </Link>
-                .
               </div>
             )}
             {/* Show session buttons based on participant count and timing */}
@@ -311,7 +311,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                   } else if (now >= startTime && now <= endTime) {
                     // Session is active - show status only (join via header button)
                     return (
-                      <Button variant="outline" className="flex-1" disabled>
+                      <Button variant="default" className="flex-1 bg-green-600 hover:bg-green-700" disabled>
                         Session Active
                       </Button>
                     );
@@ -325,10 +325,10 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                 Session is open for requests - waiting for participants to join
               </div>
             )}
-          </div>
-        ) : isUserParticipant ? (
-          // Participant view - show "You are confirmed for this session" with session buttons
-          <div className="mt-2 space-y-2">
+            </div>
+          ) : isUserParticipant ? (
+            // Participant view - show "You are confirmed for this session" with session buttons
+            <div className="mt-3 space-y-2">
             <div className="text-[15px] text-green-600 font-semibold">
               You are confirmed for this session
             </div>
@@ -349,7 +349,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                   } else if (now >= startTime && now <= endTime) {
                     // Session is active - show status only (join via header button)
                     return (
-                      <Button variant="outline" className="flex-1" disabled>
+                      <Button variant="default" className="flex-1 bg-green-600 hover:bg-green-700" disabled>
                         Session Active
                       </Button>
                     );
@@ -363,10 +363,10 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                 Waiting for participants
               </div>
             )}
-          </div>
-        ) : (
-          // Non-participant view - show appropriate button based on session state and 3-state system
-          <div className="mt-2 flex gap-2">
+            </div>
+          ) : (
+            // Non-participant view - show appropriate button based on session state and 3-state system
+            <div className="mt-3 flex gap-2">
             {(() => {
               const now = new Date();
               const startTime = new Date(topic.startTime);
@@ -375,7 +375,7 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
               // If session is active or ended, don't show request button
               if (now >= startTime) {
                 return (
-                  <Button variant="outline" className="flex-1" disabled>
+                  <Button variant={now <= endTime ? "default" : "outline"} className={`flex-1 ${now <= endTime ? "bg-green-600 hover:bg-green-700" : ""}`} disabled>
                     {now <= endTime ? "Session Active" : "Session Ended"}
                   </Button>
                 );
@@ -391,7 +391,6 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                     onSuccess={handleUpdateWithFeedback}
                   >
                     <Button
-                      className="flex-1"
                       disabled={
                         isInOngoingSession ||
                         hasRequested ||
@@ -414,10 +413,11 @@ function TopicCardContent({ topic, onUpdateRequest }: TopicCardProps) {
                 </>
               );
             })()}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

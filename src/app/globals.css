@@ -4,14 +4,26 @@
 @tailwind utilities;
 
 /* Viewport fixes for mobile and responsive design */
-html, body {
+html {
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  tap-highlight-color: transparent;
+  -webkit-overflow-scrolling: touch; /* Smooth momentum scrolling on iOS */
 }
 
 /* Mobile session controls - ensure they're always accessible */
@@ -44,23 +56,24 @@ html, body {
 
 @layer base {
   :root {
-    --background: 240 67% 94%; /* Soft Lavender */
-    --foreground: 240 10% 3.9%;
+    /* Apple-inspired color system */
+    --background: 0 0% 100%; /* Pure White */
+    --foreground: 220 9% 12%; /* Apple's near-black #1d1d1f */
 
-    --card: 240 60% 98%;
-    --card-foreground: 240 10% 3.9%;
+    --card: 0 0% 100%; /* Pure White */
+    --card-foreground: 220 9% 12%;
 
-    --popover: 240 60% 98%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%; /* Pure White */
+    --popover-foreground: 220 9% 12%;
 
     --primary: 340 82% 52%; /* Warm Rose */
     --primary-foreground: 355 100% 97%;
 
-    --secondary: 240 20% 90%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 0 0% 96%; /* Apple's light gray #F5F5F7 */
+    --secondary-foreground: 220 9% 12%;
 
-    --muted: 240 20% 90%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 0 0% 96%; /* Light Gray */
+    --muted-foreground: 0 0% 43%; /* Apple's gray #6e6e73 */
 
     --accent: 180 100% 25%; /* Gentle Teal */
     --accent-foreground: 180 100% 95%;
@@ -68,11 +81,32 @@ html, body {
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 15% 88%;
-    --input: 240 15% 88%;
+    --border: 0 0% 0% / 0.06; /* Apple's subtle border */
+    --input: 0 0% 100% / 0; /* Transparent - no border */
     --ring: 340 82% 52%; /* Warm Rose */
 
-    --radius: 0.8rem;
+    /* Apple-style border radius */
+    --radius: 0.75rem; /* 12px - Apple's standard */
+    --radius-sm: 0.5rem; /* 8px */
+    --radius-lg: 1rem; /* 16px */
+    --radius-xl: 1.25rem; /* 20px */
+
+    /* Apple-style shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.08);
+    --shadow-xl: 0 8px 32px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08);
+
+    /* Apple's easing curves */
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+    --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Animation durations */
+    --duration-fast: 150ms;
+    --duration-normal: 250ms;
+    --duration-slow: 350ms;
 
     --app-height: 100vh;
   }
@@ -103,13 +137,13 @@ html, body {
     --destructive-foreground: 0 0% 98%;
 
     --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    --input: 0 0% 0% / 0; /* Transparent - no border */
     --ring: 340 82% 52%; /* Warm Rose */
   }
 }
 
 @layer base {
-  * {
+  *:not(input):not(textarea):not(select) {
     @apply border-border;
   }
   body {
@@ -118,9 +152,71 @@ html, body {
   h1, h2, h3, h4, h5, h6 {
     @apply font-headline;
   }
+  
+  /* Remove all focus rings and borders from inputs globally */
+  input, textarea, select {
+    --tw-ring-shadow: 0 0 #0000 !important;
+    box-shadow: none !important;
+  }
+  
+  input:focus, textarea:focus, select:focus {
+    --tw-ring-shadow: 0 0 #0000 !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+
+  /* Override browser autofill styles - force white background */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    -webkit-text-fill-color: inherit !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Firefox autofill */
+  input:-moz-autofill,
+  input:-moz-autofill-preview {
+    background-color: white !important;
+  }
 }
 
 @layer utilities {
+  /* Apple-style touch feedback */
+  .apple-touch {
+    transition: transform var(--duration-normal) var(--ease-standard);
+    cursor: pointer;
+  }
+  
+  .apple-touch:active {
+    transform: scale(0.96);
+  }
+  
+  .apple-touch-card:active {
+    transform: scale(0.98);
+  }
+
+  /* Apple-style card */
+  .apple-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--duration-normal) var(--ease-standard);
+  }
+  
+  .apple-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Apple-style smooth scroll */
+  .apple-scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
   .animate-pulse {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
@@ -161,6 +257,52 @@ html, body {
     to {
       transform: translateY(-100%);
       opacity: 0;
+    }
+  }
+
+  /* iMessage-style slide in */
+  .animate-message-in {
+    animation: messageSlideIn 0.3s var(--ease-spring);
+  }
+
+  @keyframes messageSlideIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* Apple-style fade in */
+  .animate-fade-in {
+    animation: fadeIn var(--duration-normal) var(--ease-decelerate);
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Apple-style scale in */
+  .animate-scale-in {
+    animation: scaleIn var(--duration-normal) var(--ease-spring);
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 }

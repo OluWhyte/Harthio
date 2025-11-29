@@ -1125,6 +1125,79 @@ export interface AnalyticsFilters {
 // SessionStatus is already defined above
 
 // ============================================================================
+// RECOVERY TRACKER TYPES
+// ============================================================================
+
+export interface SobrietyTracker {
+  id: string;
+  user_id: string;
+  tracker_type: string;
+  tracker_name: string;
+  start_date: string;
+  is_active: boolean;
+  chosen_image: string | null;
+  piece_unlock_order: number[] | null;
+  current_phase: number;
+  pieces_unlocked: number;
+  total_pieces: number;
+  days_per_piece: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyCheckin {
+  id: string;
+  user_id: string;
+  tracker_id: string;
+  checkin_date: string;
+  mood_rating: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface TrackerRelapse {
+  id: string;
+  user_id: string;
+  tracker_id: string;
+  relapse_date: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface RecoveryStats {
+  activeTrackers: number;
+  totalCheckins: number;
+  visualJourneys: number;
+  avgCheckinsPerDay: number;
+  trackersByType: { type: string; count: number }[];
+  recentRelapses: number;
+}
+
+export interface CheckinTrend {
+  date: string;
+  count: number;
+  avgMood: number;
+}
+
+export interface MilestoneUser {
+  user_id: string;
+  display_name: string;
+  tracker_type: string;
+  days_sober: number;
+  milestone: number;
+  start_date: string;
+}
+
+export interface AtRiskUser {
+  user_id: string;
+  display_name: string;
+  tracker_type: string;
+  last_checkin: string;
+  days_since_checkin: number;
+  current_streak: number;
+}
+
+// ============================================================================
 // EXPORT ALL TYPES
 // ============================================================================
 

@@ -1,36 +1,38 @@
-# Documentation Directory
+# Harthio Documentation
 
-This directory contains project documentation organized by category.
+Welcome to the Harthio documentation. This directory contains all project documentation organized by category.
 
-## Structure
+## Directory Structure
 
-### `/deployment/` (Not in Git)
-- Deployment guides and procedures
-- Environment setup instructions
-- Server configuration guides
-- Contains: `BLOG_DEPLOYMENT.md`, `BLOG_SETUP.md`, `VERCEL_SUBDOMAIN_SETUP.md`
+- **admin/** - Admin panel documentation and implementation guides
+- **ai/** - AI features, analytics, and integration documentation
+- **features/** - Feature-specific documentation (trackers, sessions, payments, notifications)
+- **ui-design/** - UI/UX design system, components, and visual guidelines
+- **development/** - Development guides, API references, and migration guides
+- **deployment/** - Deployment guides and setup instructions
+- **guides/** - How-to guides, testing guides, and troubleshooting
+- **archive/** - Historical documentation and completed project summaries
 
-### `/guides/` (Not in Git)
-- Internal development guides
-- Administrative procedures
-- Troubleshooting documentation
-- Contains: Admin guides, CSS fixes, domain setup guides
+## Quick Links
 
-### Root Documentation (In Git)
-- Public documentation
-- API documentation
-- User guides
-- General project information
+- [Setup Instructions](SETUP_INSTRUCTIONS.md)
+- [Database Setup](DATABASE_SETUP.md)
+- [Deployment Guide](DEPLOYMENT_GUIDE.md)
+- [Security Implementation](SECURITY_IMPLEMENTATION_SUMMARY.md)
+- [Session System](SESSION_SYSTEM.md)
+- [WebRTC Implementation](WEBRTC_IMPLEMENTATION.md)
 
-## Security Notes
+## Getting Started
 
-- `/deployment/` and `/guides/` directories are excluded from version control
-- These may contain sensitive server information or internal procedures
-- Keep internal documentation separate from public docs
-- Review before sharing any documentation externally
+1. Start with [Setup Instructions](SETUP_INSTRUCTIONS.md) for initial project setup
+2. Review [Database Setup](DATABASE_SETUP.md) for database configuration
+3. Check [Development Guidelines](development/DEVELOPMENT_GUIDELINES.md) for coding standards
+4. See [Testing Guide](guides/TESTING_GUIDE.md) for testing procedures
 
-## Usage
+## Contributing
 
-1. **Public docs**: Keep in root `/docs/` for version control
-2. **Internal guides**: Store in `/guides/` (local only)
-3. **Deployment docs**: Store in `/deployment/` (local only)
+When adding new documentation:
+- Place it in the appropriate category folder
+- Use clear, descriptive filenames
+- Update this README if adding new major documentation
+- Keep the root directory clean - all docs belong in subdirectories

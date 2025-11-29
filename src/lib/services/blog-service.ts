@@ -124,19 +124,9 @@ export class BlogService {
 
   // Admin methods - require authentication
   static async isUserAdmin(userId: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('admin_roles')
-      .select('id, user_id, role')
-      .eq('user_id', userId)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Admin check error:', error);
-      throw error;
-    }
-    
-    const isAdmin = !!data;
-    return isAdmin;
+    // Delegate to central admin service
+    const { AdminAuthService } = await import('./admin-auth-service');
+    return AdminAuthService.isUserAdmin(userId);
   }
 
   static async getAllPosts(limit = 50, offset = 0): Promise<BlogPostWithAuthor[]> {

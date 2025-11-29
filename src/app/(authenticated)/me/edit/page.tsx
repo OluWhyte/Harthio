@@ -38,7 +38,6 @@ export default function EditProfilePage() {
   const { user, userProfile, loading, refreshUserProfile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -67,9 +66,9 @@ export default function EditProfilePage() {
     }
   }, [user, userProfile, loading, router, reset]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
 
     // Validate file
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -92,28 +91,18 @@ export default function EditProfilePage() {
       return;
     }
 
-    if (previewUrl && previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    setImageFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-  };
-
-  const handleImageUpload = async () => {
-    if (!user || !imageFile) return;
-
+    // Upload immediately
     setIsUploading(true);
     try {
       const { userService } = await import('@/lib/supabase-services');
-      await userService.uploadProfilePicture(user.uid, imageFile);
+      await userService.uploadProfilePicture(user.uid, file);
       
       if (previewUrl && previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl);
       }
       
       await refreshUserProfile();
-      setImageFile(null);
+      
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -207,173 +196,177 @@ export default function EditProfilePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Profile Picture */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Picture</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col items-center space-y-4">
-                <Avatar className="h-32 w-32 ring-4 ring-primary/10 shadow-lg">
-                  <AvatarImage src={previewUrl || undefined} alt="Profile" />
-                  <AvatarFallback className="text-2xl bg-primary/10 text-primary">
-                    {getInitials(userProfile.display_name || '')}
-                  </AvatarFallback>
-                </Avatar>
-
-                <div className="space-y-2 w-full max-w-sm">
-                  <Input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleImageChange}
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    disabled={isUploading}
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      onClick={handleImageUpload}
-                      disabled={isUploading || !imageFile}
-                      size="sm"
-                      className="flex-1"
-                    >
-                      {isUploading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Upload
-                        </>
-                      )}
-                    </Button>
-                    {(userProfile.avatar_url || previewUrl) && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDeletePicture}
-                        disabled={isUploading}
-                        className="text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center">
-                    JPEG, PNG, or WebP, max 2MB
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Personal Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>First Name</Label>
-                  <Input value={userProfile.first_name || ''} disabled className="bg-muted" />
-                  <p className="text-xs text-muted-foreground">Cannot be changed</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Last Name</Label>
-                  <Input value={userProfile.last_name || ''} disabled className="bg-muted" />
-                  <p className="text-xs text-muted-foreground">Cannot be changed</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="headline">Headline</Label>
-                <Textarea
-                  id="headline"
-                  placeholder="A short bio about yourself..."
-                  rows={3}
-                  {...register('headline', { 
-                    maxLength: { value: 200, message: 'Headline must be 200 characters or less' }
-                  })}
-                  className={errors.headline ? 'border-destructive' : ''}
-                />
-                {errors.headline && (
-                  <p className="text-xs text-destructive">{errors.headline.message}</p>
-                )}
-                <p className="text-xs text-muted-foreground">Max 200 characters</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Select
-                  value={userProfile.country || ''}
-                  onValueChange={(value) => setValue('country', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countries.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recovery Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recovery Journey</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="recovery_goals">Recovery Goals</Label>
-                <Textarea
-                  id="recovery_goals"
-                  placeholder="What are you working towards in your recovery? (Optional)"
-                  rows={4}
-                  {...register('recovery_goals', { 
-                    maxLength: { value: 500, message: 'Recovery goals must be 500 characters or less' }
-                  })}
-                  className={errors.recovery_goals ? 'border-destructive' : ''}
-                />
-                {errors.recovery_goals && (
-                  <p className="text-xs text-destructive">{errors.recovery_goals.message}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Share your recovery goals to help others understand your journey. Max 500 characters.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Form Actions */}
-          <div className="flex gap-3">
-            <Link href="/me" className="flex-1">
-              <Button type="button" variant="outline" className="w-full">
-                Cancel
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-background border-b">
+        <div className="max-w-2xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link href="/me" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full">
+              <Button variant="ghost" size="icon">
+                <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
-            <Button type="submit" disabled={isSubmitting} className="flex-1">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
+            <h1 className="text-xl font-bold">Edit Profile</h1>
+          </div>
+          <Button 
+            type="submit" 
+            form="profile-form"
+            disabled={isSubmitting}
+            size="sm"
+            className="rounded-full"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving
+              </>
+            ) : (
+              'Save'
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-2xl mx-auto pb-20 md:pb-6">
+        <form id="profile-form" onSubmit={handleSubmit(onSubmit)}>
+          {/* Profile Picture */}
+          <div className="bg-background border-b px-4 md:px-6 py-6">
+            <h2 className="text-[17px] font-semibold mb-4">Profile Picture</h2>
+            <div className="flex items-start gap-4">
+              <Avatar className="h-24 w-24 md:h-28 md:w-28 bg-background border border-border flex-shrink-0">
+                <AvatarImage src={previewUrl || undefined} alt="Profile" />
+                <AvatarFallback className="bg-background">
+                  <User className="h-12 w-12 md:h-14 md:w-14 text-accent" />
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="flex-1 space-y-3">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  disabled={isUploading}
+                  className="hidden"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    size="sm"
+                    variant="outline"
+                    className="rounded-full"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Photo
+                      </>
+                    )}
+                  </Button>
+                  {userProfile.avatar_url && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDeletePicture}
+                      disabled={isUploading}
+                      className="text-destructive rounded-full"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  JPEG, PNG, or WebP, max 2MB
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Personal Information */}
+          <div className="bg-background border-b px-4 md:px-6 py-6 space-y-5">
+            <h2 className="text-[17px] font-semibold">Personal Information</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[15px]">First Name</Label>
+                <Input value={userProfile.first_name || ''} disabled />
+                <p className="text-xs text-muted-foreground">Cannot be changed</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[15px]">Last Name</Label>
+                <Input value={userProfile.last_name || ''} disabled />
+                <p className="text-xs text-muted-foreground">Cannot be changed</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="headline" className="text-[15px]">Headline</Label>
+              <Textarea
+                id="headline"
+                placeholder="A short bio about yourself..."
+                rows={3}
+                {...register('headline', { 
+                  maxLength: { value: 200, message: 'Headline must be 200 characters or less' }
+                })}
+                className={errors.headline ? 'border-destructive' : ''}
+              />
+              {errors.headline && (
+                <p className="text-xs text-destructive">{errors.headline.message}</p>
               )}
-            </Button>
+              <p className="text-xs text-muted-foreground">Max 200 characters</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="country" className="text-[15px]">Country</Label>
+              <Select
+                value={userProfile.country || ''}
+                onValueChange={(value) => setValue('country', value)}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Select your country" />
+                </SelectTrigger>
+                <SelectContent>
+                  {countries.map((country) => (
+                    <SelectItem key={country} value={country}>
+                      {country}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Recovery Information */}
+          <div className="bg-background px-4 md:px-6 py-6 space-y-5">
+            <h2 className="text-[17px] font-semibold">Recovery Journey</h2>
+            
+            <div className="space-y-2">
+              <Label htmlFor="recovery_goals" className="text-[15px]">Recovery Goals</Label>
+              <Textarea
+                id="recovery_goals"
+                placeholder="What are you working towards in your recovery? (Optional)"
+                rows={4}
+                {...register('recovery_goals', { 
+                  maxLength: { value: 500, message: 'Recovery goals must be 500 characters or less' }
+                })}
+                className={errors.recovery_goals ? 'border-destructive' : ''}
+              />
+              {errors.recovery_goals && (
+                <p className="text-xs text-destructive">{errors.recovery_goals.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Share your recovery goals to help others understand your journey. Max 500 characters.
+              </p>
+            </div>
           </div>
         </form>
       </div>

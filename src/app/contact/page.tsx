@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Logo } from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -85,7 +86,7 @@ export default function ContactPage() {
                   <Phone className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 </div>
                 <h3 className="font-semibold mb-2 text-sm sm:text-base">Call Us</h3>
-                <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Urgent support needs</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">Available 24/7</p>
                 <a href="tel:+2347030473033" className="text-primary hover:underline text-xs sm:text-sm">
                   +234 703 047 3033
                 </a>
@@ -96,8 +97,8 @@ export default function ContactPage() {
                   <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-accent" />
                 </div>
                 <h3 className="font-semibold mb-2 text-sm sm:text-base">Office Hours</h3>
-                <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Mon-Fri: 9AM-6PM PST</p>
-                <p className="text-xs sm:text-sm text-gray-600">Sat-Sun: 10AM-4PM PST</p>
+                <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2">Mon-Fri: 9am - 6pm WAT</p>
+                <p className="text-xs sm:text-sm text-gray-600">Sat-Sun: 10am - 4pm WAT</p>
               </Card>
             </div>
           </div>
@@ -167,10 +168,15 @@ export default function ContactPage() {
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-4xl mx-auto">
               <Card className="text-center p-4 sm:p-6">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center text-white text-lg sm:text-xl font-bold">
-                  TC
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-3 sm:mb-4 overflow-hidden relative">
+                  <Image
+                    src="https://images.unsplash.com/photo-1759947716170-acc64d00bcd0?q=80&w=322&auto=format&fit=crop"
+                    alt="Oluwaseyi Akinlolu"
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-                <h3 className="font-semibold mb-1 text-sm sm:text-base">Tosin Chen</h3>
+                <h3 className="font-semibold mb-1 text-sm sm:text-base">Oluwaseyi Akinlolu</h3>
                 <p className="text-xs sm:text-sm text-gray-600 mb-2">Founder & CEO</p>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   "I started Harthio because I believe everyone deserves to feel heard and understood."
@@ -178,22 +184,32 @@ export default function ContactPage() {
               </Card>
 
               <Card className="text-center p-4 sm:p-6">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-accent rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center text-white text-lg sm:text-xl font-bold">
-                  SM
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-3 sm:mb-4 overflow-hidden relative">
+                  <Image
+                    src="https://images.unsplash.com/photo-1759946258447-860d8408fdf3?q=80&w=464&auto=format&fit=crop"
+                    alt="Tosin Adewumi"
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-                <h3 className="font-semibold mb-1 text-sm sm:text-base">Sarah Martinez</h3>
-                <p className="text-xs sm:text-sm text-gray-600 mb-2">Community Manager</p>
+                <h3 className="font-semibold mb-1 text-sm sm:text-base">Tosin Adewumi</h3>
+                <p className="text-xs sm:text-sm text-gray-600 mb-2">Product Manager</p>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   "I help ensure every conversation on Harthio is safe, supportive, and meaningful."
                 </p>
               </Card>
 
               <Card className="text-center p-4 sm:p-6 sm:col-span-2 lg:col-span-1">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary rounded-full mx-auto mb-3 sm:mb-4 flex items-center justify-center text-white text-lg sm:text-xl font-bold">
-                  DK
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mx-auto mb-3 sm:mb-4 overflow-hidden relative">
+                  <Image
+                    src="https://images.unsplash.com/photo-1739296408127-b6cc9c5c094b?q=80&w=387&auto=format&fit=crop"
+                    alt="Ojo Olokun"
+                    fill
+                    className="object-cover"
+                  />
                 </div>
-                <h3 className="font-semibold mb-1 text-sm sm:text-base">David Kim</h3>
-                <p className="text-xs sm:text-sm text-gray-600 mb-2">Technical Support</p>
+                <h3 className="font-semibold mb-1 text-sm sm:text-base">Ojo Olokun</h3>
+                <p className="text-xs sm:text-sm text-gray-600 mb-2">Community Manager</p>
                 <p className="text-xs text-gray-500 leading-relaxed">
                   "I make sure the technology works seamlessly so you can focus on connecting."
                 </p>

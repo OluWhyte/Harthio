@@ -49,10 +49,15 @@ export function ContactUsDialog({ children }: { children: React.ReactNode }) {
   });
 
   const onSubmit = async (data: ContactFormValues) => {
+    console.log('📧 [CONTACT FORM] onSubmit called with data:', data);
+    
     if (!user) {
+        console.error('📧 [CONTACT FORM] No user found');
         toast({ title: 'Error', description: 'You must be logged in to send a message.', variant: 'destructive' });
         return;
     }
+    
+    console.log('📧 [CONTACT FORM] User found, sending to API...');
     
     try {
         // Send contact form data to API

@@ -152,6 +152,9 @@ export function AddTrackerDialog({ userId, onTrackerAdded, children }: AddTracke
                 onChange={(e) => setTrackerName(e.target.value)}
                 maxLength={50}
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {trackerName.length}/50
+              </p>
             </div>
 
             {/* Start Date */}
@@ -193,6 +196,9 @@ export function AddTrackerDialog({ userId, onTrackerAdded, children }: AddTracke
                 maxLength={200}
                 rows={3}
               />
+              <p className="text-xs text-muted-foreground text-right">
+                {notes.length}/200
+              </p>
             </div>
           </div>
 

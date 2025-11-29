@@ -290,6 +290,95 @@ export class AdminService {
     }
   }
 
+  // Get all topics including archived (for admin complete view)
+  static async getAllTopicsIncludingArchived(limit = 100): Promise<TopicWithDetails[]> {
+    try {
+      // Query both tables in parallel
+      const [activeTopics, archivedTopics] = await Promise.all([
+        // Get active topics
+        supabase
+          .from('topics')
+          .select(`
+            *,
+            author:users!topics_author_id_fkey(id, display_name, first_name, last_name, avatar_url)
+          `)
+          .order('created_at', { ascending: false })
+          .limit(limit),
+        
+        // Get archived topics
+        supabase
+          .from('topics_archive')
+          .select(`
+            *,
+            author:users!topics_archive_author_id_fkey(id, display_name, first_name, last_name, avatar_url)
+          `)
+          .order('archived_at', { ascending: false })
+          .limit(limit)
+      ]);
+
+      if (activeTopics.error) {
+        console.error('Error fetching active topics:', activeTopics.error);
+      }
+      
+      if (archivedTopics.error) {
+        // Silently ignore if topics_archive table doesn't exist or has schema issues
+        // This is expected if the archive system hasn't been set up properly
+        const isExpectedError = archivedTopics.error.message?.includes('does not exist') ||
+                               archivedTopics.error.code === '42P01' ||
+                               archivedTopics.error.code === 'PGRST200' ||
+                               archivedTopics.error.message?.includes('Could not find a relationship');
+        
+        if (!isExpectedError) {
+          console.error('Error fetching archived topics:', archivedTopics.error);
+        }
+      }
+
+      // Combine both results
+      const combined = [
+        ...(activeTopics.data || []),
+        ...(archivedTopics.data || [])
+      ];
+
+      // Get comprehensive session data for each topic
+      const topicsWithDetails = await Promise.all(
+        combined.map(async (topic) => {
+          const [messageCount, joinRequests, sessionPresence] = await Promise.all([
+            AdminService.getTopicMessageCount((topic as any).id),
+            AdminService.getTopicJoinRequests((topic as any).id),
+            AdminService.getSessionPresence((topic as any).id)
+          ]);
+
+          const sessionStatus = AdminService.calculateSessionStatus(topic, joinRequests, sessionPresence);
+          const actualDuration = AdminService.calculateActualDuration(topic, sessionPresence);
+
+          return {
+            ...(topic as any),
+            message_count: messageCount,
+            participant_count: (topic as any).participants?.length || 0,
+            join_requests: joinRequests,
+            session_presence: sessionPresence,
+            session_status: sessionStatus.status,
+            actual_duration: actualDuration,
+            ended_early: actualDuration > 0 && actualDuration < AdminService.getScheduledDuration(topic),
+            no_show: sessionStatus.status === 'ended_no_show'
+          };
+        })
+      );
+
+      // Sort by most recent (created_at or archived_at)
+      topicsWithDetails.sort((a, b) => {
+        const aTime = new Date(a.archived_at || a.created_at).getTime();
+        const bTime = new Date(b.archived_at || b.created_at).getTime();
+        return bTime - aTime;
+      });
+
+      return topicsWithDetails;
+    } catch (error) {
+      console.error('Error fetching all topics including archived:', error);
+      throw error;
+    }
+  }
+
   static async getTopicMessageCount(topicId: string): Promise<number> {
     try {
       const { count, error } = await supabase
@@ -316,24 +405,41 @@ export class AdminService {
         .order('archived_at', { ascending: false })
         .range(offset, offset + limit - 1);
 
-      if (error) throw error;
+      if (error) {
+        // Return empty array if table doesn't exist or has schema issues
+        if (error.message?.includes('does not exist') || 
+            error.code === '42P01' || 
+            error.code === 'PGRST200' ||
+            error.message?.includes('Could not find a relationship')) {
+          return [];
+        }
+        throw error;
+      }
 
       return data?.map((topic: any) => ({
         ...topic,
         participant_count: topic.participants?.length || 0,
         is_archived: true
       })) || [];
-    } catch (error) {
+    } catch (error: any) {
+      // Silently return empty array if archive table doesn't exist or has schema issues
+      if (error.message?.includes('does not exist') || 
+          error.code === '42P01' || 
+          error.code === 'PGRST200' ||
+          error.message?.includes('Could not find a relationship')) {
+        return [];
+      }
       console.error('Error fetching archived topics:', error);
-      throw error;
+      return [];
     }
   }
 
   static async getAllTopicsIncludingArchived(limit = 50, offset = 0): Promise<any[]> {
     try {
+      // Get archived topics (will return empty array if table doesn't exist)
       const [activeTopics, archivedTopics] = await Promise.all([
         AdminService.getAllTopics(limit, offset),
-        AdminService.getArchivedTopics(limit, offset)
+        AdminService.getArchivedTopics(limit, offset).catch(() => [])
       ]);
 
       // Combine and sort by most recent

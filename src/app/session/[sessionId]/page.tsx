@@ -28,6 +28,7 @@ import {
   type Message as MessagingMessage,
 } from "@/lib/messaging-service";
 import { topicService, messageService } from "@/lib/supabase-services";
+import { LoadingSpinner } from "@/components/common/loading-spinner";
 import { supabase } from "@/lib/supabase";
 import { MobileConnectionHelper } from "@/lib/mobile-connection-helper";
 import { VideoLayoutManager } from "@/lib/video-layout-manager";
@@ -373,7 +374,7 @@ function HarthioSessionPageContent() {
             description:
               "This session may have been cancelled or does not exist.",
           });
-          router.push("/dashboard");
+          router.push("/harthio");
           return;
         }
 
@@ -388,7 +389,7 @@ function HarthioSessionPageContent() {
             title: "Access Denied",
             description: "You don't have permission to join this session.",
           });
-          router.push("/dashboard");
+          router.push("/harthio");
           return;
         }
 
@@ -661,7 +662,15 @@ function HarthioSessionPageContent() {
           title: "Session Ended",
           description: "The scheduled session time has ended.",
         });
-        router.push("/dashboard");
+        
+        // Redirect to AI page with session debrief
+        if (topic) {
+          const sessionTitle = encodeURIComponent(topic.title || 'your session');
+          const sessionTopic = encodeURIComponent(topic.description || '');
+          router.push(`/harthio?action=session-debrief&session_title=${sessionTitle}&session_topic=${sessionTopic}`);
+        } else {
+          router.push("/harthio?action=session-debrief");
+        }
       }
     };
 
@@ -732,7 +741,9 @@ function HarthioSessionPageContent() {
     if (videoServiceManagerRef.current) {
       await videoServiceManagerRef.current.endCall();
     }
-    router.push("/dashboard");
+    
+    // User manually left - go back to sessions list
+    router.push("/sessions");
   }, [router]);
 
   const handleReconnect = useCallback(async () => {
@@ -839,18 +850,19 @@ function HarthioSessionPageContent() {
     };
   }, []);
 
-  // Add loading timeout
+  // Add loading timeout - increased to 15 seconds for slower connections
   useEffect(() => {
     const loadingTimeout = setTimeout(() => {
       if (!topic && user) {
+        console.error('❌ Session loading timeout after 15 seconds');
         toast({
           variant: "destructive",
           title: "Loading Timeout",
-          description: "Session is taking too long to load. Please try again.",
+          description: "Session is taking too long to load. Please check your connection and try again.",
         });
-        router.push("/dashboard");
+        router.push("/harthio");
       }
-    }, 10000); // 10 second timeout
+    }, 15000); // 15 second timeout (increased from 10s)
 
     return () => clearTimeout(loadingTimeout);
   }, [topic, user, router, toast]);
@@ -873,8 +885,7 @@ function HarthioSessionPageContent() {
         }}
       >
         <div className="text-center max-w-md mx-auto p-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-400 mx-auto mb-4"></div>
-          <p className="text-rose-200">Loading session...</p>
+          <LoadingSpinner size="md" text="Loading session..." fullScreen={false} />
           <p className="text-rose-300/60 text-sm mt-2">
             This may take a few moments
           </p>

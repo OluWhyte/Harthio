@@ -1,10 +1,23 @@
 
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/components/harthio/auth-provider';
 import { AppPerformanceProvider } from '@/components/common/app-performance-provider';
 import { Analytics } from '@/components/seo/analytics';
+import { ProactiveAIMonitor } from '@/components/harthio/proactive-ai-monitor';
+import { SWRProvider } from '@/components/common/swr-provider';
+import { PerformanceMonitor } from '@/components/common/performance-monitor';
+
+// Optimize font loading with next/font
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap', // Show fallback font immediately
+  preload: true,
+  variable: '--font-inter',
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+});
 
 export const metadata: Metadata = {
   title: 'Harthio - Find Someone Who Truly Gets It',
@@ -75,23 +88,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
-        {/* Google Fonts - Inter */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link 
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" 
-          rel="stylesheet" 
-        />
+        {/* Preconnect to external domains for faster loading */}
+        <link rel="preconnect" href="https://images.unsplash.com" />
+        <link rel="dns-prefetch" href="https://api.supabase.co" />
       </head>
-      <body className="font-sans antialiased">
-        <AppPerformanceProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-          <Toaster />
-        </AppPerformanceProvider>
+      <body className={`${inter.className} antialiased`}>
+        <SWRProvider>
+          <AppPerformanceProvider>
+            <AuthProvider>
+              <ProactiveAIMonitor />
+              {children}
+            </AuthProvider>
+            <Toaster />
+          </AppPerformanceProvider>
+        </SWRProvider>
+        <PerformanceMonitor />
         <Analytics />
       </body>
     </html>

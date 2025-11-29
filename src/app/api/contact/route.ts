@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { emailService } from '@/lib/email-service';
+import { emailService, emailTemplates } from '@/lib/email-service';
 import { z } from 'zod';
 import { emailRateLimit } from '@/lib/rate-limit';
 import { sanitizeError, logSecurityEvent, getSecurityHeaders, sanitizeInput } from '@/lib/security-utils';
 import { InputSanitizer, SecurityLogger } from '@/lib/security/owasp-security-service';
+import { Resend } from 'resend';
 
 // Validation schema for contact form
 const contactSchema = z.object({
@@ -72,21 +73,70 @@ export async function POST(request: NextRequest) {
       ip: request.ip || 'unknown'
     });
 
-    // Send notification to admin (tosin@harthio.com)
-    const adminNotificationSent = await emailService.sendContactUsNotification({
-      userName: sanitizedUserName,
-      userEmail,
-      topic,
-      message: sanitizedMessage,
-      appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com'
-    });
+    // Send emails directly using Resend (avoid internal fetch issues)
+    const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com';
+    
+    let adminNotificationSent = false;
+    let autoReplySent = false;
 
-    // Send auto-reply to user
-    const autoReplySent = await emailService.sendContactUsAutoReply(userEmail, {
-      userName: sanitizedUserName,
-      topic,
-      appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com'
-    });
+    if (resend) {
+      try {
+        // Send notification to admin
+        const adminTemplate = emailTemplates.contactUsNotification({
+          userName: sanitizedUserName,
+          userEmail,
+          topic,
+          message: sanitizedMessage,
+          appUrl
+        });
+        
+        const adminResult = await resend.emails.send({
+          from: process.env.EMAIL_FROM_ADDRESS?.trim() || 'Harthio <no-reply@harthio.com>',
+          to: 'tosin@harthio.com',
+          subject: adminTemplate.subject,
+          html: adminTemplate.html,
+          text: adminTemplate.text,
+        });
+        
+        adminNotificationSent = !adminResult.error;
+        if (adminResult.error) {
+          console.error('❌ Admin notification error:', adminResult.error);
+        } else {
+          console.log('✅ Admin notification sent:', adminResult.data?.id);
+        }
+      } catch (error) {
+        console.error('❌ Failed to send admin notification:', error);
+      }
+
+      try {
+        // Send auto-reply to user
+        const autoReplyTemplate = emailTemplates.contactUsAutoReply({
+          userName: sanitizedUserName,
+          topic,
+          appUrl
+        });
+        
+        const autoReplyResult = await resend.emails.send({
+          from: process.env.EMAIL_FROM_ADDRESS?.trim() || 'Harthio <no-reply@harthio.com>',
+          to: userEmail,
+          subject: autoReplyTemplate.subject,
+          html: autoReplyTemplate.html,
+          text: autoReplyTemplate.text,
+        });
+        
+        autoReplySent = !autoReplyResult.error;
+        if (autoReplyResult.error) {
+          console.error('❌ Auto-reply error:', autoReplyResult.error);
+        } else {
+          console.log('✅ Auto-reply sent:', autoReplyResult.data?.id);
+        }
+      } catch (error) {
+        console.error('❌ Failed to send auto-reply:', error);
+      }
+    } else {
+      console.log('⚠️ Resend not configured - emails not sent');
+    }
 
     // Log results
     console.log('📧 Contact form email results:', {

@@ -1,35 +1,40 @@
 # Database Directory
 
-This directory contains database-related files organized by purpose.
+Clean, organized database files for Harthio.
 
 ## Structure
 
 ### `/migrations/`
-- Production database schema files
-- Migration scripts for database updates
-- Files: `blog-schema.sql`, `combined.sql`, `device-tracking-schema.sql`
+All schema migrations - see `migrations/README.md` for setup order
+- Core v0.3 schema (combined, daily-checkins, sobriety-trackers, visual-journey, etc.)
+- v0.4 features (tier system, AI chat, AI feedback)
+- Admin system (admin-roles)
 
-### `/setup/` (Not in Git)
-- Initial setup scripts for new environments
-- Admin user creation scripts
-- Contains sensitive configuration
-- Files: `setup-admin.sql`
+### `/utilities/`
+Helper scripts for checking and debugging:
+- `check-*.sql` - Query scripts to verify table data
+- `get-production-*.sql` - Scripts to extract production schema
+- `clear-test-user-data.sql` - Clean up test data
 
-### `/debug/` (Not in Git)
-- Debug and troubleshooting SQL scripts
-- Quick fixes and patches
-- Development-only scripts
-- Files: `debug-admin.sql`, `fix-admin-rls.sql`, `quick-admin-fix.sql`
+### `/setup/`
+Initial setup scripts:
+- `setup-admin.sql` - Create admin users
 
-## Security Notes
+### `/monitoring/`
+Health checks and monitoring queries
 
-- `/setup/` and `/debug/` directories are excluded from version control
-- These may contain sensitive information like admin emails or debug data
-- Always review scripts before running in production
-- Keep local copies for development use only
+### `/security-fixes/`
+Security-related database updates
 
-## Usage
+### `/archive/`
+Old/unused files kept for reference
 
-1. **For new deployments**: Use files in `/migrations/` for schema setup
-2. **For admin setup**: Use scripts in `/setup/` (create locally)
-3. **For debugging**: Use scripts in `/debug/` (development only)
+## Quick Start
+
+**New Database Setup:**
+1. See `migrations/README.md` for exact order
+2. Run migrations 1-10 in sequence
+3. Use `setup/setup-admin.sql` to create admin users
+
+**Production Upgrade:**
+Only run new migrations you haven't applied yet

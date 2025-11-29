@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Send, User, AlertCircle, Phone, MessageSquare as MessageSquareIcon } from 'lucide-react'
+import { X, Send, User, AlertCircle, Phone, MessageSquare as MessageSquareIcon, ThumbsUp, ThumbsDown } from 'lucide-react'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { type Message } from '@/hooks/use-message-panel'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -21,6 +22,7 @@ interface ModernChatPanelProps {
   isLoading?: boolean
   showCrisisAlert?: boolean
   onDismissCrisisAlert?: () => void
+  onFeedback?: (messageId: string, feedbackType: 'positive' | 'negative', reason?: string, details?: string) => void
 }
 
 export function ModernChatPanel({ 
@@ -34,11 +36,15 @@ export function ModernChatPanel({
   mode = 'peer',
   isLoading = false,
   showCrisisAlert = false,
-  onDismissCrisisAlert
+  onDismissCrisisAlert,
+  onFeedback
 }: ModernChatPanelProps) {
+  const router = useRouter()
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const messageAreaRef = useRef<HTMLDivElement>(null)
+  const [feedbackMessageId, setFeedbackMessageId] = useState<string | null>(null)
+  const [feedbackGiven, setFeedbackGiven] = useState<Set<string>>(new Set())
   
   // AI mode specific
   const isAIMode = mode === 'ai'
@@ -275,12 +281,14 @@ export function ModernChatPanel({
                   <div className="flex-1 min-w-0">
                     <div
                       className={cn(
-                        'p-3 md:p-3.5 rounded-[18px] shadow-sm',
-                        'transition-all duration-200 hover:shadow-md',
-                        'text-sm md:text-base',
+                        'px-4 py-2.5 rounded-[20px] shadow-sm',
+                        'transition-all duration-200',
+                        'text-[15px] md:text-[16px] leading-[1.4]',
                         message.isOwn
-                          ? 'bg-primary text-primary-foreground rounded-br-[5px] ml-auto'
-                          : 'bg-card text-card-foreground rounded-bl-[5px] border border-border'
+                          ? 'bg-accent text-white rounded-br-md ml-auto shadow-md'
+                          : isAIMode
+                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'
                       )}
                       style={{ 
                         wordBreak: 'break-word',
@@ -288,15 +296,65 @@ export function ModernChatPanel({
                         hyphens: 'auto'
                       }}
                     >
-                      {message.content}
+                      {(() => {
+                        const content = message.content.trim();
+                        console.log('Message content:', JSON.stringify(content), 'Match:', content === '[UPGRADE_BUTTON]');
+                        
+                        if (content === '[UPGRADE_BUTTON]') {
+                          return (
+                            <button
+                              onClick={() => router.push('/upgrade')}
+                              className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl w-full text-center cursor-pointer"
+                            >
+                              Upgrade to Pro - Start Free Trial
+                            </button>
+                          );
+                        }
+                        return message.content;
+                      })()}
                     </div>
                     
                     <div className={cn(
-                      'flex text-xs mt-1 px-2 text-muted-foreground',
-                      message.isOwn ? 'justify-end' : 'justify-start'
+                      'flex items-center justify-between text-xs mt-1 px-2',
+                      message.isOwn ? 'flex-row-reverse' : 'flex-row'
                     )}>
-                      <span className="truncate">{message.isOwn ? 'You' : message.sender}</span>
-                      <span className="ml-2 flex-shrink-0">{formatTime(message.timestamp)}</span>
+                      <div className={cn(
+                        'flex items-center text-muted-foreground',
+                        message.isOwn ? 'flex-row-reverse' : 'flex-row'
+                      )}>
+                        <span className="truncate">{message.isOwn ? 'You' : message.sender}</span>
+                        <span className={cn('flex-shrink-0', message.isOwn ? 'mr-2' : 'ml-2')}>{formatTime(message.timestamp)}</span>
+                      </div>
+                      
+                      {/* Feedback buttons for AI messages only */}
+                      {!message.isOwn && isAIMode && onFeedback && !feedbackGiven.has(message.id) && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              onFeedback(message.id, 'positive');
+                              setFeedbackGiven(prev => new Set(prev).add(message.id));
+                            }}
+                            className="p-1 rounded hover:bg-muted transition-colors"
+                            title="Helpful"
+                          >
+                            <ThumbsUp className="h-3 w-3 text-muted-foreground hover:text-green-600" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setFeedbackMessageId(message.id);
+                            }}
+                            className="p-1 rounded hover:bg-muted transition-colors"
+                            title="Not helpful"
+                          >
+                            <ThumbsDown className="h-3 w-3 text-muted-foreground hover:text-red-600" />
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Show checkmark if feedback given */}
+                      {!message.isOwn && isAIMode && feedbackGiven.has(message.id) && (
+                        <span className="text-xs text-green-600">✓ Thanks!</span>
+                      )}
                     </div>
                   </div>
                   

@@ -47,16 +47,24 @@ export const emailCampaignService = {
   // Get all email templates
   async getTemplates(): Promise<EmailTemplate[]> {
     try {
+      console.log('📧 [SERVICE] Fetching templates from email_templates table...');
       const { data, error } = await typedSupabase
         .from('email_templates')
         .select('*')
         .order('category', { ascending: true })
         .order('name', { ascending: true });
 
-      if (error) throw error;
+      console.log('📧 [SERVICE] Query result:', { data, error, count: data?.length });
+      
+      if (error) {
+        console.error('📧 [SERVICE] Query error:', error);
+        throw error;
+      }
+      
+      console.log('📧 [SERVICE] Returning templates:', data?.length || 0);
       return data || [];
     } catch (error) {
-      console.error('Error fetching email templates:', error);
+      console.error('📧 [SERVICE] Error fetching email templates:', error);
       throw error;
     }
   },

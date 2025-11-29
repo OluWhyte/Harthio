@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-export type TrackerType = 'alcohol' | 'smoking' | 'drugs' | 'gambling' | 'other';
+export type TrackerType = 'alcohol' | 'smoking' | 'drugs' | 'gambling' | 'vaping' | 'food' | 'shopping' | 'gaming' | 'pornography' | 'other';
 
 export interface SobrietyTracker {
   id: string;
@@ -17,6 +17,7 @@ export interface SobrietyTracker {
   pieces_unlocked?: number;
   total_pieces?: number;
   days_per_piece?: number;
+  piece_unlock_order?: number[];
   
   // Relapse Tracking
   total_attempts?: number;
@@ -60,16 +61,26 @@ export const sobrietyService = {
     trackerType: TrackerType,
     trackerName: string,
     startDate: Date,
+    chosenImage?: 'bridge' | 'phoenix' | 'mountain',
     notes?: string
   ): Promise<{ success: boolean; error?: string; tracker?: SobrietyTracker }> {
     try {
+      // Generate random unlock order for visual journey
+      const unlockOrder = this.generateRandomUnlockOrder(30);
+      
+      // Store the EXACT current moment (like starting a stopwatch)
+      // This respects the user's local time and stores it as UTC
+      const now = new Date(); // Current moment in user's local timezone
+      
       const { data, error } = await (supabase
         .from('sobriety_trackers') as any)
         .insert({
           user_id: userId,
           tracker_type: trackerType,
           tracker_name: trackerName,
-          start_date: startDate.toISOString(),
+          start_date: now.toISOString(), // Store exact current time
+          chosen_image: chosenImage || null, // No default image - visual journey moved to v0.4
+          piece_unlock_order: unlockOrder,
           notes: notes || null,
           is_active: true,
         })
@@ -81,6 +92,42 @@ export const sobrietyService = {
       return { success: true, tracker: data };
     } catch (error: any) {
       console.error('Error creating tracker:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Update tracker (blocks chosen_image changes)
+  async updateTracker(
+    trackerId: string,
+    updates: Partial<SobrietyTracker>
+  ): Promise<{ success: boolean; error?: string; tracker?: SobrietyTracker }> {
+    try {
+      // Remove chosen_image and piece_unlock_order from updates (immutable after creation)
+      const { chosen_image, piece_unlock_order, ...safeUpdates } = updates;
+      
+      if (chosen_image || piece_unlock_order) {
+        console.warn('Attempted to change immutable fields - operation blocked');
+        return { 
+          success: false, 
+          error: 'Visual journey theme and unlock order cannot be changed after creation' 
+        };
+      }
+      
+      const { data, error } = await (supabase
+        .from('sobriety_trackers') as any)
+        .update({
+          ...safeUpdates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', trackerId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return { success: true, tracker: data };
+    } catch (error: any) {
+      console.error('Error updating tracker:', error);
       return { success: false, error: error.message };
     }
   },
@@ -125,16 +172,26 @@ export const sobrietyService = {
     }
   },
 
-  // Calculate time breakdown from start date
+  // Calculate time breakdown from start date (STOPWATCH MODE)
   calculateTimeBreakdown(startDate: string): TimeBreakdown {
+    // Works like a stopwatch - counts up from the exact moment tracker was created
+    // Shows: days, hours, minutes, seconds
+    
     const start = new Date(startDate);
     const now = new Date();
+    
+    // Calculate difference in milliseconds from exact start time
     const diffMs = now.getTime() - start.getTime();
+    
+    // Prevent negative values if clock is off
+    if (diffMs < 0) {
+      return { months: 0, days: 0, hours: 0, minutes: 0, seconds: 0, totalDays: 0 };
+    }
 
     // Calculate total days
     const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    // Calculate breakdown
+    // Calculate breakdown (like a stopwatch)
     const seconds = Math.floor(diffMs / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
@@ -226,5 +283,29 @@ export const sobrietyService = {
       piecesRemaining,
       daysLost,
     };
+  },
+
+  // Generate random unlock order for pieces (0-29 shuffled)
+  generateRandomUnlockOrder(totalPieces: number = 30): number[] {
+    const order = Array.from({ length: totalPieces }, (_, i) => i);
+    
+    // Fisher-Yates shuffle algorithm
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    
+    return order;
+  },
+
+  // Get which pieces should be revealed based on unlock order
+  getRevealedPieces(unlockOrder: number[] | null | undefined, piecesUnlocked: number): Set<number> {
+    if (!unlockOrder || unlockOrder.length === 0) {
+      // Fallback to sequential order if no unlock order exists
+      return new Set(Array.from({ length: piecesUnlocked }, (_, i) => i));
+    }
+    
+    // Return the first N pieces from the unlock order
+    return new Set(unlockOrder.slice(0, piecesUnlocked));
   },
 };

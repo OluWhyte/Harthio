@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Users, Clock } from 'lucide-react';
+import { Users, Clock, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { format, formatDistanceToNowStrict } from 'date-fns';
@@ -18,9 +18,11 @@ export function OngoingSessionCard({ topic }: OngoingSessionCardProps) {
     return (
         <div className="flex items-center justify-between p-3 rounded-lg bg-background hover:bg-muted/50 transition-colors">
             <div className="flex items-center gap-4">
-                <Avatar className="h-12 w-12">
+                <Avatar className="h-12 w-12 bg-background border border-border">
                      <AvatarImage src={topic.author.avatarUrl} alt={topic.author.name} data-ai-hint="person" />
-                    <AvatarFallback>{topic.author.initials}</AvatarFallback>
+                    <AvatarFallback className="bg-background">
+                      <User className="h-6 w-6 text-accent" />
+                    </AvatarFallback>
                 </Avatar>
                 <div>
                     <p className="font-semibold">{topic.title}</p>

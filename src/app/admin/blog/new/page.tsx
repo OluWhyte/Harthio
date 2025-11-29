@@ -227,7 +227,7 @@ export default function NewBlogPost() {
                   type="url"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Optional. Use a high-quality image (recommended: 1200x600px)
+                  Optional. Use a high-quality image (recommended: 1240x800px)
                 </p>
               </div>
 
