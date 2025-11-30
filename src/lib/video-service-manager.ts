@@ -4,6 +4,7 @@
  */
 
 import 'webrtc-adapter'; // Cross-browser WebRTC compatibility
+import { logger } from './logger';
 // COMMENTED OUT: Daily.co not currently used
 // import { DailyService, DailyConfig, DailyCallbacks } from './daily-service';
 import { P2PWebRTCService, P2PCallbacks } from './p2p-webrtc-service';
@@ -83,7 +84,7 @@ export class VideoServiceManager {
     
     // Set recovery callback for coordinated provider switching
     this.providerCoordinator.setRecoveryCallback((selection) => {
-      console.log('🔄 Coordinated recovery requested:', selection);
+      logger.info('Coordinated recovery requested', { selection });
       // Simplified: just log, no complex recovery
     });
 
@@ -97,10 +98,10 @@ export class VideoServiceManager {
     // Initialize orientation service
     const orientationCallbacks: OrientationCallbacks = {
       onOrientationChange: (metadata: DeviceVideoMetadata) => {
-        console.log('📱 Local orientation changed:', metadata);
+        logger.debug('Local orientation changed', { metadata });
       },
       onRemoteOrientationChange: (metadata: DeviceVideoMetadata) => {
-        console.log('📱 Remote orientation changed:', metadata);
+        logger.debug('Remote orientation changed', { metadata });
       }
     };
 
@@ -109,7 +110,7 @@ export class VideoServiceManager {
 
   async initialize(containerId?: string): Promise<void> {
     if (this.isInitialized) {
-      console.warn('Video service manager already initialized');
+      logger.warn('Video service manager already initialized');
       return;
     }
 

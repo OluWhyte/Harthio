@@ -1,0 +1,235 @@
+﻿src/ai/services/ai-chat-history-service.ts(29,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "ai_chat_history", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; role: "user" | "assistant"; content: string; cbt_flow: string | null; is_crisis: boolean; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "ai_chat_history", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/ai/services/ai-chat-history-service.ts(113,19): error TS2339: Property 'role' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(114,22): error TS2339: Property 'content' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(176,29): error TS2339: Property 'content' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(177,37): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(180,17): error TS2339: Property 'is_crisis' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(181,51): error TS2339: Property 'content' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(185,17): error TS2339: Property 'cbt_flow' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(186,37): error TS2339: Property 'cbt_flow' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(192,36): error TS2339: Property 'content' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(196,28): error TS2339: Property 'content' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(204,17): error TS2339: Property 'role' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(206,23): error TS2339: Property 'role' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(209,37): error TS2339: Property 'role' does not exist on type 'never'.
+src/ai/services/ai-chat-history-service.ts(214,30): error TS2339: Property 'content' does not exist on type 'never'.
+src/ai/services/ai-feedback-service.ts(39,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "ai_feedback", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; message_id: string; user_message: string; ai_response: string; feedback_type: FeedbackType; reason: FeedbackReason | undefined; reason_details: string | undefined; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "ai_feedback", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/ai/services/ai-rate-limit-service.ts(149,31): error TS2339: Property 'topic_helper_count' does not exist on type 'never'.
+src/ai/services/ai-rate-limit-service.ts(260,26): error TS2339: Property 'message_count' does not exist on type 'never'.
+src/ai/services/ai-rate-limit-service.ts(261,30): error TS2339: Property 'topic_helper_count' does not exist on type 'never'.
+src/ai/services/ai-rate-limit-service.ts(262,18): error TS2339: Property 'usage_date' does not exist on type 'never'.
+src/ai/services/proactive-ai-service.ts(239,40): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/ai/services/proactive-ai-service.ts(301,57): error TS2339: Property 'mood' does not exist on type 'never'.
+src/ai/services/proactive-ai-service.ts(303,59): error TS2339: Property 'start_date' does not exist on type 'never'.
+src/app/(authenticated)/credits/page.tsx(97,25): error TS2322: Type '{ title: string; showBackButton: true; }' is not assignable to type 'IntrinsicAttributes & MobilePageHeaderProps'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & MobilePageHeaderProps'.
+src/app/(authenticated)/harthio/page.tsx(188,56): error TS2339: Property 'getUserTrackers' does not exist on type '{ getActiveTrackers(userId: string): Promise<SobrietyTracker[]>; createTracker(userId: string, trackerType: TrackerType, trackerName: string, startDate: Date, chosenImage?: "bridge" | ... 2 more ... | undefined, notes?: string | undefined): Promise<...>; ... 8 more ...; getRevealedPieces(unlockOrder: number[] | ... ...'.
+src/app/(authenticated)/harthio/page.tsx(270,59): error TS2339: Property 'getUserTrackers' does not exist on type '{ getActiveTrackers(userId: string): Promise<SobrietyTracker[]>; createTracker(userId: string, trackerType: TrackerType, trackerName: string, startDate: Date, chosenImage?: "bridge" | ... 2 more ... | undefined, notes?: string | undefined): Promise<...>; ... 8 more ...; getRevealedPieces(unlockOrder: number[] | ... ...'.
+src/app/(authenticated)/harthio/page.tsx(866,7): error TS2322: Type 'string | undefined' is not assignable to type 'FeedbackReason | undefined'.
+  Type 'string' is not assignable to type 'FeedbackReason | undefined'.
+src/app/(authenticated)/me/edit/page.tsx(63,37): error TS2339: Property 'recovery_goals' does not exist on type 'UserProfile'.
+src/app/(authenticated)/me/edit/page.tsx(138,7): error TS2304: Cannot find name 'setImageFile'.
+src/app/(authenticated)/me/edit/page.tsx(166,9): error TS2353: Object literal may only specify known properties, and 'recovery_goals' does not exist in type 'Partial<{ id: string; email: string; display_name: string | null; first_name: string | null; last_name: string | null; headline: string | null; phone_number: string | null; phone_country_code: string | null; ... 4 more ...; updated_at: string; }>'.
+src/app/(authenticated)/me/page.tsx(206,28): error TS2339: Property 'recovery_goals' does not exist on type 'UserProfile'.
+src/app/(authenticated)/me/page.tsx(208,32): error TS2339: Property 'recovery_goals' does not exist on type 'UserProfile'.
+src/app/(authenticated)/progress/page.tsx(144,26): error TS2304: Cannot find name 'Loader2'.
+src/app/(authenticated)/progress/page.tsx(164,26): error TS2304: Cannot find name 'Loader2'.
+src/app/(authenticated)/progress/page.tsx(184,26): error TS2304: Cannot find name 'Loader2'.
+src/app/admin-v2/analytics/page.tsx(534,19): error TS2322: Type '{ name: string; Users: number; Sessions: number; 'AI Messages': number; }[]' is not assignable to type 'ChartData[]'.
+  Property 'value' is missing in type '{ name: string; Users: number; Sessions: number; 'AI Messages': number; }' but required in type 'ChartData'.
+src/app/admin-v2/analytics/page.tsx(959,37): error TS2571: Object is of type 'unknown'.
+src/app/admin-v2/analytics/page.tsx(959,44): error TS2571: Object is of type 'unknown'.
+src/app/admin-v2/analytics/page.tsx(973,79): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/app/admin-v2/analytics/page.tsx(1117,39): error TS2571: Object is of type 'unknown'.
+src/app/admin-v2/analytics/page.tsx(1117,46): error TS2571: Object is of type 'unknown'.
+src/app/admin-v2/analytics/page.tsx(1131,78): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/app/admin-v2/analytics/page.tsx(1290,39): error TS2571: Object is of type 'unknown'.
+src/app/admin-v2/analytics/page.tsx(1290,46): error TS2571: Object is of type 'unknown'.
+src/app/admin-v2/analytics/page.tsx(1304,81): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/app/admin-v2/blog/edit/[id]/page.tsx(292,22): error TS18048: 'formData.excerpt' is possibly 'undefined'.
+src/app/admin-v2/blog/new/page.tsx(199,22): error TS18048: 'formData.excerpt' is possibly 'undefined'.
+src/app/admin-v2/campaigns/page.tsx(187,9): error TS2353: Object literal may only specify known properties, and 'custom_html_content' does not exist in type '{ name: string; template_id: string; from_email: string; subject: string; audience_filter: string; created_by: string; custom_emails?: string[] | undefined; }'.
+src/app/admin-v2/credits/manage/page.tsx(119,17): error TS2345: Argument of type '{ ai_credits: number; credits_expire_at: string; }' is not assignable to parameter of type 'never'.
+src/app/admin-v2/credits/manage/page.tsx(171,17): error TS2345: Argument of type '{ ai_credits: number; }' is not assignable to parameter of type 'never'.
+src/app/admin-v2/finance/page.tsx(43,63): error TS2339: Property 'status' does not exist on type 'never'.
+src/app/admin-v2/finance/page.tsx(44,81): error TS2339: Property 'amount_usd' does not exist on type 'never'.
+src/app/admin-v2/finance/page.tsx(45,71): error TS2339: Property 'credits_purchased' does not exist on type 'never'.
+src/app/admin-v2/finance/page.tsx(52,45): error TS2339: Property 'subscription_tier' does not exist on type 'never'.
+src/app/admin-v2/finance/page.tsx(54,16): error TS2339: Property 'subscription_end_date' does not exist on type 'never'.
+src/app/admin-v2/finance/page.tsx(55,27): error TS2339: Property 'subscription_end_date' does not exist on type 'never'.
+src/app/admin-v2/finance/page.tsx(58,47): error TS2339: Property 'is_trial_active' does not exist on type 'never'.
+src/app/admin-v2/finance/page.tsx(58,68): error TS2339: Property 'trial_end_date' does not exist on type 'never'.
+src/app/admin-v2/finance/page.tsx(58,97): error TS2339: Property 'trial_end_date' does not exist on type 'never'.
+src/app/admin-v2/monetization/page.tsx(83,50): error TS2339: Property 'setting_key' does not exist on type 'never'.
+src/app/admin-v2/monetization/page.tsx(114,11): error TS2698: Spread types may only be created from object types.
+src/app/admin-v2/monetization/page.tsx(115,46): error TS2339: Property 'id' does not exist on type 'never'.
+src/app/admin-v2/monetization/page.tsx(115,55): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/app/admin-v2/monetization/page.tsx(115,65): error TS2339: Property 'email' does not exist on type 'never'.
+src/app/admin-v2/monetization/page.tsx(167,12): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "platform_settings", never, "POST">', gave the following error.
+    Argument of type '{ setting_key: string; setting_value: any; description: string; updated_by: any; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "platform_settings", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'setting_key' does not exist in type 'never[]'.
+src/app/admin-v2/monetization/page.tsx(173,31): error TS2339: Property 'id' does not exist on type 'User'.
+src/app/admin-v2/monetization/page.tsx(184,19): error TS2345: Argument of type '{ setting_value: any; updated_by: any; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/app/admin-v2/monetization/page.tsx(186,31): error TS2339: Property 'id' does not exist on type 'User'.
+src/app/admin-v2/page.tsx(103,70): error TS2339: Property 'ai_credits' does not exist on type 'never'.
+src/app/admin-v2/page.tsx(104,58): error TS2339: Property 'transaction_type' does not exist on type 'never'.
+src/app/admin-v2/page.tsx(104,124): error TS2339: Property 'amount' does not exist on type 'never'.
+src/app/admin-v2/recovery/page.tsx(61,5): error TS2353: Object literal may only specify known properties, and 'visualJourneys' does not exist in type 'TrackerStats | (() => TrackerStats)'.
+src/app/admin-v2/recovery/page.tsx(250,34): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/app/admin-v2/recovery/page.tsx(256,56): error TS2339: Property 'checkin_date' does not exist on type 'never'.
+src/app/admin-v2/recovery/page.tsx(260,48): error TS2339: Property 'start_date' does not exist on type 'never'.
+src/app/admin-v2/recovery/page.tsx(264,32): error TS2339: Property 'user_id' does not exist on type 'never'.
+src/app/admin-v2/recovery/page.tsx(265,37): error TS2339: Property 'users' does not exist on type 'never'.
+src/app/admin-v2/recovery/page.tsx(266,37): error TS2339: Property 'tracker_type' does not exist on type 'never'.
+src/app/admin-v2/recovery/page.tsx(267,41): error TS2339: Property 'checkin_date' does not exist on type 'never'.
+src/app/admin-v2/testing/page.tsx(273,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "notifications", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; title: string; message: string; type: string; read: boolean; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "notifications", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/app/admin-v2/users/page.tsx(124,41): error TS18048: 'u.topic_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(124,62): error TS18048: 'u.message_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(147,19): error TS18048: 'b.topic_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(147,35): error TS18048: 'b.message_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(147,55): error TS18048: 'a.topic_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(147,71): error TS18048: 'a.message_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(166,9): error TS18048: 'u.topic_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(167,9): error TS18048: 'u.message_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(194,9): error TS18048: 'user.topic_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(194,33): error TS18048: 'user.message_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(237,43): error TS18048: 'u.topic_count' is possibly 'undefined'.
+src/app/admin-v2/users/page.tsx(237,64): error TS18048: 'u.message_count' is possibly 'undefined'.
+src/app/admin/admin-dashboard-content.tsx(29,10): error TS2305: Module '"@/components/admin/analytics-charts"' has no exported member 'AnalyticsCharts'.
+src/app/admin/analytics/page.tsx(14,10): error TS2305: Module '"@/components/admin/analytics-charts"' has no exported member 'AnalyticsCharts'.
+src/app/api/ai/chat/route.ts(700,54): error TS2339: Property 'substring' does not exist on type 'never'.
+src/app/checkout/page.tsx(45,24): error TS2339: Property 'id' does not exist on type 'User'.
+src/app/pricing/page.tsx(51,46): error TS2339: Property 'id' does not exist on type 'User'.
+src/app/test-ai/page.tsx(29,20): error TS2339: Property 'id' does not exist on type 'User'.
+src/components/admin/notification-center.tsx(61,78): error TS2345: Argument of type '{ limit: number; }' is not assignable to parameter of type 'number'.
+src/components/harthio/add-tracker-dialog.tsx(74,7): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type '"bridge" | "phoenix" | "mountain" | undefined'.
+  Type 'string' is not assignable to type '"bridge" | "phoenix" | "mountain" | undefined'.
+src/components/harthio/credit-balance-indicator.tsx(35,61): error TS2339: Property 'id' does not exist on type 'User'.
+src/components/harthio/dashboard-client-layout.tsx(175,22): error TS2339: Property 'isComingSoon' does not exist on type '{ href: string; label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; showBadge: boolean; }'.
+src/components/harthio/proactive-ai-monitor.tsx(79,23): error TS2339: Property 'metadata' does not exist on type 'ProactivePrompt'.
+src/components/harthio/proactive-ai-monitor.tsx(80,64): error TS2339: Property 'metadata' does not exist on type 'ProactivePrompt'.
+src/components/harthio/proactive-ai-monitor.tsx(82,23): error TS2339: Property 'metadata' does not exist on type 'ProactivePrompt'.
+src/components/harthio/proactive-ai-monitor.tsx(83,64): error TS2339: Property 'metadata' does not exist on type 'ProactivePrompt'.
+src/components/landing/ScrollReveal.tsx(77,13): error TS2322: Type '{ hidden: { opacity: number; y: number; x: number; scale: number; }; visible: { opacity: number; y: number; x: number; scale: number; transition: { duration: number; delay: number; ease: number[]; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; y: number; x: number; scale: number; transition: { duration: number; delay: number; ease: number[]; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; y: number; x: number; scale: number; transition: { duration: number; delay: number; ease: number[]; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; y: number; x: number; scale: number; transition: { duration: number; delay: number; ease: number[]; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; delay: number; ease: number[]; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ duration: number; delay: number; ease: number[]; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; delay: number; ease: number[]; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'number[]' is not assignable to type 'Easing | Easing[] | undefined'.
+                      Type 'number[]' is not assignable to type 'EasingFunction | Easing[]'.
+                        Type 'number[]' is not assignable to type 'Easing[]'.
+                          Type 'number' is not assignable to type 'Easing'.
+src/hooks/use-swr-data.ts(8,30): error TS2307: Cannot find module '@/lib/supabase/client' or its corresponding type declarations.
+src/hooks/useProactiveAI.ts(37,34): error TS2339: Property 'id' does not exist on type 'User'.
+src/hooks/useProactiveAI.ts(73,31): error TS2339: Property 'id' does not exist on type 'User'.
+src/hooks/useProactiveAI.ts(111,29): error TS2339: Property 'id' does not exist on type 'User'.
+src/hooks/useProactiveAI.ts(122,37): error TS2339: Property 'id' does not exist on type 'User'.
+src/hooks/useProactiveAI.ts(132,33): error TS2339: Property 'id' does not exist on type 'User'.
+src/hooks/useProactiveAI.ts(142,35): error TS2339: Property 'id' does not exist on type 'User'.
+src/hooks/useProactiveAI.ts(158,31): error TS2339: Property 'id' does not exist on type 'User'.
+src/lib/api-logger.ts(132,9): error TS2353: Object literal may only specify known properties, and 'userAgent' does not exist in type 'SecurityEvent'.
+src/lib/api-logger.ts(146,9): error TS2322: Type '"api_error"' is not assignable to type 'SecurityEventType'.
+src/lib/security-scanner.ts(89,7): error TS2322: Type '"security_scan"' is not assignable to type 'SecurityEventType'.
+src/lib/security-utils.ts(145,37): error TS2345: Argument of type 'import("C:/Users/HomePC/Documents/hartioapp/Hartio.app/Harthio/src/lib/security-utils").SecurityEvent' is not assignable to parameter of type 'import("C:/Users/HomePC/Documents/hartioapp/Hartio.app/Harthio/src/lib/security-monitor").SecurityEvent'.
+  Types of property 'type' are incompatible.
+    Type '"auth_failure" | "access_denied" | "rate_limit" | "suspicious_activity" | "validation_error" | "api_error" | "security_scan" | "contact_form"' is not assignable to type 'SecurityEventType'.
+      Type '"api_error"' is not assignable to type 'SecurityEventType'.
+src/lib/services/admin-service.ts(294,16): error TS2393: Duplicate function implementation.
+src/lib/services/admin-service.ts(437,16): error TS2393: Duplicate function implementation.
+src/lib/services/admin-user-service.ts(52,15): error TS2345: Argument of type '{ suspension_status: string; suspension_reason: string; suspended_by: string; suspended_at: string; suspension_expires_at: string | null; }' is not assignable to parameter of type 'never'.
+src/lib/services/admin-user-service.ts(94,15): error TS2345: Argument of type '{ suspension_status: string; suspension_reason: null; suspended_by: null; suspended_at: null; suspension_expires_at: null; }' is not assignable to parameter of type 'never'.
+src/lib/services/admin-user-service.ts(135,15): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/services/admin-user-service.ts(199,15): error TS2345: Argument of type '{ suspension_status: string; suspension_reason: string; suspended_by: string; suspended_at: string; suspension_expires_at: null; }' is not assignable to parameter of type 'never'.
+src/lib/services/admin-user-service.ts(335,14): error TS2339: Property 'suspension_status' does not exist on type 'never'.
+src/lib/services/admin-user-service.ts(336,14): error TS2339: Property 'suspension_status' does not exist on type 'never'.
+src/lib/services/admin-user-service.ts(338,16): error TS2339: Property 'suspension_expires_at' does not exist on type 'never'.
+src/lib/services/admin-user-service.ts(339,41): error TS2339: Property 'suspension_expires_at' does not exist on type 'never'.
+src/lib/services/credits-service.ts(70,30): error TS2339: Property 'credits_expire_at' does not exist on type 'never'.
+src/lib/services/credits-service.ts(70,64): error TS2339: Property 'credits_expire_at' does not exist on type 'never'.
+src/lib/services/credits-service.ts(75,40): error TS2339: Property 'ai_credits' does not exist on type 'never'.
+src/lib/services/credits-service.ts(107,34): error TS2339: Property 'credits_expire_at' does not exist on type 'never'.
+src/lib/services/credits-service.ts(107,68): error TS2339: Property 'credits_expire_at' does not exist on type 'never'.
+src/lib/services/credits-service.ts(122,77): error TS2339: Property 'ai_credits' does not exist on type 'never'.
+src/lib/services/credits-service.ts(127,17): error TS2345: Argument of type '{ ai_credits: any; credits_expire_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/services/credits-service.ts(202,10): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "credit_purchases", never, "POST">', gave the following error.
+    Argument of type '{ user_id: string; pack_id: string; amount_usd: number; credits_purchased: number; validity_days: number; payment_method: string; payment_id: string; payment_gateway: string; status: string; expires_at: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "credit_purchases", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/lib/services/moderation-service.ts(169,41): error TS2339: Property 'created_at' does not exist on type 'never'.
+src/lib/services/moderation-service.ts(170,42): error TS2339: Property 'reviewed_at' does not exist on type 'never'.
+src/lib/services/moderation-service.ts(193,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "user_reports", never, "POST">', gave the following error.
+    Argument of type '{ reporter_user_id: string; reported_user_id: string; reported_content_id: string | undefined; report_type: string; description: string; status: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "user_reports", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'reporter_user_id' does not exist in type 'never[]'.
+src/lib/services/moderation-service.ts(214,62): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/services/moderation-service.ts(217,17): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/services/moderation-service.ts(226,15): error TS2345: Argument of type '{ status: "resolved" | "dismissed"; reviewed_by: string; reviewed_at: string; resolution_notes: string; }' is not assignable to parameter of type 'never'.
+src/lib/services/moderation-service.ts(257,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "content_flags", never, "POST">', gave the following error.
+    Argument of type '{ content_type: string; content_id: string; flag_type: string; severity: "low" | "medium" | "high" | "critical"; reason: string; flagged_by: string | undefined; status: string; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "content_flags", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'content_type' does not exist in type 'never[]'.
+src/lib/services/moderation-service.ts(280,62): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/services/moderation-service.ts(284,17): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/services/moderation-service.ts(297,15): error TS2345: Argument of type '{ status: "resolved" | "dismissed"; resolved_by: string; resolved_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/services/moderation-service.ts(357,7): error TS2322: Type 'null' is not assignable to type 'string | undefined'.
+src/lib/services/notification-service.ts(131,33): error TS2339: Property 'read_by' does not exist on type 'never'.
+src/lib/services/notification-service.ts(139,17): error TS2345: Argument of type '{ read_by: any; }' is not assignable to parameter of type 'never'.
+src/lib/services/notification-service.ts(169,35): error TS2339: Property 'read_by' does not exist on type 'never'.
+src/lib/services/notification-service.ts(174,26): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/services/notification-service.ts(183,17): error TS2345: Argument of type '{ read_by: any; }' is not assignable to parameter of type 'never'.
+src/lib/services/pricing-service.ts(59,28): error TS2339: Property 'setting_value' does not exist on type 'never'.
+src/lib/services/settings-service.ts(185,35): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/services/settings-service.ts(195,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: never, options?: { count?: "exact" | "planned" | "estimated" | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "admin_roles", never, "POST">', gave the following error.
+    Argument of type '{ user_id: any; role: "admin" | "editor"; permissions: string[]; }' is not assignable to parameter of type 'never'.
+  Overload 2 of 2, '(values: never[], options?: { count?: "exact" | "planned" | "estimated" | undefined; defaultToNull?: boolean | undefined; } | undefined): PostgrestFilterBuilder<{ PostgrestVersion: "12"; }, never, never, null, "admin_roles", never, "POST">', gave the following error.
+    Object literal may only specify known properties, and 'user_id' does not exist in type 'never[]'.
+src/lib/services/settings-service.ts(196,31): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/services/settings-service.ts(210,30): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/services/settings-service.ts(239,15): error TS2345: Argument of type 'any' is not assignable to parameter of type 'never'.
+src/lib/services/tier-service.ts(30,14): error TS2339: Property 'is_trial_active' does not exist on type 'never'.
+src/lib/services/tier-service.ts(30,38): error TS2339: Property 'trial_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(31,38): error TS2339: Property 'trial_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(38,19): error TS2345: Argument of type '{ is_trial_active: boolean; }' is not assignable to parameter of type 'never'.
+src/lib/services/tier-service.ts(43,18): error TS2339: Property 'subscription_tier' does not exist on type 'never'.
+src/lib/services/tier-service.ts(79,32): error TS2339: Property 'subscription_tier' does not exist on type 'never'.
+src/lib/services/tier-service.ts(80,30): error TS2339: Property 'is_trial_active' does not exist on type 'never'.
+src/lib/services/tier-service.ts(82,31): error TS2339: Property 'trial_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(83,38): error TS2339: Property 'trial_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(91,19): error TS2345: Argument of type '{ is_trial_active: boolean; }' is not assignable to parameter of type 'never'.
+src/lib/services/tier-service.ts(99,26): error TS2339: Property 'trial_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(99,57): error TS2339: Property 'trial_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(100,35): error TS2339: Property 'subscription_start_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(100,75): error TS2339: Property 'subscription_start_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(101,33): error TS2339: Property 'subscription_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(101,71): error TS2339: Property 'subscription_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(135,19): error TS2339: Property 'trial_start_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(148,15): error TS2345: Argument of type '{ trial_start_date: string; trial_end_date: string; is_trial_active: boolean; subscription_tier: string; }' is not assignable to parameter of type 'never'.
+src/lib/services/tier-service.ts(201,18): error TS2339: Property 'subscription_tier' does not exist on type 'never'.
+src/lib/services/tier-service.ts(201,58): error TS2339: Property 'subscription_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(202,48): error TS2339: Property 'subscription_end_date' does not exist on type 'never'.
+src/lib/services/tier-service.ts(220,15): error TS2345: Argument of type '{ subscription_tier: string; subscription_start_date: string | undefined; subscription_end_date: string; is_trial_active: boolean; }' is not assignable to parameter of type 'never'.
+src/lib/services/tier-service.ts(222,43): error TS2339: Property 'subscription_tier' does not exist on type 'never'.
+src/lib/services/tier-service.ts(270,15): error TS2345: Argument of type '{ subscription_tier: string; subscription_end_date: string; is_trial_active: boolean; }' is not assignable to parameter of type 'never'.

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 export type UserTier = 'free' | 'pro';
 
@@ -22,27 +23,27 @@ export async function getUserTier(userId: string): Promise<UserTier> {
       .single();
 
     if (error || !data) {
-      console.error('Error fetching user tier:', error);
+      logger.error('Error fetching user tier', error);
       return 'free';
     }
 
     // Check if trial is active and not expired
-    if (data.is_trial_active && data.trial_end_date) {
-      const trialEnd = new Date(data.trial_end_date);
+    if ((data as any).is_trial_active && (data as any).trial_end_date) {
+      const trialEnd = new Date((data as any).trial_end_date);
       if (trialEnd > new Date()) {
         return 'pro'; // Trial users get Pro access
       } else {
         // Trial expired, update database
         await supabase
           .from('users')
-          .update({ is_trial_active: false })
+          .update({ is_trial_active: false } as any)
           .eq('id', userId);
       }
     }
 
-    return (data.subscription_tier as UserTier) || 'free';
+    return ((data as any).subscription_tier as UserTier) || 'free';
   } catch (error) {
-    console.error('Error in getUserTier:', error);
+    logger.error('Error in getUserTier', error);
     return 'free';
   }
 }
@@ -65,7 +66,7 @@ export async function getTierInfo(userId: string): Promise<TierInfo> {
       .single();
 
     if (error || !data) {
-      console.error('Error fetching tier info:', error);
+      logger.error('Error fetching tier info', error);
       return {
         tier: 'free',
         isTrialActive: false,
@@ -76,11 +77,12 @@ export async function getTierInfo(userId: string): Promise<TierInfo> {
     }
 
     // Check if trial is active and not expired
-    let tier: UserTier = (data.subscription_tier as UserTier) || 'free';
-    let isTrialActive = data.is_trial_active || false;
+    const dataAny = data as any;
+    let tier: UserTier = (dataAny.subscription_tier as UserTier) || 'free';
+    let isTrialActive = dataAny.is_trial_active || false;
 
-    if (isTrialActive && data.trial_end_date) {
-      const trialEnd = new Date(data.trial_end_date);
+    if (isTrialActive && dataAny.trial_end_date) {
+      const trialEnd = new Date(dataAny.trial_end_date);
       if (trialEnd > new Date()) {
         tier = 'pro'; // Trial users get Pro access
       } else {
@@ -88,7 +90,7 @@ export async function getTierInfo(userId: string): Promise<TierInfo> {
         isTrialActive = false;
         await supabase
           .from('users')
-          .update({ is_trial_active: false })
+          .update({ is_trial_active: false } as any)
           .eq('id', userId);
       }
     }
@@ -96,12 +98,12 @@ export async function getTierInfo(userId: string): Promise<TierInfo> {
     return {
       tier,
       isTrialActive,
-      trialEndDate: data.trial_end_date ? new Date(data.trial_end_date) : null,
-      subscriptionStartDate: data.subscription_start_date ? new Date(data.subscription_start_date) : null,
-      subscriptionEndDate: data.subscription_end_date ? new Date(data.subscription_end_date) : null
+      trialEndDate: dataAny.trial_end_date ? new Date(dataAny.trial_end_date) : null,
+      subscriptionStartDate: dataAny.subscription_start_date ? new Date(dataAny.subscription_start_date) : null,
+      subscriptionEndDate: dataAny.subscription_end_date ? new Date(dataAny.subscription_end_date) : null
     };
   } catch (error) {
-    console.error('Error in getTierInfo:', error);
+    logger.error('Error in getTierInfo', error);
     return {
       tier: 'free',
       isTrialActive: false,
@@ -132,7 +134,7 @@ export async function startFreeTrial(userId: string): Promise<{ success: boolean
       .eq('id', userId)
       .single();
 
-    if (existing?.trial_start_date) {
+    if ((existing as any)?.trial_start_date) {
       return {
         success: false,
         error: 'You have already used your free trial. Please subscribe to continue with Pro.'
@@ -150,11 +152,11 @@ export async function startFreeTrial(userId: string): Promise<{ success: boolean
         trial_end_date: trialEnd.toISOString(),
         is_trial_active: true,
         subscription_tier: 'pro' // Give Pro access during trial
-      })
+      } as any)
       .eq('id', userId);
 
     if (error) {
-      console.error('Error starting trial:', error);
+      logger.error('Error starting trial', error);
       return {
         success: false,
         error: 'Failed to start trial. Please try again.'
@@ -163,7 +165,7 @@ export async function startFreeTrial(userId: string): Promise<{ success: boolean
 
     return { success: true };
   } catch (error) {
-    console.error('Error in startFreeTrial:', error);
+    logger.error('Error in startFreeTrial', error);
     return {
       success: false,
       error: 'An unexpected error occurred'
@@ -196,10 +198,11 @@ export async function addSubscriptionTime(
 
     const now = new Date();
     let newEndDate: Date;
+    const existingAny = existing as any;
 
     // If user is already Pro with active subscription
-    if (existing.subscription_tier === 'pro' && existing.subscription_end_date) {
-      const currentEndDate = new Date(existing.subscription_end_date);
+    if (existingAny.subscription_tier === 'pro' && existingAny.subscription_end_date) {
+      const currentEndDate = new Date(existingAny.subscription_end_date);
       // If subscription is still active, stack on top
       if (currentEndDate > now) {
         newEndDate = new Date(currentEndDate);
@@ -219,14 +222,14 @@ export async function addSubscriptionTime(
       .from('users')
       .update({
         subscription_tier: 'pro',
-        subscription_start_date: existing.subscription_tier === 'pro' ? undefined : now.toISOString(),
+        subscription_start_date: existingAny.subscription_tier === 'pro' ? undefined : now.toISOString(),
         subscription_end_date: newEndDate.toISOString(),
         is_trial_active: false // End trial if active
-      })
+      } as any)
       .eq('id', userId);
 
     if (error) {
-      console.error('Error adding subscription time:', error);
+      logger.error('Error adding subscription time', error);
       return {
         success: false,
         error: 'Failed to process subscription. Please try again.'
@@ -241,7 +244,7 @@ export async function addSubscriptionTime(
       monthsRemaining
     };
   } catch (error) {
-    console.error('Error in addSubscriptionTime:', error);
+    logger.error('Error in addSubscriptionTime', error);
     return {
       success: false,
       error: 'An unexpected error occurred'
@@ -271,11 +274,11 @@ export async function downgradeToFree(userId: string): Promise<{ success: boolea
         subscription_tier: 'free',
         subscription_end_date: new Date().toISOString(),
         is_trial_active: false
-      })
+      } as any)
       .eq('id', userId);
 
     if (error) {
-      console.error('Error downgrading to Free:', error);
+      logger.error('Error downgrading to Free', error);
       return {
         success: false,
         error: 'Failed to downgrade. Please contact support.'
@@ -284,7 +287,7 @@ export async function downgradeToFree(userId: string): Promise<{ success: boolea
 
     return { success: true };
   } catch (error) {
-    console.error('Error in downgradeToFree:', error);
+    logger.error('Error in downgradeToFree', error);
     return {
       success: false,
       error: 'An unexpected error occurred'

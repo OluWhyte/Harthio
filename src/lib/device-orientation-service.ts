@@ -4,6 +4,8 @@
  * Works with Daily.co, Agora, P2P WebRTC, and other video providers
  */
 
+import { logger } from './logger';
+
 export interface DeviceVideoMetadata {
   // Video stream properties (from MediaStream)
   videoWidth: number;
@@ -43,7 +45,7 @@ export class DeviceOrientationService {
   startListening(): void {
     if (this.isListening || typeof window === 'undefined') return;
     
-    console.log('📱 Starting device orientation monitoring...');
+    logger.info('Starting device orientation monitoring');
     this.isListening = true;
 
     // Initial detection
@@ -65,7 +67,7 @@ export class DeviceOrientationService {
   stopListening(): void {
     if (!this.isListening) return;
     
-    console.log('📱 Stopping device orientation monitoring...');
+    logger.info('Stopping device orientation monitoring');
     this.isListening = false;
 
     window.removeEventListener('orientationchange', this.handleOrientationChange);
@@ -96,7 +98,7 @@ export class DeviceOrientationService {
     const videoWidth = settings.width || 0;
     const videoHeight = settings.height || 0;
 
-    console.log('📹 Video stream metadata updated:', { videoWidth, videoHeight });
+    logger.debug('Video stream metadata updated', { videoWidth, videoHeight });
     
     // Trigger detection with new video info
     this.detectAndNotify(videoWidth, videoHeight);
@@ -106,24 +108,24 @@ export class DeviceOrientationService {
    * Handle remote orientation metadata
    */
   handleRemoteMetadata(remoteMetadata: DeviceVideoMetadata): void {
-    console.log('📱 Remote device orientation received:', remoteMetadata);
+    logger.debug('Remote device orientation received', { remoteMetadata });
     this.callbacks.onRemoteOrientationChange(remoteMetadata);
   }
 
   // Private methods
 
   private handleOrientationChange = (): void => {
-    console.log('📱 Orientation change detected');
+    logger.debug('Orientation change detected');
     this.debouncedDetection();
   };
 
   private handleResize = (): void => {
-    console.log('📱 Window resize detected');
+    logger.debug('Window resize detected');
     this.debouncedDetection();
   };
 
   private handleFullscreenChange = (): void => {
-    console.log('📱 Fullscreen change detected');
+    logger.debug('Fullscreen change detected');
     this.debouncedDetection();
   };
 
@@ -143,7 +145,7 @@ export class DeviceOrientationService {
     
     // Only notify if metadata actually changed
     if (!this.currentMetadata || this.hasMetadataChanged(this.currentMetadata, metadata)) {
-      console.log('📱 Device metadata changed:', metadata);
+      logger.debug('Device metadata changed', { metadata });
       this.currentMetadata = metadata;
       this.callbacks.onOrientationChange(metadata);
     }

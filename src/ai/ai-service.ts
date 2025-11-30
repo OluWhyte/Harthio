@@ -371,7 +371,91 @@ Immediately provide:
 
 export const aiService = {
   /**
-   * Send a chat message to DeepSeek AI
+   * Send a chat message with streaming support
+   */
+  async chatStream(
+    messages: ChatMessage[],
+    onChunk: (text: string) => void,
+    onComplete: (fullText: string) => void,
+    onError: (error: string) => void
+  ): Promise<void> {
+    try {
+      const { supabase } = await import('@/lib/supabase');
+      
+      if (!supabase) {
+        onError('Database connection not available');
+        return;
+      }
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        onError('Not authenticated. Please log in.');
+        return;
+      }
+
+      const { getCSRFHeaders } = await import('@/lib/csrf-utils');
+      const csrfHeaders = await getCSRFHeaders();
+
+      const response = await fetch('/api/ai/chat-stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          ...csrfHeaders,
+        },
+        body: JSON.stringify({ messages }),
+      });
+
+      if (!response.ok) {
+        onError('Failed to get AI response');
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        onError('Stream not available');
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices[0]?.delta?.content || '';
+              if (content) {
+                fullText += content;
+                onChunk(content);
+              }
+            } catch (e) {
+              // Skip invalid JSON
+            }
+          }
+        }
+      }
+
+      onComplete(fullText);
+    } catch (error: any) {
+      console.error('AI chat stream error:', error);
+      onError(error.message || 'Network error');
+    }
+  },
+
+  /**
+   * Send a chat message to AI (non-streaming)
    */
   async chat(messages: ChatMessage[]): Promise<ChatResponse> {
     try {
@@ -394,11 +478,16 @@ export const aiService = {
         };
       }
 
+      // Get CSRF token
+      const { getCSRFHeaders } = await import('@/lib/csrf-utils');
+      const csrfHeaders = await getCSRFHeaders();
+
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
+          ...csrfHeaders,
         },
         body: JSON.stringify({ messages }),
       });

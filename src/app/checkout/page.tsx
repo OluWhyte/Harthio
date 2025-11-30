@@ -42,7 +42,7 @@ export default function CheckoutPage() {
   const loadTierInfo = async () => {
     if (!user) return;
     const [info, priceUSD, priceNGN] = await Promise.all([
-      getTierInfo(user.id),
+      getTierInfo((user as any).id),
       PricingService.getProPrice('usd'),
       PricingService.getProPrice('ngn')
     ]);

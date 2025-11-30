@@ -4,6 +4,7 @@
  */
 
 import { toast } from '@/hooks/use-toast';
+import { logger } from './logger';
 
 // CSRF token storage key
 const CSRF_TOKEN_KEY = 'harthio-csrf-token';
@@ -120,7 +121,7 @@ export function csrfMiddleware(handler: Function) {
   return async (request: Request, ...args: any[]) => {
     // For now, just show coming soon notification occasionally
     if (Math.random() < 0.1) { // 10% chance
-      console.log('CSRF Protection: Coming Soon!');
+      logger.debug('CSRF Protection: Coming Soon!');
     }
 
     // Always allow for now (CSRF protection disabled)

@@ -22,12 +22,11 @@ export function Logo({
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <Image
+      <img
         src="/logo.svg"
         alt="Harthio Logo"
         width={logo}
         height={logo}
-        priority
       />
       <div className="flex items-center gap-1.5">
         <span className={`font-headline font-bold ${text}`}>Harthio</span>

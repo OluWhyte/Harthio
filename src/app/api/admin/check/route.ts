@@ -1,12 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getSecurityHeaders, logSecurityEvent } from '@/lib/security-utils';
+import { moderateRateLimit } from '@/lib/rate-limit';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500, headers: getSecurityHeaders() }
+      );
+    }
+
+    // Rate limiting
+    const rateLimitResult = moderateRateLimit(request);
+    if (rateLimitResult) {
+      logSecurityEvent({
+        type: 'rate_limit',
+        ip: request.ip || 'unknown',
+        endpoint: '/api/admin/check',
+        details: { reason: 'Rate limit exceeded' }
+      });
+      return rateLimitResult;
+    }
+
     // SECURITY FIX: Authenticate the request first
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -24,19 +44,35 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.split(' ')[1];
 
-    // Create Supabase client with user's token (NOT service role key)
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: authHeader
-        }
-      }
+    // Verify service key is configured
+    if (!supabaseServiceKey) {
+      console.error('Missing SUPABASE_SERVICE_ROLE_KEY');
+      return NextResponse.json(
+        { isAdmin: false, error: 'Server configuration error' },
+        { status: 500, headers: getSecurityHeaders() }
+      );
+    }
+
+    // Use Service Role client to verify the token
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log('[Admin Check] Verifying token...', {
+      hasUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+      tokenLength: token?.length
     });
 
-    // Verify the JWT token and get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
+    console.log('[Admin Check] Verification result:', {
+      hasUser: !!user,
+      hasError: !!authError,
+      errorMessage: authError?.message,
+      userId: user?.id
+    });
+
     if (authError || !user) {
+      console.error('[Admin Check] Auth failed:', authError);
       logSecurityEvent({
         type: 'auth_failure',
         ip: request.ip || 'unknown',
@@ -50,11 +86,9 @@ export async function GET(request: NextRequest) {
     }
 
     // SECURITY FIX: Only allow checking own admin status
-    // If userId is provided in query, validate it matches authenticated user
     const requestedUserId = request.nextUrl.searchParams.get('userId');
 
     if (requestedUserId && requestedUserId !== user.id) {
-      // Log suspicious activity - user trying to check someone else's admin status
       logSecurityEvent({
         type: 'suspicious_activity',
         userId: user.id,
@@ -72,10 +106,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Use authenticated user's ID (not query parameter)
+    // Use authenticated user's ID
     const userId = user.id;
 
-    // Query admin_roles table using authenticated client (respects RLS)
     const { data, error } = await supabase
       .from('admin_roles')
       .select('id, is_active, role, permissions')

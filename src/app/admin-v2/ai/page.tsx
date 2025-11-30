@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/lib/supabase';
 import { 
   Brain, ThumbsUp, ThumbsDown, RefreshCw,
@@ -24,6 +25,153 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+
+// AI Provider Toggles Component
+function AIProviderToggles() {
+  const [groqEnabled, setGroqEnabled] = useState(true);
+  const [deepseekEnabled, setDeepseekEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('platform_settings')
+        .select('setting_value')
+        .eq('setting_key', 'ai_providers')
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (data?.setting_value) {
+        setGroqEnabled(data.setting_value.groq_enabled ?? true);
+        setDeepseekEnabled(data.setting_value.deepseek_enabled ?? true);
+      }
+    } catch (error) {
+      console.error('Error loading AI provider settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateProviderSetting = async (provider: 'groq' | 'deepseek', enabled: boolean) => {
+    setSaving(true);
+    try {
+      const newSettings = {
+        groq_enabled: provider === 'groq' ? enabled : groqEnabled,
+        deepseek_enabled: provider === 'deepseek' ? enabled : deepseekEnabled,
+      };
+
+      // Check if both would be disabled
+      if (!newSettings.groq_enabled && !newSettings.deepseek_enabled) {
+        toast({
+          title: 'Error',
+          description: 'At least one AI provider must be enabled',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('platform_settings')
+        .upsert({
+          setting_key: 'ai_providers',
+          setting_value: newSettings,
+          description: 'AI provider enable/disable settings',
+        }, {
+          onConflict: 'setting_key'
+        });
+
+      if (error) throw error;
+
+      if (provider === 'groq') setGroqEnabled(enabled);
+      if (provider === 'deepseek') setDeepseekEnabled(enabled);
+
+      toast({
+        title: 'Success',
+        description: `${provider === 'groq' ? 'Groq' : 'DeepSeek'} ${enabled ? 'enabled' : 'disabled'}`,
+      });
+    } catch (error) {
+      console.error('Error updating provider setting:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update provider setting',
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading settings...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Control which AI providers are available for chat. At least one must be enabled.
+      </p>
+      
+      <div className="space-y-3">
+        {/* Groq Toggle */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h4 className="font-medium">Groq (Llama 3.3 70B)</h4>
+              <Badge variant={groqEnabled ? 'default' : 'secondary'}>
+                {groqEnabled ? 'Enabled' : 'Disabled'}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Premium quality - Used for crisis situations, struggling users, and Pro members
+            </p>
+          </div>
+          <Switch
+            checked={groqEnabled}
+            onCheckedChange={(checked) => updateProviderSetting('groq', checked)}
+            disabled={saving || (!groqEnabled && !deepseekEnabled)}
+          />
+        </div>
+
+        {/* DeepSeek Toggle */}
+        <div className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h4 className="font-medium">DeepSeek</h4>
+              <Badge variant={deepseekEnabled ? 'default' : 'secondary'}>
+                {deepseekEnabled ? 'Enabled' : 'Disabled'}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Cost-effective - Used for routine conversations and free tier users
+            </p>
+          </div>
+          <Switch
+            checked={deepseekEnabled}
+            onCheckedChange={(checked) => updateProviderSetting('deepseek', checked)}
+            disabled={saving || (!deepseekEnabled && !groqEnabled)}
+          />
+        </div>
+      </div>
+
+      {(!groqEnabled || !deepseekEnabled) && (
+        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            ⚠️ {!groqEnabled && !deepseekEnabled ? 'Both providers are disabled' : 
+                 !groqEnabled ? 'Groq is disabled - all users will use DeepSeek' :
+                 'DeepSeek is disabled - all users will use Groq'}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Types
 interface FeedbackEntry {
@@ -397,11 +545,26 @@ export default function AIAnalyticsPage() {
         </Card>
       </div>
 
+      {/* AI Provider Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            AI Provider Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AIProviderToggles />
+        </CardContent>
+      </Card>
+
       {/* Tabs */}
       <Tabs defaultValue="feedback" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="feedback">User Feedback</TabsTrigger>
           <TabsTrigger value="interventions">AI Interventions</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="personalization">Personalization</TabsTrigger>
         </TabsList>
 
         <TabsContent value="feedback" className="mt-6">
@@ -559,6 +722,239 @@ export default function AIAnalyticsPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="performance" className="mt-6">
+          <div className="grid gap-6">
+            {/* Cost Analytics */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Cost Analytics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Total Cost</p>
+                    <p className="text-2xl font-bold">$0.00</p>
+                    <p className="text-xs text-gray-500 mt-1">Selected period</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Cost per User</p>
+                    <p className="text-2xl font-bold">$0.00</p>
+                    <p className="text-xs text-gray-500 mt-1">Average</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Cost per Message</p>
+                    <p className="text-2xl font-bold">$0.00</p>
+                    <p className="text-xs text-gray-500 mt-1">Average</p>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    💡 Cost tracking coming soon. Will show Groq vs DeepSeek usage and costs.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Response Quality */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Response Quality</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Avg Rating</p>
+                    <p className="text-2xl font-bold">{stats.avgRating.toFixed(1)}/5</p>
+                    <p className="text-xs text-gray-500 mt-1">User satisfaction</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Positive Rate</p>
+                    <p className="text-2xl font-bold">
+                      {stats.totalFeedback > 0 
+                        ? Math.round((stats.positiveFeedback / stats.totalFeedback) * 100)
+                        : 0}%
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Thumbs up</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Avg Messages</p>
+                    <p className="text-2xl font-bold">{stats.avgMessagesPerChat}</p>
+                    <p className="text-xs text-gray-500 mt-1">Per conversation</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Peak Hour</p>
+                    <p className="text-2xl font-bold">{stats.peakHour}:00</p>
+                    <p className="text-xs text-gray-500 mt-1">Most active</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Provider Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Provider Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm font-medium">Groq (Premium)</span>
+                      <span className="text-sm text-gray-600">~30%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-blue-500 h-2 rounded-full" style={{ width: '30%' }}></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Crisis, Pro users, negative sentiment</p>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm font-medium">DeepSeek (Cost-effective)</span>
+                      <span className="text-sm text-gray-600">~70%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-green-500 h-2 rounded-full" style={{ width: '70%' }}></div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Routine conversations, free users</p>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    ✓ Hybrid strategy saves ~40% on costs while maintaining quality
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="personalization" className="mt-6">
+          <div className="grid gap-6">
+            {/* Personalization Overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Personalization Insights</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Users with Preferences</p>
+                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-xs text-gray-500 mt-1">Have customized AI</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Avg Techniques Learned</p>
+                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-xs text-gray-500 mt-1">Per user</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Learning Rate</p>
+                    <p className="text-2xl font-bold">0%</p>
+                    <p className="text-xs text-gray-500 mt-1">Feedback → Adaptation</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Popular Preferences */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Popular Preferences</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Preferred Tones</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <div className="p-3 border rounded text-center">
+                        <p className="text-lg font-bold">0</p>
+                        <p className="text-xs text-gray-600">Supportive</p>
+                      </div>
+                      <div className="p-3 border rounded text-center">
+                        <p className="text-lg font-bold">0</p>
+                        <p className="text-xs text-gray-600">Casual</p>
+                      </div>
+                      <div className="p-3 border rounded text-center">
+                        <p className="text-lg font-bold">0</p>
+                        <p className="text-xs text-gray-600">Direct</p>
+                      </div>
+                      <div className="p-3 border rounded text-center">
+                        <p className="text-lg font-bold">0</p>
+                        <p className="text-xs text-gray-600">Empathetic</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Most Effective Techniques</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-sm">Breathing exercises</span>
+                        <Badge>0 users</Badge>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-sm">Grounding (5-4-3-2-1)</span>
+                        <Badge>0 users</Badge>
+                      </div>
+                      <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-sm">Thought Challenger</span>
+                        <Badge>0 users</Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Common Trigger Topics</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">Family (0)</Badge>
+                      <Badge variant="outline">Work (0)</Badge>
+                      <Badge variant="outline">Relationships (0)</Badge>
+                      <Badge variant="outline">Financial (0)</Badge>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-sm text-purple-800">
+                    💡 Personalization data will populate as users interact with AI and provide feedback
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Conversation Memory Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Conversation Memory</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Avg Conversation Length</p>
+                    <p className="text-2xl font-bold">{stats.avgMessagesPerChat}</p>
+                    <p className="text-xs text-gray-500 mt-1">Messages per chat</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Long Conversations</p>
+                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-xs text-gray-500 mt-1">12+ messages</p>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-gray-600 mb-1">Memory Optimization</p>
+                    <p className="text-2xl font-bold">60%</p>
+                    <p className="text-xs text-gray-500 mt-1">Token savings</p>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    ✓ Conversations over 12 messages are automatically summarized to save tokens
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

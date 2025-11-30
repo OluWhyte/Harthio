@@ -3,6 +3,8 @@
 // ============================================================================
 // Service for sending email notifications using Supabase Auth
 
+import { supabase } from '@/lib/supabase';
+
 // Email template types
 export interface EmailTemplate {
   subject: string;
@@ -87,30 +89,26 @@ export const emailTemplates = {
             </div>
             <div class="content">
               <h2>Hi there!</h2>
-              <p><strong>${
-                data.requesterName
-              }</strong> has sent you a request for a video call session:</p>
+              <p><strong>${data.requesterName
+      }</strong> has sent you a request for a video call session:</p>
               
               <div class="message-box">
                 <h3>"${data.sessionTitle}"</h3>
-                ${
-                  data.sessionDescription
-                    ? `<p><em>${data.sessionDescription}</em></p>`
-                    : ""
-                }
-                ${
-                  data.requestMessage
-                    ? `<p><strong>Message from ${data.requesterName}:</strong><br>"${data.requestMessage}"</p>`
-                    : ""
-                }
+                ${data.sessionDescription
+        ? `<p><em>${data.sessionDescription}</em></p>`
+        : ""
+      }
+                ${data.requestMessage
+        ? `<p><strong>Message from ${data.requesterName}:</strong><br>"${data.requestMessage}"</p>`
+        : ""
+      }
               </div>
               
               <p>Please log in to your Harthio account to review and respond to this request.</p>
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${
-                  data.appUrl
-                }/requests" class="button">Review Request</a>
+                <a href="${data.appUrl
+      }/requests" class="button">Review Request</a>
               </div>
               
               <p><small>You can approve or decline this request from your dashboard. If you approve, both of you will receive the video call link.</small></p>
@@ -128,16 +126,14 @@ New Video Call Request from ${data.requesterName}
 
 Hi there!
 
-${data.requesterName} has sent you a request for a video call session: "${
-      data.sessionTitle
-    }"
+${data.requesterName} has sent you a request for a video call session: "${data.sessionTitle
+      }"
 
 ${data.sessionDescription ? `Description: ${data.sessionDescription}` : ""}
-${
-  data.requestMessage
-    ? `Message from ${data.requesterName}: "${data.requestMessage}"`
-    : ""
-}
+${data.requestMessage
+        ? `Message from ${data.requesterName}: "${data.requestMessage}"`
+        : ""
+      }
 
 Please log in to your Harthio account to review and respond to this request.
 
@@ -635,18 +631,38 @@ export class EmailService {
 
     try {
       // Always use API route for consistency
-      const baseUrl = typeof window !== 'undefined' 
+      const baseUrl = typeof window !== 'undefined'
         ? '' // Client-side: relative URL
         : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'); // Server-side: absolute URL
-      
+
       const apiUrl = `${baseUrl}/api/send-email`;
       console.log('📧 [EMAIL SERVICE] Calling API:', apiUrl);
-      
+
+      // Prepare headers with authentication
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      // 1. Server-side system key (highest priority for internal calls)
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        headers['x-system-key'] = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      }
+      // 2. Client-side user session
+      else if (typeof window !== 'undefined') {
+        const { data } = await supabase.auth.getSession();
+        if (data.session?.access_token) {
+          headers['Authorization'] = `Bearer ${data.session.access_token}`;
+        }
+        
+        // Add CSRF headers for client-side requests
+        const { getCSRFHeaders } = await import('@/lib/csrf-utils');
+        const csrfHeaders = await getCSRFHeaders();
+        Object.assign(headers, csrfHeaders);
+      }
+
       const response = await fetch(apiUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           to,
           subject: template.subject,

@@ -255,9 +255,16 @@ class SmartSecurityNotifier {
    */
   private async sendEmailAlert(incident: SecurityIncident): Promise<void> {
     try {
+      // Get CSRF token
+      const { getCSRFHeaders } = await import('@/lib/csrf-utils');
+      const csrfHeaders = await getCSRFHeaders();
+
       await fetch('/api/send-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...csrfHeaders,
+        },
         body: JSON.stringify({
           to: process.env.SECURITY_ALERT_EMAIL,
           subject: `🚨 Critical Security Alert: ${incident.type}`,

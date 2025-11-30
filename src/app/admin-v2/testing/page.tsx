@@ -350,9 +350,16 @@ export default function TestingToolsPage() {
   const testAIService = async () => {
     setLoading(true);
     try {
+      // Get CSRF token
+      const { getCSRFHeaders } = await import('@/lib/csrf-utils');
+      const csrfHeaders = await getCSRFHeaders();
+
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...csrfHeaders,
+        },
         body: JSON.stringify({
           message: 'Hello, this is a test message',
           userId: 'test-user'

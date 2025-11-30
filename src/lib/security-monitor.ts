@@ -1,123 +1,123 @@
-/**
- * Security Monitoring and Alerting System
- * Provides real-time security event monitoring and alerting
- */
+import { createClient } from '@supabase/supabase-js';
 
-import { logSecurityEvent, SecurityEvent } from './security-utils';
+// Define security event types
+export type SecurityEventType =
+  | 'auth_failure'
+  | 'access_denied'
+  | 'rate_limit'
+  | 'suspicious_activity'
+  | 'validation_error'
+  | 'brute_force_attempt'
+  | 'coordinated_attack';
 
-export interface SecurityAlert {
-  id: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  type: string;
-  message: string;
-  timestamp: string;
-  metadata: any;
+// Define security event interface
+export interface SecurityEvent {
+  type: SecurityEventType;
+  userId?: string;
+  ip?: string;
+  endpoint?: string;
+  details?: Record<string, any>;
+  timestamp?: string;
 }
 
+// Define security alert interface
+export interface SecurityAlert {
+  id: string;
+  type: SecurityEventType;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  message: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
+}
+
+// Define security metrics interface
 export interface SecurityMetrics {
   totalEvents: number;
   eventsByType: Record<string, number>;
   eventsBySeverity: Record<string, number>;
   recentEvents: SecurityEvent[];
   alertsTriggered: number;
-  topIPs: Array<{ ip: string; count: number }>;
-  topEndpoints: Array<{ endpoint: string; count: number }>;
+  topIPs: { ip: string; count: number }[];
+  topEndpoints: { endpoint: string; count: number }[];
 }
 
 class SecurityMonitor {
   private events: SecurityEvent[] = [];
   private alerts: SecurityAlert[] = [];
-  private readonly maxEvents = 1000; // Keep last 1000 events in memory
-  private readonly maxAlerts = 100; // Keep last 100 alerts
-  
-  // Alert thresholds
-  private readonly thresholds = {
-    auth_failure: { count: 5, window: 15 * 60 * 1000 }, // 5 failures in 15 minutes
-    rate_limit: { count: 10, window: 5 * 60 * 1000 }, // 10 rate limits in 5 minutes
-    suspicious_activity: { count: 3, window: 10 * 60 * 1000 }, // 3 suspicious activities in 10 minutes
-    validation_error: { count: 20, window: 5 * 60 * 1000 }, // 20 validation errors in 5 minutes
-  };
+  private readonly maxEvents = 1000;
+  private readonly maxAlerts = 100;
+
+  constructor() {
+    // Initialize with some dummy data if needed, or load from DB
+  }
 
   /**
-   * Record a security event and check for alert conditions
+   * Record a security event
    */
-  recordEvent(event: SecurityEvent): void {
-    // Add timestamp if not present
-    const timestampedEvent = {
-      ...event,
-      timestamp: event.timestamp || new Date().toISOString()
-    };
+  async recordEvent(event: SecurityEvent): Promise<void> {
+    // Add timestamp if missing
+    if (!event.timestamp) {
+      event.timestamp = new Date().toISOString();
+    }
 
-    // Add to events array
-    this.events.push(timestampedEvent);
-    
+    // Add to local memory buffer
+    this.events.push(event);
+
     // Trim events array if too large
     if (this.events.length > this.maxEvents) {
       this.events = this.events.slice(-this.maxEvents);
     }
 
-    // Log the event
-    logSecurityEvent(timestampedEvent);
+    // Log to console
+    console.warn(`[SECURITY EVENT] ${event.type}:`, event.details);
 
-    // Check for alert conditions
-    this.checkAlertConditions(timestampedEvent);
+    // Analyze for alerts
+    await this.analyzeEvent(event);
   }
 
   /**
-   * Check if an event should trigger an alert
+   * Analyze event for potential security threats
    */
-  private checkAlertConditions(event: SecurityEvent): void {
-    const threshold = this.thresholds[event.type as keyof typeof this.thresholds];
-    if (!threshold) return;
-
-    const now = Date.now();
-    const windowStart = now - threshold.window;
-
-    // Count recent events of the same type
-    const recentEvents = this.events.filter(e => 
-      e.type === event.type && 
-      new Date(e.timestamp || '').getTime() > windowStart
-    );
-
-    if (recentEvents.length >= threshold.count) {
-      this.triggerAlert({
-        type: event.type,
-        severity: this.getSeverityForEventType(event.type),
-        message: `High frequency of ${event.type} events detected`,
-        metadata: {
-          eventCount: recentEvents.length,
-          timeWindow: threshold.window / 1000 / 60, // minutes
-          threshold: threshold.count,
-          recentEvents: recentEvents.slice(-5) // Last 5 events
-        }
-      });
-    }
-
-    // Check for specific high-severity conditions
-    this.checkCriticalConditions(event);
-  }
-
-  /**
-   * Check for critical security conditions
-   */
-  private checkCriticalConditions(event: SecurityEvent): void {
-    // Multiple failed auth attempts from same IP
+  private async analyzeEvent(event: SecurityEvent): Promise<void> {
+    // Check for brute force attempts (multiple auth failures from same IP)
     if (event.type === 'auth_failure' && event.ip) {
-      const recentFailures = this.events.filter(e => 
-        e.type === 'auth_failure' && 
+      const recentFailures = this.events.filter(e =>
+        e.type === 'auth_failure' &&
         e.ip === event.ip &&
-        new Date(e.timestamp || '').getTime() > Date.now() - 5 * 60 * 1000 // 5 minutes
+        new Date(e.timestamp || '').getTime() > Date.now() - 15 * 60 * 1000 // 15 minutes
       );
 
-      if (recentFailures.length >= 3) {
+      if (recentFailures.length >= 5) {
         this.triggerAlert({
           type: 'brute_force_attempt',
-          severity: 'critical',
-          message: `Potential brute force attack from IP ${event.ip}`,
+          severity: 'high',
+          message: `High frequency of auth_failure events detected from IP ${event.ip}`,
           metadata: {
             ip: event.ip,
-            failureCount: recentFailures.length,
-            endpoints: [...new Set(recentFailures.map(e => e.endpoint))]
+            count: recentFailures.length,
+            timeWindow: '15m'
+          }
+        });
+      }
+    }
+
+    // Check for rate limit abuse
+    if (event.type === 'rate_limit' && event.ip) {
+      const recentRateLimits = this.events.filter(e =>
+        e.type === 'rate_limit' &&
+        e.ip === event.ip &&
+        new Date(e.timestamp || '').getTime() > Date.now() - 60 * 60 * 1000 // 1 hour
+      );
+
+      if (recentRateLimits.length >= 10) {
+        this.triggerAlert({
+          type: 'suspicious_activity',
+          severity: 'medium',
+          message: `Persistent rate limit violations from IP ${event.ip}`,
+          metadata: {
+            ip: event.ip,
+            count: recentRateLimits.length,
+            timeWindow: '1h'
           }
         });
       }
@@ -125,8 +125,8 @@ class SecurityMonitor {
 
     // Suspicious activity from same IP across multiple endpoints
     if (event.type === 'suspicious_activity' && event.ip) {
-      const recentSuspicious = this.events.filter(e => 
-        e.type === 'suspicious_activity' && 
+      const recentSuspicious = this.events.filter(e =>
+        e.type === 'suspicious_activity' &&
         e.ip === event.ip &&
         new Date(e.timestamp || '').getTime() > Date.now() - 10 * 60 * 1000 // 10 minutes
       );
@@ -158,7 +158,7 @@ class SecurityMonitor {
     };
 
     this.alerts.push(alert);
-    
+
     // Trim alerts array if too large
     if (this.alerts.length > this.maxAlerts) {
       this.alerts = this.alerts.slice(-this.maxAlerts);
@@ -171,7 +171,7 @@ class SecurityMonitor {
     this.sendToMonitoringService(alert);
 
     // Send immediate notifications for critical alerts
-    if (alert.severity === 'critical') {
+    if (alert.severity === 'critical' || alert.severity === 'high') {
       this.sendImmediateNotification(alert);
     }
   }
@@ -207,7 +207,7 @@ class SecurityMonitor {
     // - DataDog
     // - New Relic
     // - Custom webhook
-    
+
     if (process.env.NODE_ENV === 'production') {
       try {
         // Example: Send to webhook
@@ -245,7 +245,7 @@ class SecurityMonitor {
       'peterlimited2000@gmail.com',
       'seyi@harthio.com'
     ];
-    
+
     // Send email to each recipient
     for (const recipient of alertRecipients) {
       try {
@@ -300,7 +300,7 @@ class SecurityMonitor {
             </div>
           </div>
         `;
-        
+
         const emailText = `
 🚨 ${alert.severity.toUpperCase()} SECURITY ALERT
 
@@ -321,12 +321,13 @@ Dashboard: https://harthio.com/admin/testing?tab=security
 ---
 This is an automated security alert from Harthio
         `;
-        
+
         // Send email via API
         const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/send-email`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'x-system-key': process.env.SUPABASE_SERVICE_ROLE_KEY || '',
           },
           body: JSON.stringify({
             to: recipient,
@@ -335,7 +336,7 @@ This is an automated security alert from Harthio
             text: emailText
           })
         });
-        
+
         if (response.ok) {
           console.log(`✅ Security alert email sent to ${recipient}`);
         } else {
@@ -353,8 +354,8 @@ This is an automated security alert from Harthio
   getMetrics(): SecurityMetrics {
     const now = Date.now();
     const last24Hours = now - 24 * 60 * 60 * 1000;
-    
-    const recentEvents = this.events.filter(e => 
+
+    const recentEvents = this.events.filter(e =>
       new Date(e.timestamp || '').getTime() > last24Hours
     );
 
@@ -402,7 +403,7 @@ This is an automated security alert from Harthio
       eventsByType,
       eventsBySeverity,
       recentEvents: recentEvents.slice(-20), // Last 20 events
-      alertsTriggered: this.alerts.filter(a => 
+      alertsTriggered: this.alerts.filter(a =>
         new Date(a.timestamp).getTime() > last24Hours
       ).length,
       topIPs,
@@ -422,12 +423,12 @@ This is an automated security alert from Harthio
    */
   cleanup(): void {
     const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000; // 7 days
-    
-    this.events = this.events.filter(e => 
+
+    this.events = this.events.filter(e =>
       new Date(e.timestamp || '').getTime() > cutoff
     );
-    
-    this.alerts = this.alerts.filter(a => 
+
+    this.alerts = this.alerts.filter(a =>
       new Date(a.timestamp).getTime() > cutoff
     );
   }

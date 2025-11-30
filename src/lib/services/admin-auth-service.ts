@@ -1,14 +1,68 @@
 // Central admin authentication service
 // All admin checks should go through this service
 
+import { supabase } from '@/lib/supabase';
+
 export class AdminAuthService {
   /**
    * Check if a user has admin access
    */
   static async isUserAdmin(userId: string): Promise<boolean> {
     try {
-      const response = await fetch(`/api/admin/check?userId=${userId}`);
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return false;
+      }
+
+      // Retry getting session up to 3 times with delays
+      let session = null;
+      let sessionError = null;
+      
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const result = await supabase.auth.getSession();
+        session = result.data.session;
+        sessionError = result.error;
+        
+        if (session?.access_token) {
+          break;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+        }
+      }
+
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        return false;
+      }
+
+      const token = session?.access_token;
+
+      if (!token) {
+        console.warn('Admin check skipped: No active session after retries');
+        return false;
+      }
+
+      console.log('[AdminAuthService] Calling /api/admin/check for userId:', userId);
+      
+      const response = await fetch(`/api/admin/check?userId=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('[AdminAuthService] API response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AdminAuthService] Admin check failed:', response.status, errorText);
+        return false;
+      }
+
       const data = await response.json();
+      console.log('[AdminAuthService] Admin check result:', data);
       return data.isAdmin || false;
     } catch (error) {
       console.error('Admin check error:', error);
@@ -26,9 +80,54 @@ export class AdminAuthService {
     email?: string;
   } | null> {
     try {
-      const response = await fetch(`/api/admin/details?userId=${userId}`);
-      const data = await response.json();
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return null;
+      }
+
+      // Retry getting session up to 3 times with delays
+      let session = null;
+      let sessionError = null;
       
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const result = await supabase.auth.getSession();
+        session = result.data.session;
+        sessionError = result.error;
+        
+        if (session?.access_token) {
+          break;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+        }
+      }
+
+      if (sessionError) {
+        console.error('Session error:', sessionError);
+        return null;
+      }
+
+      const token = session?.access_token;
+
+      if (!token) {
+        return null;
+      }
+
+      const response = await fetch(`/api/admin/details?userId=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error('Admin details failed:', response.status, response.statusText);
+        return null;
+      }
+
+      const data = await response.json();
+
       if (!data.isAdmin) {
         return null;
       }
@@ -50,7 +149,7 @@ export class AdminAuthService {
    */
   static async hasPermission(userId: string, permission: string): Promise<boolean> {
     const details = await this.getAdminDetails(userId);
-    
+
     if (!details) {
       return false;
     }

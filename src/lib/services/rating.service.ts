@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '../supabase';
+import { logger } from '../logger';
 import type {
   Rating,
   RatingInsert,
@@ -90,7 +91,7 @@ export const ratingService = {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Error submitting rating:', errorMessage);
+      logger.error('Error submitting rating', error);
       return { data: null, error: errorMessage, success: false };
     }
   },
@@ -115,7 +116,7 @@ export const ratingService = {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching topic ratings:', error);
+      logger.error('Error fetching topic ratings', error);
       throw new Error('Failed to fetch topic ratings');
     }
 
@@ -185,7 +186,7 @@ export const ratingService = {
 
       return !existingRating;
     } catch (error) {
-      console.error('Error checking rating eligibility:', error);
+      logger.error('Error checking rating eligibility', error);
       return false;
     }
   },

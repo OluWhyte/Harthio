@@ -16,6 +16,7 @@ import type { Database } from "@/lib/supabase";
 // User object structure compatible with existing code
 export interface User {
   uid: string;
+  id: string; // Alias for uid for compatibility
   email: string | null;
   displayName: string | null;
   emailVerified: boolean;
@@ -277,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const supabaseUser = session.user;
           const user: User = {
             uid: supabaseUser.id,
+            id: supabaseUser.id, // Add id alias for compatibility
             email: supabaseUser.email || null,
             displayName:
               supabaseUser.user_metadata?.display_name ||
@@ -323,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const supabaseUser = session.user;
           const user: User = {
             uid: supabaseUser.id,
+            id: supabaseUser.id, // Add id alias for compatibility
             email: supabaseUser.email || null,
             displayName:
               supabaseUser.user_metadata?.display_name ||

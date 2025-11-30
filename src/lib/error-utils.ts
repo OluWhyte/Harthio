@@ -2,6 +2,8 @@
  * Comprehensive error handling utilities for the topic-to-session flow
  */
 
+import { logger } from './logger';
+
 export interface ErrorDetails {
   title: string;
   message: string;
@@ -316,7 +318,7 @@ export async function withRetry<T>(
       }
       
       const delay = calculateRetryDelay(attempt, retryConfig);
-      console.log(`Retry attempt ${attempt} failed, retrying in ${delay}ms:`, errorDetails.message);
+      logger.info(`Retry attempt ${attempt} failed, retrying in ${delay}ms`, { message: errorDetails.message });
       
       await sleep(delay);
       attempt++;
@@ -353,7 +355,7 @@ export async function executeOperation<T>(
     const result = await operation();
     
     if (shouldLogError) {
-      console.log(`[SUCCESS] ${operationName} completed successfully`, {
+      logger.info(`[SUCCESS] ${operationName} completed successfully`, {
         userId,
         topicId,
         requestId,
@@ -421,7 +423,7 @@ export async function executeBatchOperations<T>(
         successful.push({ id, data });
         
         if (shouldLogErrors) {
-          console.log(`[BATCH SUCCESS] Operation ${id} completed`, context);
+          logger.info(`[BATCH SUCCESS] Operation ${id} completed`, context);
         }
       } catch (error) {
         const errorDetails = parseError(error);

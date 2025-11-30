@@ -32,7 +32,7 @@ export function CreditBalanceIndicator() {
   const loadBalance = async () => {
     if (!user) return;
 
-    const data = await creditsService.getCreditBalance(user.id);
+    const data = await creditsService.getCreditBalance((user as any).id);
     setBalance(data);
     setLoading(false);
   };

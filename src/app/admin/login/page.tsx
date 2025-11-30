@@ -30,19 +30,30 @@ function AdminLoginForm() {
   const [checkingAdmin, setCheckingAdmin] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    console.log('[Admin Login useEffect]', { authLoading, hasUser: !!user, checkingAdmin });
+    if (!authLoading && user && !checkingAdmin) {
+      console.log('[Admin Login] Triggering admin check...');
       checkAdminAndRedirect();
     }
-  }, [user, authLoading, router, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, authLoading]);
 
   const checkAdminAndRedirect = async () => {
     if (!user) return;
     
     setCheckingAdmin(true);
     try {
+      console.log('[Admin Login] Checking admin status for user:', user.uid);
+      
+      // Add a small delay to ensure session is fully established
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const isAdmin = await BlogService.isUserAdmin(user.uid);
       
+      console.log('[Admin Login] Admin check result:', isAdmin);
+      
       if (isAdmin) {
+        console.log('[Admin Login] User is admin, redirecting...');
         // Check for redirect parameter
         const redirectTo = searchParams.get('redirect');
         
@@ -53,20 +64,23 @@ function AdminLoginForm() {
         }
       } else {
         // User is authenticated but not an admin
+        console.log('[Admin Login] User is not an admin');
         toast({
           title: 'Access Denied',
           description: 'You do not have administrator privileges. Please contact support if you believe this is an error.',
           variant: 'destructive',
         });
+        setLoading(false);
         // Don't redirect, let them try different credentials
       }
     } catch (error) {
-      console.error('Error checking admin status:', error);
+      console.error('[Admin Login] Error checking admin status:', error);
       toast({
         title: 'Error',
-        description: 'Unable to verify admin privileges. Please try again.',
+        description: 'Unable to verify admin privileges. Please try logging in again.',
         variant: 'destructive',
       });
+      setLoading(false);
     } finally {
       setCheckingAdmin(false);
     }
@@ -79,6 +93,10 @@ function AdminLoginForm() {
 
     try {
       await logIn(email, password);
+      
+      // Wait a moment for the session to be fully established
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       // The useEffect will handle admin checking and routing
     } catch (error: any) {
       const errorMessage = error.message || 'Invalid credentials. Please check your email and password.';
@@ -93,9 +111,9 @@ function AdminLoginForm() {
         description: errorMessage,
         variant: 'destructive',
       });
-    } finally {
       setLoading(false);
     }
+    // Don't set loading to false here - let the useEffect handle it after redirect
   };
 
   const handleResendVerification = async () => {

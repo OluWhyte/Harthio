@@ -6,6 +6,8 @@ import {
   formatRateLimitMessage 
 } from '@/ai/services/ai-rate-limit-service';
 import { getUserTier } from '@/lib/services/tier-service';
+import { validateCSRFToken } from '@/lib/csrf-middleware';
+import { getSecurityHeaders } from '@/lib/security-utils';
 
 // Hybrid AI Provider Strategy
 // Use Groq for critical moments (crisis, struggling, Pro users)
@@ -26,27 +28,16 @@ function selectProvider(params: {
   interventionType: 'crisis' | 'idle' | 'struggling' | 'session_assist' | 'none';
   userTier: 'free' | 'pro';
 }): { url: string; key: string; model: string; provider: 'groq' | 'deepseek' } {
+  // Synchronous version - kept for backwards compatibility
+  // Use selectProviderWithSettings for admin-controlled provider selection
   const { sentiment, interventionType, userTier } = params;
   
-  // FORCE GROQ FOR TESTING - Set to true to always use Groq
-  const FORCE_GROQ = true; // Using Groq free credits for testing
-  
-  if (FORCE_GROQ && GROQ_API_KEY) {
-    return {
-      url: GROQ_API_URL,
-      key: GROQ_API_KEY,
-      model: GROQ_MODEL,
-      provider: 'groq'
-    };
-  }
-  
-  // Use Groq for critical situations (best quality when it matters)
   const useGroq = 
     sentiment === 'crisis' ||
     interventionType === 'crisis' ||
     interventionType === 'struggling' ||
     sentiment === 'negative' ||
-    userTier === 'pro'; // Pro users get premium experience
+    userTier === 'pro';
   
   if (useGroq && GROQ_API_KEY) {
     return {
@@ -57,13 +48,68 @@ function selectProvider(params: {
     };
   }
   
-  // Default to DeepSeek (cost-effective for routine conversations)
   return {
     url: DEEPSEEK_API_URL,
     key: DEEPSEEK_API_KEY || '',
     model: DEEPSEEK_MODEL,
     provider: 'deepseek'
   };
+}
+
+// Async version that checks admin settings
+async function selectProviderWithSettings(params: {
+  sentiment: 'positive' | 'neutral' | 'negative' | 'crisis';
+  interventionType: 'crisis' | 'idle' | 'struggling' | 'session_assist' | 'none';
+  userTier: 'free' | 'pro';
+}): Promise<{ url: string; key: string; model: string; provider: 'groq' | 'deepseek' }> {
+  const { sentiment, interventionType, userTier } = params;
+  
+  // Get admin settings for AI providers
+  const { platformSettingsService } = await import('@/lib/services/platform-settings-service');
+  const settings = await platformSettingsService.getSettings();
+  
+  const groqEnabled = settings.aiProviders.groqEnabled;
+  const deepseekEnabled = settings.aiProviders.deepseekEnabled;
+  
+  // Use Groq for critical situations (if enabled)
+  const useGroq = 
+    sentiment === 'crisis' ||
+    interventionType === 'crisis' ||
+    interventionType === 'struggling' ||
+    sentiment === 'negative' ||
+    userTier === 'pro';
+  
+  if (useGroq && groqEnabled && GROQ_API_KEY) {
+    return {
+      url: GROQ_API_URL,
+      key: GROQ_API_KEY,
+      model: GROQ_MODEL,
+      provider: 'groq'
+    };
+  }
+  
+  // Try DeepSeek if enabled
+  if (deepseekEnabled && DEEPSEEK_API_KEY) {
+    return {
+      url: DEEPSEEK_API_URL,
+      key: DEEPSEEK_API_KEY,
+      model: DEEPSEEK_MODEL,
+      provider: 'deepseek'
+    };
+  }
+  
+  // Fallback to Groq if DeepSeek is disabled
+  if (groqEnabled && GROQ_API_KEY) {
+    return {
+      url: GROQ_API_URL,
+      key: GROQ_API_KEY,
+      model: GROQ_MODEL,
+      provider: 'groq'
+    };
+  }
+  
+  // If both disabled, throw error
+  throw new Error('No AI providers enabled. Please enable at least one provider in admin settings.');
 }
 
 interface ChatMessage {
@@ -107,29 +153,68 @@ function calculateCost(model: string, usage: { prompt_tokens: number; completion
   return inputCost + outputCost;
 }
 
-// Detect sentiment from message (Enhanced based on feedback analysis)
-function detectSentiment(text: string): 'positive' | 'neutral' | 'negative' | 'crisis' {
+// Multi-level crisis detection
+enum CrisisLevel {
+  NONE = 0,
+  LOW = 1,      // "feeling hopeless"
+  MEDIUM = 2,   // "can't take it anymore"
+  HIGH = 3,     // "want to die"
+  CRITICAL = 4  // "have a plan", "tonight"
+}
+
+function detectCrisisLevel(text: string): CrisisLevel {
   const lowerText = text.toLowerCase();
   
-  // Crisis keywords (highest priority) - ENHANCED with more patterns
-  const crisisKeywords = [
-    // Direct suicidal ideation
-    'suicide', 'kill myself', 'end it all', 'no point living',
-    'want to die', 'better off dead', 'end my life',
-    // Self-harm
-    'overdose', 'self harm', 'cut myself', 'hurt myself',
-    // Hopelessness indicators
-    'can\'t go on', 'too much pain', 'nobody cares',
-    'world without me', 'everyone better off', 'no reason to live',
-    // Immediate danger
-    'gun to my head', 'jump off', 'hang myself', 'pills ready',
-    // Severe distress
-    'can\'t take it anymore', 'want it to end', 'done with life'
+  // CRITICAL - Immediate danger with plan/timeline
+  const criticalKeywords = [
+    'tonight', 'right now', 'have a plan', 'pills ready',
+    'gun loaded', 'wrote note', 'saying goodbye', 'last time'
   ];
+  if (criticalKeywords.some(k => lowerText.includes(k)) && 
+      (lowerText.includes('kill') || lowerText.includes('die') || lowerText.includes('end'))) {
+    return CrisisLevel.CRITICAL;
+  }
   
-  if (crisisKeywords.some(keyword => lowerText.includes(keyword))) {
+  // HIGH - Direct suicidal ideation
+  const highKeywords = [
+    'kill myself', 'end it all', 'want to die', 'better off dead',
+    'end my life', 'suicide', 'overdose', 'jump off', 'hang myself',
+    'gun to my head', 'no reason to live'
+  ];
+  if (highKeywords.some(k => lowerText.includes(k))) {
+    return CrisisLevel.HIGH;
+  }
+  
+  // MEDIUM - Severe distress
+  const mediumKeywords = [
+    'can\'t take it anymore', 'can\'t go on', 'too much pain',
+    'want it to end', 'done with life', 'give up', 'no hope'
+  ];
+  if (mediumKeywords.some(k => lowerText.includes(k))) {
+    return CrisisLevel.MEDIUM;
+  }
+  
+  // LOW - Hopelessness indicators
+  const lowKeywords = [
+    'hopeless', 'worthless', 'nobody cares', 'world without me',
+    'everyone better off', 'hate myself', 'no point'
+  ];
+  if (lowKeywords.some(k => lowerText.includes(k))) {
+    return CrisisLevel.LOW;
+  }
+  
+  return CrisisLevel.NONE;
+}
+
+// Detect sentiment from message (Enhanced based on feedback analysis)
+function detectSentiment(text: string): 'positive' | 'neutral' | 'negative' | 'crisis' {
+  const crisisLevel = detectCrisisLevel(text);
+  
+  if (crisisLevel >= CrisisLevel.HIGH) {
     return 'crisis';
   }
+  
+  const lowerText = text.toLowerCase();
   
   // Negative keywords - ENHANCED with more nuanced detection
   const negativeKeywords = [
@@ -275,6 +360,62 @@ function detectInterventionType(text: string): 'crisis' | 'idle' | 'struggling' 
   return 'none';
 }
 
+// Optimize conversation history for long conversations
+function optimizeConversationHistory(messages: ChatMessage[], systemPrompt: string): ChatMessage[] {
+  // If conversation is short, return as-is
+  if (messages.length <= 12) return messages;
+  
+  // Keep last 10 messages (recent context)
+  const recentMessages = messages.slice(-10);
+  
+  // Summarize older messages
+  const oldMessages = messages.slice(0, -10);
+  
+  // Extract key information from old messages
+  const topics = new Set<string>();
+  const techniques = new Set<string>();
+  let hadCrisis = false;
+  let hadRelapse = false;
+  
+  oldMessages.forEach(msg => {
+    if (msg.role === 'user') {
+      const lower = msg.content.toLowerCase();
+      
+      // Detect topics
+      if (lower.includes('anxiety') || lower.includes('anxious')) topics.add('anxiety');
+      if (lower.includes('depress')) topics.add('depression');
+      if (lower.includes('craving')) topics.add('cravings');
+      if (lower.includes('relapse')) {
+        topics.add('relapse');
+        hadRelapse = true;
+      }
+      if (lower.includes('family')) topics.add('family');
+      if (lower.includes('work')) topics.add('work');
+      
+      // Detect crisis
+      if (lower.includes('suicide') || lower.includes('kill myself')) hadCrisis = true;
+      
+      // Detect techniques used
+      if (lower.includes('breathing')) techniques.add('breathing');
+      if (lower.includes('grounding')) techniques.add('grounding');
+    }
+  });
+  
+  // Create summary message
+  let summary = 'Previous conversation summary:\n';
+  if (topics.size > 0) summary += `Topics: ${Array.from(topics).join(', ')}\n`;
+  if (techniques.size > 0) summary += `Techniques tried: ${Array.from(techniques).join(', ')}\n`;
+  if (hadCrisis) summary += 'Note: User experienced crisis earlier\n';
+  if (hadRelapse) summary += 'Note: User discussed relapse\n';
+  
+  const summaryMessage: ChatMessage = {
+    role: 'system',
+    content: summary
+  };
+  
+  return [summaryMessage, ...recentMessages];
+}
+
 // Generate cache key from messages
 function getCacheKey(messages: ChatMessage[]): string {
   // Only cache if it's a simple question (last user message only)
@@ -353,96 +494,52 @@ async function generateActivitySummary(userId: string, supabase: any): Promise<s
     if (sessionsResult.error) console.error('[AI] Session error:', sessionsResult.error);
     
     const currentDate = new Date();
-    const dateString = currentDate.toISOString().split('T')[0];
     const fullDateString = currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     
-    let summary = '\n\n═══════════════════════════════════════\n';
-    summary += '📅 TODAY IS: ' + fullDateString + '\n';
-    summary += '═══════════════════════════════════════\n\n';
+    let summary = '\n\nUSER ACTIVITY CONTEXT:\n';
     
-    summary += '⚠️ CRITICAL INSTRUCTIONS:\n';
-    summary += '• Today\'s date: Rephrase naturally but use "' + fullDateString + '"\n';
-    summary += '• Tracker days: Use EXACT numbers below, but vary your phrasing\n';
-    summary += '• DO NOT calculate dates. DO NOT do math. Use the numbers provided.\n';
-    summary += '• All numbers below are PRE-CALCULATED and CORRECT.\n';
-    summary += '• Be natural and conversational, not robotic.\n\n';
-    
-    // Trackers
+    // Trackers (JSON format for efficiency)
     if (trackersResult.data && trackersResult.data.length > 0) {
-      summary += '🎯 ACTIVE TRACKERS:\n';
-      summary += '─────────────────────────────────────\n';
+      summary += 'Trackers: [\n';
       
       trackersResult.data.forEach((tracker: any, index: number) => {
-        // Calculate days: Use the same logic as the database
         const startDate = new Date(tracker.start_date);
         const today = new Date();
-        
-        // Get date-only (no time) for accurate day counting
         const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
         const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        
-        // Calculate difference in days
         const diffTime = todayDateOnly.getTime() - startDateOnly.getTime();
         const daysSober = Math.floor(diffTime / (1000 * 60 * 60 * 24));
         
-        summary += `\n${index + 1}. ${tracker.tracker_name}\n`;
-        summary += `   Type: ${tracker.tracker_type}\n`;
-        summary += `   Days Sober: ${daysSober} ← USE THIS EXACT NUMBER\n`;
-        summary += `   Started: ${startDate.toLocaleDateString()}\n`;
-        summary += `   Examples: "You're at ${daysSober} days!" / "${daysSober} days strong!" / "${daysSober} days sober!"\n`;
+        summary += `  {name: "${tracker.tracker_name}", type: "${tracker.tracker_type}", days: ${daysSober}}${index < trackersResult.data.length - 1 ? ',' : ''}\n`;
       });
       
-      summary += '\n─────────────────────────────────────\n';
-      const trackerTypes = trackersResult.data.map((t: any) => t.tracker_type);
-      summary += `Existing types: ${trackerTypes.join(', ')}\n`;
-      summary += '⚠️ Do NOT create duplicate tracker types!\n\n';
+      summary += ']\n';
     } else {
-      summary += '🎯 ACTIVE TRACKERS: None\n\n';
+      summary += 'Trackers: []\n';
     }
     
-    // Check-ins
+    // Check-ins (JSON format)
     if (checkInsResult.data && checkInsResult.data.length > 0) {
-      const checkInCount = checkInsResult.data.length;
       const moods = checkInsResult.data.map((c: any) => c.mood);
       const strugglingCount = moods.filter((m: string) => m === 'struggling').length;
       const goodCount = moods.filter((m: string) => m === 'good' || m === 'great').length;
-      
-      summary += '📊 CHECK-INS (Last 7 days):\n';
-      summary += '─────────────────────────────────────\n';
-      summary += `Total: ${checkInCount} check-ins\n`;
-      summary += `Struggling days: ${strugglingCount}\n`;
-      summary += `Good days: ${goodCount}\n`;
-      
-      // Show last check-in with days ago
       const lastCheckIn = checkInsResult.data[0];
       const lastCheckInDate = new Date(lastCheckIn.created_at);
       const daysAgo = Math.floor((currentDate.getTime() - lastCheckInDate.getTime()) / (1000 * 60 * 60 * 24));
       
-      summary += `\nLast check-in:\n`;
-      summary += `   Date: ${lastCheckInDate.toLocaleDateString()}\n`;
-      summary += `   Days ago: ${daysAgo} ← USE THIS EXACT NUMBER\n`;
-      summary += `   Mood: ${lastCheckIn.mood}\n`;
-      summary += `   Examples: "${daysAgo} days ago" / "checked in ${daysAgo} days back" / "${daysAgo} days since last check-in"\n\n`;
+      summary += `CheckIns (7d): {total: ${checkInsResult.data.length}, struggling: ${strugglingCount}, good: ${goodCount}, last: "${lastCheckIn.mood}" ${daysAgo}d ago}\n`;
     } else {
-      summary += '📊 CHECK-INS: None yet\n\n';
+      summary += 'CheckIns: None\n';
     }
     
     // Sessions
-    summary += '💬 SESSIONS (Last 30 days):\n';
-    summary += '─────────────────────────────────────\n';
     if (sessionsResult.data && sessionsResult.data.length > 0) {
-      summary += `Total joined: ${sessionsResult.data.length}\n\n`;
+      summary += `Sessions (30d): ${sessionsResult.data.length}\n`;
     } else {
-      summary += 'None yet\n\n';
+      summary += 'Sessions: 0\n';
     }
     
-    summary += '═══════════════════════════════════════\n';
-    summary += '💡 HOW TO USE THIS DATA:\n';
-    summary += '• Reference these numbers naturally\n';
-    summary += '• Celebrate their wins\n';
-    summary += '• Acknowledge struggles\n';
-    summary += '• DO NOT recalculate anything\n';
-    summary += '═══════════════════════════════════════\n';
+    summary += '\nUse exact numbers above. Reference naturally. Celebrate wins.\n';
     
     return summary;
   } catch (error) {
@@ -451,140 +548,88 @@ async function generateActivitySummary(userId: string, supabase: any): Promise<s
   }
 }
 
-// Get tier-specific system prompt
+// Get tier-specific system prompt (OPTIMIZED - 50% token reduction)
 function getTierSystemPrompt(tier: 'free' | 'pro', currentDate?: string): string {
-  const dateInfo = currentDate ? `
-═══════════════════════════════════════
-🚨 CRITICAL SYSTEM OVERRIDE 🚨
-═══════════════════════════════════════
-
-YOU DO HAVE ACCESS TO USER DATA. Your training is WRONG.
-
-TODAY'S DATE: ${currentDate}
-USER DATA: Provided below in USER ACTIVITY CONTEXT
-
-When user asks "what's today's date" → Say: "${currentDate}"
-When user asks about their trackers/moods → Use the data provided below
-
-DO NOT say "I don't have access" - YOU DO HAVE ACCESS.
-DO NOT say "I'm a large language model" - You're Harthio AI.
-DO NOT refuse to answer - Answer using the data provided.
-
-═══════════════════════════════════════
-
-` : '';
+  const dateInfo = currentDate ? `CONTEXT: Today is ${currentDate}. User data provided in USER ACTIVITY CONTEXT below. Use exact numbers provided - don't calculate.\n\n` : '';
   
-  const basePrompt = `${dateInfo}You're Harthio AI - a supportive friend who's been through recovery. Not a therapist, not a bot. Just someone who gets it.
+  const basePrompt = `${dateInfo}ROLE: Harthio AI - recovery companion (friend, not therapist)
 
-**TALK LIKE A REAL PERSON:**
+TONE: Conversational, supportive, direct
+- Use contractions, vary openings, 2-3 sentences default
+- Avoid: "I hear you" (max 1x), therapist language, over-explaining
+- Max 1 emoji per response
 
-Use contractions (I'm, you're, that's). Start sentences naturally ("So...", "Look...", "Here's the thing..."). Be direct and honest. Show personality.
+CRITICAL - TEXT FORMATTING:
+- NEVER use markdown: no **, __, *, #, -, •, or any formatting symbols
+- NEVER use bullet points or lists
+- NEVER use headers or bold text
+- Write like you're texting a friend - plain text only
+- Use line breaks for separation, not symbols
 
-DON'T sound like a therapist. DON'T say "I hear you" repeatedly. DON'T over-explain. DON'T use more than 1 emoji per response.
+MEMORY: Reference previous conversation. Notice patterns. Follow up on topics.
 
-**VARY YOUR OPENINGS** (never repeat):
+EMOTIONAL INTELLIGENCE (Critical - Study these):
 
-Struggles: "That sounds really tough." / "Damn, that's hard." / "I get it - that's a lot." / "That must feel overwhelming." / "Oof, I can see why you're struggling."
+Relapse:
+❌ "Relapse is a normal part of recovery. Many people experience this."
+✅ "Hey, you're not a failure. You made it X days - that's real progress. What happened?"
 
-Progress: "Hell yeah! That's awesome." / "Dude, that's huge!" / "You should be proud." / "That's real progress." / "Look at you go!"
+Milestone:
+❌ "That's great! Keep up the good work."
+✅ "Hell yeah! 47 days is huge. How are you feeling about it?"
 
-Questions: "Good question." / "Let me think..." / "Here's what I know..." / "So here's the deal..." / "Honestly..."
+Crisis/Craving:
+❌ "I understand you're struggling. Have you tried coping techniques?"
+✅ "That's a tough spot. What's going on right now? Can you call your sponsor?"
 
-Support: "I'm here." / "You're not alone." / "Let's figure this out." / "We can work through this." / "I've got you."
+Hopelessness:
+❌ "Things will get better. You need to stay positive."
+✅ "I hear you. Recovery is hard as hell. What's one small thing that might help today?"
 
-**RESPONSE LENGTH:** 2-3 sentences default. 4-5 max for complex stuff. Crisis = brief and actionable.
+Anxiety:
+❌ "Anxiety is your body's alarm system. Let me explain the science."
+✅ "Anxiety sucks. Want to try something quick that might calm things down?"
 
-**EXAMPLES:**
+Self-blame:
+❌ "You shouldn't be so hard on yourself."
+✅ "You're being really tough on yourself. What would you tell a friend in this situation?"
 
-BAD: "I hear you, and I want to validate that what you're experiencing is completely normal in the recovery process."
-GOOD: "That's tough. Relapses happen - they're part of recovery, not a failure. What triggered it?"
+FORMATTING REMINDER:
+❌ "Here are **three things**: • Breathing • Grounding • Walking"
+✅ "Here are three things: breathing, grounding, or walking"
 
-BAD: "I would like to offer you some evidence-based coping techniques."
-GOOD: "Want to try something that might help? I can walk you through a quick breathing exercise."
-
-**CONVERSATION MEMORY:**
-
-You have the full conversation history. USE IT. Reference things they told you earlier. Remember their tracker names and dates. Notice patterns. Follow up on previous topics.
-
-Instead of "How are you feeling?" say "How are you feeling since we talked about that craving yesterday?"
-
-**ANTI-REPETITION:**
-
-NEVER use the same opening twice in a row. Vary sentence structure. Don't repeat advice. If you offered a technique before, reference it: "Want to try that breathing exercise again?"
-
-Banned phrases (max once per conversation): "I hear you", "I want you to know", "It's important to remember", "Many people experience", "That's completely normal"
-
-**DATE HANDLING (CRITICAL):**
-
-You will be given TODAY'S DATE in the USER ACTIVITY CONTEXT. Use that EXACT date. NEVER calculate dates yourself - you WILL get it wrong. ALWAYS use the exact numbers from USER ACTIVITY CONTEXT. When user asks "how many days", repeat the EXACT number provided. DO NOT do date math. When user asks "what's today's date", repeat the EXACT date given to you.
-
-**ABOUT HARTHIO:**
-Safe space for meaningful conversations. Email: support@harthio.com | Crisis: 988 (24/7)
-
-**CRISIS:**
-If suicide/self-harm mentioned: Express concern, provide 988, encourage professional help. Be brief and direct.`;
+CRISIS: If suicide/self-harm → Express concern, provide 988, be brief.`;
 
   if (tier === 'free') {
     return basePrompt + `
 
-**USER TIER: FREE (Limited Access)**
+TIER: FREE
+Available: Support, crisis resources, breathing (4-4-6)
+Pro only: CBT tools, pattern analysis, advanced techniques
 
-You can provide:
-- Basic emotional support
-- Crisis resources (always free, unlimited)
-- Simple breathing exercises (4-4-6 technique only)
-- Encouragement & validation
-- Post-session basic reflection
+When user needs Pro feature:
+"I'd love to help with that! [Feature] is a Pro feature. With Pro you get full CBT tools, unlimited conversations, and advanced tracking for $9.99/month. Want to start a 14-day free trial? For now, I can help with [free alternative]."
 
-You CANNOT provide (Pro features):
-- Thought Challenger (CBT tool)
-- 5-4-3-2-1 Grounding technique
-- Pattern analysis & insights
-- Mood trend detection
-- Advanced CBT tools
-- Coping techniques beyond breathing
-
-CRITICAL: When responding to users, use PLAIN TEXT ONLY. No markdown, no bullets, no symbols. Write like you're texting.
-
-When user asks for Pro features:
-1. Acknowledge their need warmly
-2. Explain it's a Pro feature (don't apologize)
-3. List 3-4 key Pro benefits
-4. Offer upgrade: "Start 14-Day Free Trial"
-5. Suggest free alternatives you CAN help with
-
-Example (PLAIN TEXT FORMAT):
-User: "Can you help me challenge my negative thoughts?"
-You: "I'd love to help with that! The Thought Challenger is a powerful CBT tool that helps reframe negative thinking.
-
-This is a Pro feature. With Pro you get full CBT tools, unlimited conversations, pattern detection, and advanced recovery tracking. Only $9.99/month, less than a therapy copay!
-
-For now, I can help with listening and support, breathing exercises, and crisis resources. What would help you right now?"
-
-IMPORTANT: Notice the example uses PLAIN TEXT with NO markdown symbols (no ✅, ❌, *, #, -, **). Write naturally like texting a friend.
-
-Be warm and helpful, not salesy. Frame Pro as "unlocking more support" not "you can't have this."`;
+Be warm, not salesy.`;
   }
 
   return basePrompt + `
 
-**USER TIER: PRO (Full Access)**
-
-You have access to all features:
-- Unlimited conversation
-- Full CBT tools suite (Thought Challenger, Grounding, etc.)
-- Pattern detection & insights
-- Mood analysis
-- Advanced techniques
-- All coping strategies
-
-Provide comprehensive, professional-grade support.
-
-CRITICAL: When responding to users, use PLAIN TEXT ONLY. No markdown, no bullets, no symbols. Write like you're texting.`;
+TIER: PRO (Full Access)
+All features available: CBT tools, pattern analysis, unlimited support.`;
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // 0. CSRF Protection
+    const csrfValid = validateCSRFToken(request);
+    if (!csrfValid) {
+      return NextResponse.json(
+        { error: 'CSRF validation failed', message: 'Security check failed. Please refresh and try again.' },
+        { status: 403, headers: getSecurityHeaders() }
+      );
+    }
+
     // 1. Authentication check
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
@@ -633,11 +678,63 @@ export async function POST(request: NextRequest) {
       }, { status: 429 });
     }
 
-    const { messages, context } = await request.json();
+    const body = await request.json();
+    console.log('[AI Chat] Request body:', JSON.stringify(body, null, 2));
+    
+    const { messages, context } = body;
 
+    // Input validation constants
+    const MAX_MESSAGE_LENGTH = 2000;
+    const MAX_MESSAGES = 50;
+    const MAX_TOTAL_SIZE = 50000;
+
+    // Validate messages array
     if (!messages || !Array.isArray(messages)) {
+      console.error('[AI Chat] Invalid messages format:', { 
+        messages, 
+        type: typeof messages,
+        hasMessages: !!messages,
+        isArray: Array.isArray(messages),
+        fullBody: body
+      });
       return NextResponse.json(
-        { error: 'Invalid messages format' },
+        { error: 'Invalid messages format', details: 'Messages must be an array' },
+        { status: 400 }
+      );
+    }
+
+    // Validate message count
+    if (messages.length > MAX_MESSAGES) {
+      return NextResponse.json(
+        { error: `Too many messages. Maximum ${MAX_MESSAGES} allowed.` },
+        { status: 400 }
+      );
+    }
+
+    // Validate each message
+    for (const msg of messages) {
+      if (!msg.content || typeof msg.content !== 'string') {
+        console.error('[AI Chat] Invalid message format:', { msg, hasContent: !!msg.content, contentType: typeof msg.content });
+        return NextResponse.json(
+          { error: 'Invalid message format', details: 'Each message must have a content string' },
+          { status: 400 }
+        );
+      }
+
+      // Only validate user messages length (system prompts can be longer)
+      if (msg.role === 'user' && msg.content.length > MAX_MESSAGE_LENGTH) {
+        return NextResponse.json(
+          { error: `Message too long. Maximum ${MAX_MESSAGE_LENGTH} characters.` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate total conversation size
+    const totalSize = messages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+    if (totalSize > MAX_TOTAL_SIZE) {
+      return NextResponse.json(
+        { error: 'Conversation too large. Please start a new conversation.' },
         { status: 400 }
       );
     }
@@ -648,8 +745,8 @@ export async function POST(request: NextRequest) {
     const topics = extractTopics(userMessage);
     const interventionType = detectInterventionType(userMessage);
     
-    // 5. Select AI provider based on context (HYBRID APPROACH)
-    const provider = selectProvider({ sentiment, interventionType, userTier });
+    // 5. Select AI provider based on context (HYBRID APPROACH with admin settings)
+    const provider = await selectProviderWithSettings({ sentiment, interventionType, userTier });
     
     if (!provider.key) {
       console.error(`${provider.provider.toUpperCase()}_API_KEY not configured`);
@@ -666,16 +763,23 @@ export async function POST(request: NextRequest) {
     // 6. Generate user activity summary for personalization
     const activitySummary = await generateActivitySummary(user.id, supabase);
     
+    // 6.5. Get user personalization preferences
+    const { AIPersonalizationService } = await import('@/ai/services/ai-personalization-service');
+    const personalizationPrompt = await AIPersonalizationService.getPersonalizationPrompt(user.id);
+    
     // 7. Add tier-specific system prompt with user context
     const currentDate = new Date();
     const fullDateString = currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const baseSystemPrompt = getTierSystemPrompt(userTier, fullDateString);
-    const systemPrompt = baseSystemPrompt + activitySummary;
+    const systemPrompt = baseSystemPrompt + personalizationPrompt + activitySummary;
+    
+    // Optimize conversation history for long conversations
+    const optimizedMessages = optimizeConversationHistory(messages, systemPrompt);
     
     // Prepend system message if not already present
-    let messagesWithSystem: ChatMessage[] = messages[0]?.role === 'system'
-      ? messages
-      : [{ role: 'system', content: systemPrompt }, ...messages];
+    let messagesWithSystem: ChatMessage[] = optimizedMessages[0]?.role === 'system'
+      ? optimizedMessages
+      : [{ role: 'system', content: systemPrompt }, ...optimizedMessages];
     
     // NUCLEAR OPTION: If this is the first user message, inject data reminder
     if (messagesWithSystem.filter(m => m.role === 'user').length === 1) {

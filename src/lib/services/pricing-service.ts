@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 export interface PricingData {
   pro: {
@@ -50,7 +51,7 @@ export class PricingService {
         .single();
 
       if (error || !data) {
-        console.warn('Pricing not found in database, using defaults');
+        logger.warn('Pricing not found in database, using defaults');
         cachedPricing = DEFAULT_PRICING;
         lastFetch = Date.now();
         return DEFAULT_PRICING;
@@ -60,7 +61,7 @@ export class PricingService {
       lastFetch = Date.now();
       return cachedPricing;
     } catch (error) {
-      console.error('Error fetching pricing:', error);
+      logger.error('Error fetching pricing', error);
       return DEFAULT_PRICING;
     }
   }

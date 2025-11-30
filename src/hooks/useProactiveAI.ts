@@ -34,7 +34,7 @@ export function useSessionBrowsingDetection(isDialogOpen: boolean = false) {
 
     // Start timer when user lands on sessions page
     timerRef.current = setTimeout(() => {
-      detectSessionBrowsing(user.id, 180);
+      detectSessionBrowsing((user as any).id, 180);
     }, 180000); // 3 minutes
 
     return () => {
@@ -70,7 +70,7 @@ export function useIdleDetection() {
     const checkIdle = () => {
       const idleTime = Math.floor((Date.now() - lastActivityRef.current) / 1000);
       if (idleTime >= 300) { // 5 minutes idle
-        detectIdleOnHome(user.id, idleTime);
+        detectIdleOnHome((user as any).id, idleTime);
       }
     };
 
@@ -108,7 +108,7 @@ export function useNoCheckinsDetection() {
     
     // Check after 5 seconds of app being open
     setTimeout(() => {
-      detectNoCheckins(user.id);
+      detectNoCheckins((user as any).id);
     }, 5000);
   }, [user]);
 }
@@ -119,7 +119,7 @@ export function useTriggerResetDetection() {
 
   return async () => {
     if (!user) return;
-    await detectMultipleResets(user.id);
+    await detectMultipleResets((user as any).id);
   };
 }
 
@@ -129,7 +129,7 @@ export function useTriggerMoodChange() {
 
   return async (fromMood: string, toMood: string) => {
     if (!user) return;
-    await detectMoodChange(user.id, fromMood, toMood);
+    await detectMoodChange((user as any).id, fromMood, toMood);
   };
 }
 
@@ -139,7 +139,7 @@ export function useTriggerSessionEnded() {
 
   return async (sessionId: string) => {
     if (!user) return;
-    await detectSessionEnded(user.id, sessionId);
+    await detectSessionEnded((user as any).id, sessionId);
   };
 }
 
@@ -155,7 +155,7 @@ export function useProgressViewDetection() {
 
     // Trigger after 30 seconds of viewing progress
     timerRef.current = setTimeout(() => {
-      detectProgressView(user.id, 30);
+      detectProgressView((user as any).id, 30);
     }, 30000); // 30 seconds
 
     return () => {

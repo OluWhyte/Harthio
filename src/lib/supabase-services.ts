@@ -81,7 +81,8 @@ export const topicService = {
         // 2. Session has started AND has participants
         // Hide if: Session has started WITHOUT participants
         if (startTime <= now && !hasParticipants) {
-          console.log(`🚫 Hiding session "${topic.title}" - started without participants`);
+          // Silently filter out expired sessions without participants
+          // (No need to log this - it's expected behavior)
           return false;
         }
         
@@ -2394,15 +2395,27 @@ export const dbUtils = {
             .delete()
             .in("id", topicIds);
 
-          if (deleteError) throw deleteError;
+          if (deleteError) {
+            // Silently fail if RLS policy prevents deletion
+            // This is expected for non-admin users
+            if (deleteError.code === '42501') {
+              // RLS policy violation - user doesn't have permission
+              // This is fine, admin cleanup will handle it
+              return;
+            }
+            throw deleteError;
+          }
 
           console.log(
             `Cleaned up ${topicIds.length} expired topics without participants`
           );
         }
       }
-    } catch (error) {
-      console.error("Error cleaning up expired topics:", error);
+    } catch (error: any) {
+      // Only log non-RLS errors
+      if (error?.code !== '42501') {
+        console.error("Error cleaning up expired topics:", error);
+      }
     }
   },
 };

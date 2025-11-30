@@ -6,6 +6,8 @@
  * Based on WebRTC best practices and TestRTC methodology
  */
 
+import { logger } from './logger';
+
 export interface ConnectivityTestResult {
   overall: 'excellent' | 'good' | 'fair' | 'poor' | 'failed';
   score: number; // 0-100
@@ -37,7 +39,7 @@ export class WebRTCConnectivityTest {
    * @param timeout - Maximum time to wait for all tests (default: 30 seconds)
    */
   async runConnectivityTests(timeout: number = 30000): Promise<ConnectivityTestResult> {
-    console.log('🔍 Starting WebRTC connectivity tests...');
+    logger.info('Starting WebRTC connectivity tests');
     
     this.abortController = new AbortController();
     const startTime = Date.now();
@@ -89,7 +91,7 @@ export class WebRTCConnectivityTest {
         timestamp: Date.now()
       };
 
-      console.log('✅ WebRTC connectivity tests completed:', {
+      logger.info('WebRTC connectivity tests completed', {
         overall,
         score,
         duration: Date.now() - startTime
@@ -98,7 +100,7 @@ export class WebRTCConnectivityTest {
       return result;
 
     } catch (error) {
-      console.error('❌ WebRTC connectivity tests failed:', error);
+      logger.error('WebRTC connectivity tests failed', error);
       
       return {
         overall: 'failed',
@@ -239,7 +241,7 @@ export class WebRTCConnectivityTest {
     const startTime = Date.now();
     
     try {
-      console.log('🔄 Fetching TURN credentials from backend API...');
+      logger.info('Fetching TURN credentials from backend API');
       
       // Fetch dynamic TURN credentials from backend API
       let turnServers: Array<{urls: string | string[], username: string, credential: string}> = [];
@@ -258,18 +260,18 @@ export class WebRTCConnectivityTest {
               const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
               return urls.some((url: string) => url.startsWith('turn:') || url.startsWith('turns:'));
             });
-            console.log(`✅ Fetched ${turnServers.length} TURN servers from backend`);
+            logger.info(`Fetched ${turnServers.length} TURN servers from backend`);
           }
         } else {
-          console.warn('⚠️ Backend API returned error:', response.status);
+          logger.warn('Backend API returned error', { status: response.status });
         }
       } catch (apiError) {
-        console.warn('⚠️ Failed to fetch from backend API, using fallback:', apiError);
+        logger.warn('Failed to fetch from backend API, using fallback', apiError);
       }
       
       // Fallback to public TURN servers if API fails
       if (turnServers.length === 0) {
-        console.log('📌 Using fallback public TURN servers');
+        logger.info('Using fallback public TURN servers');
         turnServers = [
           {
             urls: 'turn:openrelay.metered.ca:80',
@@ -293,7 +295,7 @@ export class WebRTCConnectivityTest {
         };
       }
 
-      console.log(`🧪 Testing ${turnServers.length} TURN servers...`);
+      logger.info(`Testing ${turnServers.length} TURN servers`);
       const testPromises = turnServers.map(server => this.testSingleTURNServer(server));
       const results = await Promise.allSettled(testPromises);
       
@@ -374,7 +376,7 @@ export class WebRTCConnectivityTest {
         mediaAccessible = true;
       } catch (error) {
         // Media access failed - this is common and not necessarily a problem
-        console.log('Media access test (expected to fail on first visit):', error);
+        logger.debug('Media access test (expected to fail on first visit)', { error });
       } finally {
         // Clean up stream
         if (stream) {
@@ -614,7 +616,7 @@ export class WebRTCConnectivityTest {
 
   private async testSingleTURNServer(turnServer: any): Promise<boolean> {
     return new Promise((resolve) => {
-      console.log('🧪 Testing TURN server:', turnServer.urls);
+      logger.debug('Testing TURN server', { urls: turnServer.urls });
       
       const pc = new RTCPeerConnection({
         iceServers: [turnServer],
@@ -627,7 +629,7 @@ export class WebRTCConnectivityTest {
       const timeout = setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          console.log(`⏱️ TURN test timeout for ${turnServer.urls} (found ${candidatesFound} candidates, 0 relay)`);
+          logger.debug(`TURN test timeout for ${turnServer.urls}`, { candidatesFound, relay: 0 });
           pc.close();
           resolve(false);
         }
@@ -636,32 +638,32 @@ export class WebRTCConnectivityTest {
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           candidatesFound++;
-          console.log(`📡 ICE candidate for ${turnServer.urls}:`, event.candidate.candidate.substring(0, 50) + '...');
+          logger.debug(`ICE candidate for ${turnServer.urls}`, { candidate: event.candidate.candidate.substring(0, 50) });
           
           if (!resolved && event.candidate.candidate.includes('relay')) {
             resolved = true;
             clearTimeout(timeout);
-            console.log(`✅ TURN server ${turnServer.urls} is reachable (relay candidate found)`);
+            logger.info(`TURN server ${turnServer.urls} is reachable (relay candidate found)`);
             pc.close();
             resolve(true);
           }
         } else if (!resolved) {
           // ICE gathering complete, no relay found
-          console.log(`❌ TURN server ${turnServer.urls} - ICE gathering complete, no relay candidates (found ${candidatesFound} total)`);
+          logger.debug(`TURN server ${turnServer.urls} - ICE gathering complete, no relay candidates`, { candidatesFound });
         }
       };
 
       pc.onicegatheringstatechange = () => {
-        console.log(`🔄 ICE gathering state for ${turnServer.urls}:`, pc.iceGatheringState);
+        logger.debug(`ICE gathering state for ${turnServer.urls}`, { state: pc.iceGatheringState });
       };
 
       // Create a data channel to trigger ICE gathering
       pc.createDataChannel('test');
       pc.createOffer().then(offer => {
         pc.setLocalDescription(offer);
-        console.log(`📤 Offer created for ${turnServer.urls}, gathering ICE candidates...`);
+        logger.debug(`Offer created for ${turnServer.urls}, gathering ICE candidates`);
       }).catch(error => {
-        console.error(`❌ Failed to create offer for ${turnServer.urls}:`, error);
+        logger.error(`Failed to create offer for ${turnServer.urls}`, error);
         if (!resolved) {
           resolved = true;
           clearTimeout(timeout);

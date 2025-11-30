@@ -48,7 +48,7 @@ export default function PricingPage() {
 
     setIsStartingTrial(true);
     
-    const result = await startFreeTrial(user.id);
+    const result = await startFreeTrial((user as any).id);
     
     if (result.success) {
       toast({

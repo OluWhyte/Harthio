@@ -4,9 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { lenientRateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limiting to prevent DoS
+    const rateLimitResult = lenientRateLimit(request);
+    if (rateLimitResult) {
+      return rateLimitResult;
+    }
+
     const timestamp = Date.now();
     
     return NextResponse.json({

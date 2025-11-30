@@ -13,6 +13,8 @@
  * 5. Credentials expire after a set time (typically 12-24 hours)
  */
 
+import { logger } from './logger';
+
 export interface TURNCredentials {
   urls: string | string[];
   username: string;
@@ -35,13 +37,13 @@ class MeteredTURNService {
   async getTURNCredentials(): Promise<RTCIceServer[]> {
     // Check cache first
     if (this.cachedCredentials && Date.now() < this.cacheExpiry) {
-      console.log('📦 Using cached TURN credentials');
+      logger.debug('Using cached TURN credentials');
       return this.cachedCredentials;
     }
 
     try {
       // Fetch dynamic credentials from backend API
-      console.log('🔄 Fetching fresh TURN credentials from backend...');
+      logger.info('Fetching fresh TURN credentials from backend');
       
       const response = await fetch('/api/turn/credentials', {
         method: 'GET',
@@ -64,8 +66,8 @@ class MeteredTURNService {
       this.cachedCredentials = data.iceServers;
       this.cacheExpiry = data.expiresAt;
       
-      console.log(`✅ Fetched ${data.iceServers.length} TURN servers from backend`);
-      console.log(`⏰ Credentials expire at: ${new Date(data.expiresAt).toLocaleString()}`);
+      logger.info(`Fetched ${data.iceServers.length} TURN servers from backend`);
+      logger.debug(`Credentials expire at: ${new Date(data.expiresAt).toLocaleString()}`);
       
       return data.iceServers;
       
@@ -119,7 +121,7 @@ class MeteredTURNService {
       console.error('❌ Failed to get TURN credentials:', error);
     }
 
-    console.log(`📡 Total ICE servers configured: ${servers.length}`);
+    logger.info(`Total ICE servers configured: ${servers.length}`);
     return servers;
   }
 
@@ -129,7 +131,7 @@ class MeteredTURNService {
   clearCache(): void {
     this.cachedCredentials = null;
     this.cacheExpiry = 0;
-    console.log('🗑️ Cleared TURN credentials cache');
+    logger.debug('Cleared TURN credentials cache');
   }
 }
 

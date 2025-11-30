@@ -25,10 +25,10 @@ interface ModernChatPanelProps {
   onFeedback?: (messageId: string, feedbackType: 'positive' | 'negative', reason?: string, details?: string) => void
 }
 
-export function ModernChatPanel({ 
-  isOpen, 
-  onToggle, 
-  messages = [], 
+export function ModernChatPanel({
+  isOpen,
+  onToggle,
+  messages = [],
   onSendMessage,
   otherUserName = 'Other User',
   otherUserInitials = 'OU',
@@ -45,7 +45,7 @@ export function ModernChatPanel({
   const messageAreaRef = useRef<HTMLDivElement>(null)
   const [feedbackMessageId, setFeedbackMessageId] = useState<string | null>(null)
   const [feedbackGiven, setFeedbackGiven] = useState<Set<string>>(new Set())
-  
+
   // AI mode specific
   const isAIMode = mode === 'ai'
   const displayName = isAIMode ? 'Harthio AI' : otherUserName
@@ -63,14 +63,14 @@ export function ModernChatPanel({
     if (message && onSendMessage) {
       onSendMessage(message)
       setInputValue('')
-      
+
       // Show typing indicator for AI mode
       if (isAIMode) {
         setIsTyping(true)
       }
     }
   }
-  
+
   // Hide typing indicator when new message arrives in AI mode
   useEffect(() => {
     if (isAIMode && messages.length > 0) {
@@ -89,10 +89,10 @@ export function ModernChatPanel({
   }
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
       minute: '2-digit',
-      hour12: false 
+      hour12: false
     })
   }
 
@@ -100,7 +100,7 @@ export function ModernChatPanel({
     <>
       {/* Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-[999] md:hidden"
           onClick={onToggle}
         />
@@ -120,8 +120,8 @@ export function ModernChatPanel({
           // Desktop (> 1024px) - Larger side panel
           'lg:w-[500px]',
           // Animation
-          isOpen 
-            ? 'translate-y-0 md:translate-y-0 md:translate-x-0' 
+          isOpen
+            ? 'translate-y-0 md:translate-y-0 md:translate-x-0'
             : 'translate-y-full md:translate-y-0 md:translate-x-full',
           className
         )}
@@ -142,7 +142,7 @@ export function ModernChatPanel({
             )}>
               {isAIMode ? (
                 <>
-                  <Image
+                  <img
                     src="/logo.svg"
                     alt="Harthio AI"
                     width={40}
@@ -157,7 +157,7 @@ export function ModernChatPanel({
                 displayInitials
               )}
             </div>
-            
+
             {/* User Info */}
             <div className="flex-1 min-w-0">
               <h2 className="text-base md:text-lg font-semibold text-foreground mb-0.5 truncate flex items-center gap-2">
@@ -228,7 +228,7 @@ export function ModernChatPanel({
         )}
 
         {/* Message Area */}
-        <div 
+        <div
           ref={messageAreaRef}
           className={cn(
             "flex-1 overflow-y-auto p-3 md:p-4 lg:p-5",
@@ -243,10 +243,10 @@ export function ModernChatPanel({
               className={cn(
                 'max-w-[85%] md:max-w-[80%]',
                 'animate-in slide-in-from-bottom-2 duration-300',
-                message.sender === 'System' 
-                  ? 'self-center w-full text-center' 
-                  : message.isOwn 
-                    ? 'self-end' 
+                message.sender === 'System'
+                  ? 'self-center w-full text-center'
+                  : message.isOwn
+                    ? 'self-end'
                     : 'self-start'
               )}
             >
@@ -265,7 +265,7 @@ export function ModernChatPanel({
                       isAIMode ? "bg-transparent" : "bg-accent text-accent-foreground text-xs font-bold"
                     )}>
                       {isAIMode ? (
-                        <Image
+                        <img
                           src="/logo.svg"
                           alt="Harthio AI"
                           width={32}
@@ -277,7 +277,7 @@ export function ModernChatPanel({
                       )}
                     </div>
                   )}
-                  
+
                   <div className="flex-1 min-w-0">
                     <div
                       className={cn(
@@ -290,7 +290,7 @@ export function ModernChatPanel({
                             ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'
                             : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'
                       )}
-                      style={{ 
+                      style={{
                         wordBreak: 'break-word',
                         overflowWrap: 'break-word',
                         hyphens: 'auto'
@@ -299,7 +299,7 @@ export function ModernChatPanel({
                       {(() => {
                         const content = message.content.trim();
                         console.log('Message content:', JSON.stringify(content), 'Match:', content === '[UPGRADE_BUTTON]');
-                        
+
                         if (content === '[UPGRADE_BUTTON]') {
                           return (
                             <button
@@ -313,7 +313,7 @@ export function ModernChatPanel({
                         return message.content;
                       })()}
                     </div>
-                    
+
                     <div className={cn(
                       'flex items-center justify-between text-xs mt-1 px-2',
                       message.isOwn ? 'flex-row-reverse' : 'flex-row'
@@ -325,7 +325,7 @@ export function ModernChatPanel({
                         <span className="truncate">{message.isOwn ? 'You' : message.sender}</span>
                         <span className={cn('flex-shrink-0', message.isOwn ? 'mr-2' : 'ml-2')}>{formatTime(message.timestamp)}</span>
                       </div>
-                      
+
                       {/* Feedback buttons for AI messages only */}
                       {!message.isOwn && isAIMode && onFeedback && !feedbackGiven.has(message.id) && (
                         <div className="flex items-center gap-1">
@@ -350,14 +350,14 @@ export function ModernChatPanel({
                           </button>
                         </div>
                       )}
-                      
+
                       {/* Show checkmark if feedback given */}
                       {!message.isOwn && isAIMode && feedbackGiven.has(message.id) && (
                         <span className="text-xs text-green-600">✓ Thanks!</span>
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Avatar for own messages */}
                   {message.isOwn && (
                     <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold flex-shrink-0">
@@ -378,7 +378,7 @@ export function ModernChatPanel({
                 isAIMode ? "bg-transparent" : "bg-accent text-accent-foreground text-xs font-bold"
               )}>
                 {isAIMode ? (
-                  <Image
+                  <img
                     src="/logo.svg"
                     alt="Harthio AI"
                     width={32}
@@ -389,7 +389,7 @@ export function ModernChatPanel({
                   displayInitials
                 )}
               </div>
-              
+
               <div className="p-3 rounded-[18px] rounded-bl-[5px] shadow-sm bg-card border border-border">
                 <div className="flex gap-1">
                   <span className="w-2 h-2 rounded-full bg-muted-foreground/50 animate-bounce [animation-delay:-0.32s]"></span>
@@ -447,7 +447,7 @@ export function ModernChatPanel({
             <Send className="w-4 h-4 md:w-5 md:h-5" />
           </button>
         </div>
-        
+
         {/* AI Disclaimer */}
         {isAIMode && (
           <div className="px-4 py-2 text-center bg-muted/50 border-t border-border">

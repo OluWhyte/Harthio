@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 export interface AdminNotification {
   id: string;
@@ -341,7 +342,7 @@ export class NotificationService {
     });
 
     if (error) {
-      console.error('Failed to log admin action:', error);
+      logger.error('Failed to log admin action', error);
     }
   }
 }

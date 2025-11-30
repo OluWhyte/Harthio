@@ -25,13 +25,14 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
   // Show loading state while checking admin status
   if (isLoading) {
-    return <LoadingSpinner size="lg" text="Loading admin panel..." />;
+    return <LoadingSpinner size="lg" text="Verifying admin access..." />;
   }
 
-  // Redirect non-admins to login
-  if (!adminUser) {
+  // Redirect non-admins to login (but only after loading is complete)
+  if (!adminUser && !isLoading) {
+    console.log('[Admin Layout] No admin user found, redirecting to login');
     window.location.href = '/admin-v2/login';
-    return null;
+    return <LoadingSpinner size="lg" text="Redirecting..." />;
   }
 
   return (

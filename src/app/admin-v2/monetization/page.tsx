@@ -170,7 +170,7 @@ export default function MonetizationPage() {
             description: key === 'credits_enabled' 
               ? 'Enable/disable pay-as-you-go credit system' 
               : 'Platform setting',
-            updated_by: user?.id
+            updated_by: (user as any)?.id
           });
         
         if (insertError) {
@@ -183,7 +183,7 @@ export default function MonetizationPage() {
           .from('platform_settings')
           .update({ 
             setting_value: value, 
-            updated_by: user?.id, 
+            updated_by: (user as any)?.id, 
             updated_at: new Date().toISOString() 
           })
           .eq('setting_key', key);

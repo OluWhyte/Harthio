@@ -1,22 +1,14 @@
 /**
  * CSRF Protection Middleware
  * 
- * Implements Cross-Site Request Forgery protection using the double-submit cookie pattern.
- * This prevents attackers from making unauthorized requests on behalf of authenticated users.
+ * Implements Cross-Site Request Forgery protection using the Double-Submit Cookie pattern.
+ * This is a stateless approach suitable for serverless environments (Next.js).
  * 
  * How it works:
- * 1. Server generates a random CSRF token and stores it in a cookie
- * 2. Client includes this token in request headers for state-changing operations
- * 3. Server validates that the header token matches the cookie token
- * 
- * Usage:
- *   import { validateCSRFToken, generateCSRFToken } from '@/lib/csrf-middleware';
- *   
- *   // In API route:
- *   const csrfValid = await validateCSRFToken(request);
- *   if (!csrfValid) {
- *     return NextResponse.json({ error: 'CSRF token invalid' }, { status: 403 });
- *   }
+ * 1. Server generates a random CSRF token
+ * 2. Server sets this token in a 'csrf-token' cookie (httpOnly=false so JS can read it if needed, or httpOnly=true and provide an endpoint to get it)
+ * 3. Client reads the token (from cookie or endpoint) and sends it in 'x-csrf-token' header
+ * 4. Server validates that the cookie value matches the header value
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -24,97 +16,52 @@ import { logSecurityEvent } from './security-utils';
 import crypto from 'crypto';
 
 const CSRF_TOKEN_LENGTH = 32;
-const CSRF_COOKIE_NAME = 'csrf-token';
-const CSRF_HEADER_NAME = 'x-csrf-token';
-const TOKEN_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
-
-interface CSRFTokenData {
-    token: string;
-    expiresAt: number;
-}
-
-// In-memory store for CSRF tokens (should be Redis in production)
-const tokenStore = new Map<string, CSRFTokenData>();
+export const CSRF_COOKIE_NAME = 'csrf-token';
+export const CSRF_HEADER_NAME = 'x-csrf-token';
 
 /**
  * Generate a cryptographically secure random token
  */
-function generateSecureToken(): string {
+export function generateCSRFToken(): string {
     return crypto.randomBytes(CSRF_TOKEN_LENGTH).toString('base64url');
-}
-
-/**
- * Generate a new CSRF token for a user session
- * 
- * @param userId - The authenticated user's ID
- * @returns The generated CSRF token
- */
-export function generateCSRFToken(userId: string): string {
-    const token = generateSecureToken();
-    const expiresAt = Date.now() + TOKEN_EXPIRY_MS;
-
-    tokenStore.set(userId, { token, expiresAt });
-
-    // Clean up expired tokens periodically
-    cleanupExpiredTokens();
-
-    return token;
 }
 
 /**
  * Validate CSRF token from request
  * 
  * @param request - The Next.js request object
- * @param userId - The authenticated user's ID
  * @returns true if token is valid, false otherwise
  */
-export function validateCSRFToken(request: NextRequest, userId: string): boolean {
-    // Get token from header
+export function validateCSRFToken(request: NextRequest): boolean {
+    // 1. Get token from header
     const headerToken = request.headers.get(CSRF_HEADER_NAME);
 
-    if (!headerToken) {
+    // 2. Get token from cookie
+    const cookieToken = request.cookies.get(CSRF_COOKIE_NAME)?.value;
+
+    // Check if either is missing
+    if (!headerToken || !cookieToken) {
         logSecurityEvent({
             type: 'suspicious_activity',
-            userId,
             ip: request.ip || 'unknown',
             endpoint: request.nextUrl.pathname,
-            details: { reason: 'Missing CSRF token in header' }
+            details: {
+                reason: 'Missing CSRF token',
+                missingHeader: !headerToken,
+                missingCookie: !cookieToken
+            }
         });
         return false;
     }
 
-    // Get stored token for user
-    const storedData = tokenStore.get(userId);
+    // 3. Validate they match
+    // Use timingSafeEqual to prevent timing attacks
+    const headerBuffer = Buffer.from(headerToken);
+    const cookieBuffer = Buffer.from(cookieToken);
 
-    if (!storedData) {
+    if (headerBuffer.length !== cookieBuffer.length || !crypto.timingSafeEqual(headerBuffer, cookieBuffer)) {
         logSecurityEvent({
             type: 'suspicious_activity',
-            userId,
-            ip: request.ip || 'unknown',
-            endpoint: request.nextUrl.pathname,
-            details: { reason: 'No CSRF token found for user' }
-        });
-        return false;
-    }
-
-    // Check if token has expired
-    if (Date.now() > storedData.expiresAt) {
-        tokenStore.delete(userId);
-        logSecurityEvent({
-            type: 'suspicious_activity',
-            userId,
-            ip: request.ip || 'unknown',
-            endpoint: request.nextUrl.pathname,
-            details: { reason: 'CSRF token expired' }
-        });
-        return false;
-    }
-
-    // Validate token matches
-    if (headerToken !== storedData.token) {
-        logSecurityEvent({
-            type: 'suspicious_activity',
-            userId,
             ip: request.ip || 'unknown',
             endpoint: request.nextUrl.pathname,
             details: { reason: 'CSRF token mismatch' }
@@ -127,36 +74,21 @@ export function validateCSRFToken(request: NextRequest, userId: string): boolean
 
 /**
  * Middleware to protect routes from CSRF attacks
- * 
- * @param request - The Next.js request object
- * @param userId - The authenticated user's ID
- * @returns NextResponse with error if CSRF validation fails, null if valid
  */
-export function csrfProtection(request: NextRequest, userId: string): NextResponse | null {
+export function csrfProtection(request: NextRequest): NextResponse | null {
     // Only check CSRF for state-changing methods
     const method = request.method;
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
         return null; // No CSRF check needed for safe methods
     }
 
-    const isValid = validateCSRFToken(request, userId);
+    const isValid = validateCSRFToken(request);
 
     if (!isValid) {
-        logSecurityEvent({
-            type: 'suspicious_activity',
-            userId,
-            ip: request.ip || 'unknown',
-            endpoint: request.nextUrl.pathname,
-            details: {
-                reason: 'CSRF validation failed',
-                method: request.method
-            }
-        });
-
         return NextResponse.json(
             {
                 error: 'CSRF token validation failed',
-                message: 'This request appears to be a Cross-Site Request Forgery attack. Please refresh the page and try again.'
+                message: 'Security check failed. Please refresh the page and try again.'
             },
             { status: 403 }
         );
@@ -165,40 +97,3 @@ export function csrfProtection(request: NextRequest, userId: string): NextRespon
     return null; // Validation passed
 }
 
-/**
- * Clean up expired CSRF tokens from memory
- */
-function cleanupExpiredTokens(): void {
-    const now = Date.now();
-    for (const [userId, data] of tokenStore.entries()) {
-        if (now > data.expiresAt) {
-            tokenStore.delete(userId);
-        }
-    }
-}
-
-/**
- * Get CSRF token for a user (for client-side use)
- * 
- * @param userId - The authenticated user's ID
- * @returns The CSRF token or null if not found
- */
-export function getCSRFToken(userId: string): string | null {
-    const data = tokenStore.get(userId);
-    if (!data || Date.now() > data.expiresAt) {
-        return null;
-    }
-    return data.token;
-}
-
-/**
- * Revoke CSRF token for a user (e.g., on logout)
- * 
- * @param userId - The authenticated user's ID
- */
-export function revokeCSRFToken(userId: string): void {
-    tokenStore.delete(userId);
-}
-
-// Run cleanup every 5 minutes
-setInterval(cleanupExpiredTokens, 5 * 60 * 1000);

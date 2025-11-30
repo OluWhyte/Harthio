@@ -5,6 +5,7 @@ import { emailRateLimit } from '@/lib/rate-limit';
 import { sanitizeError, logSecurityEvent, getSecurityHeaders, sanitizeInput } from '@/lib/security-utils';
 import { InputSanitizer, SecurityLogger } from '@/lib/security/owasp-security-service';
 import { Resend } from 'resend';
+import { validateCSRFToken } from '@/lib/csrf-middleware';
 
 // Validation schema for contact form
 const contactSchema = z.object({
@@ -29,17 +30,26 @@ export async function POST(request: NextRequest) {
     return rateLimitResult;
   }
 
+  // Validate CSRF token
+  const csrfValid = validateCSRFToken(request);
+  if (!csrfValid) {
+    return NextResponse.json(
+      { error: 'CSRF validation failed', message: 'Security check failed. Please refresh and try again.' },
+      { status: 403 }
+    );
+  }
+
   try {
     const body = await request.json();
-    
+
     // Validate the request data
     const validationResult = contactSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Invalid form data',
-          details: validationResult.error.errors 
+          details: validationResult.error.errors
         },
         { status: 400 }
       );
@@ -50,7 +60,7 @@ export async function POST(request: NextRequest) {
     // OWASP: Sanitize inputs to prevent XSS
     const sanitizedUserName = InputSanitizer.sanitizeHTML(sanitizeInput(userName, 100));
     const sanitizedMessage = InputSanitizer.sanitizeHTML(sanitizeInput(message, 500));
-    
+
     // OWASP: Validate email format
     if (!InputSanitizer.isValidEmail(userEmail)) {
       await SecurityLogger.logSecurityEvent({
@@ -76,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Send emails directly using Resend (avoid internal fetch issues)
     const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com';
-    
+
     let adminNotificationSent = false;
     let autoReplySent = false;
 
@@ -90,7 +100,7 @@ export async function POST(request: NextRequest) {
           message: sanitizedMessage,
           appUrl
         });
-        
+
         const adminResult = await resend.emails.send({
           from: process.env.EMAIL_FROM_ADDRESS?.trim() || 'Harthio <no-reply@harthio.com>',
           to: 'tosin@harthio.com',
@@ -98,7 +108,7 @@ export async function POST(request: NextRequest) {
           html: adminTemplate.html,
           text: adminTemplate.text,
         });
-        
+
         adminNotificationSent = !adminResult.error;
         if (adminResult.error) {
           console.error('❌ Admin notification error:', adminResult.error);
@@ -116,7 +126,7 @@ export async function POST(request: NextRequest) {
           topic,
           appUrl
         });
-        
+
         const autoReplyResult = await resend.emails.send({
           from: process.env.EMAIL_FROM_ADDRESS?.trim() || 'Harthio <no-reply@harthio.com>',
           to: userEmail,
@@ -124,7 +134,7 @@ export async function POST(request: NextRequest) {
           html: autoReplyTemplate.html,
           text: autoReplyTemplate.text,
         });
-        
+
         autoReplySent = !autoReplyResult.error;
         if (autoReplyResult.error) {
           console.error('❌ Auto-reply error:', autoReplyResult.error);
@@ -159,25 +169,25 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     const sanitized = sanitizeError(error);
-    
+
     logSecurityEvent({
       type: 'suspicious_activity',
       ip: request.ip || 'unknown',
       endpoint: '/api/contact',
-      details: { 
+      details: {
         error: sanitized.message,
         reason: 'Contact form processing failed'
       }
     });
-    
+
     console.error('❌ Contact form API error:', error);
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: sanitized.message
       },
-      { 
+      {
         status: 500,
         headers: getSecurityHeaders()
       }

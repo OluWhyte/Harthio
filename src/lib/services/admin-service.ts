@@ -5,6 +5,7 @@
 // Provides full admin functionality with real data from the database
 
 import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 import type { 
   DailyDataEntry, 
   SessionActivityEntry, 
@@ -52,7 +53,7 @@ export class AdminService {
       if (error) return false;
       return (data as any)?.role === 'admin' || (data as any)?.role === 'editor';
     } catch (error) {
-      console.error('Error checking admin status:', error);
+      logger.error('Error checking admin status', error);
       return false;
     }
   }
@@ -68,7 +69,7 @@ export class AdminService {
       if (error) return null;
       return (data as any)?.role || null;
     } catch (error) {
-      console.error('Error getting user role:', error);
+      logger.error('Error getting user role', error);
       return null;
     }
   }
@@ -106,7 +107,7 @@ export class AdminService {
 
       return usersWithStats;
     } catch (error) {
-      console.error('Error fetching users:', error);
+      logger.error('Error fetching users', error);
       throw error;
     }
   }
@@ -135,7 +136,7 @@ export class AdminService {
         rating_stats: ratingStats
       };
     } catch (error) {
-      console.error('Error fetching user:', error);
+      logger.error('Error fetching user', error);
       return null;
     }
   }
@@ -152,7 +153,7 @@ export class AdminService {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error searching users:', error);
+      logger.error('Error searching users', error);
       throw error;
     }
   }
@@ -167,7 +168,7 @@ export class AdminService {
       if (error) throw error;
       return count || 0;
     } catch (error) {
-      console.error('Error getting user topic count:', error);
+      logger.error('Error getting user topic count', error);
       return 0;
     }
   }
@@ -182,7 +183,7 @@ export class AdminService {
       if (error) throw error;
       return count || 0;
     } catch (error) {
-      console.error('Error getting user message count:', error);
+      logger.error('Error getting user message count', error);
       return 0;
     }
   }
@@ -235,7 +236,7 @@ export class AdminService {
         overall_average
       };
     } catch (error) {
-      console.error('Error getting user rating stats:', error);
+      logger.error('Error getting user rating stats', error);
       return null;
     }
   }
@@ -285,7 +286,7 @@ export class AdminService {
 
       return topicsWithDetails;
     } catch (error) {
-      console.error('Error fetching topics:', error);
+      logger.error('Error fetching topics', error);
       throw error;
     }
   }
@@ -317,7 +318,7 @@ export class AdminService {
       ]);
 
       if (activeTopics.error) {
-        console.error('Error fetching active topics:', activeTopics.error);
+        logger.error('Error fetching active topics', activeTopics.error);
       }
       
       if (archivedTopics.error) {
@@ -329,7 +330,7 @@ export class AdminService {
                                archivedTopics.error.message?.includes('Could not find a relationship');
         
         if (!isExpectedError) {
-          console.error('Error fetching archived topics:', archivedTopics.error);
+          logger.error('Error fetching archived topics', archivedTopics.error);
         }
       }
 
@@ -374,7 +375,7 @@ export class AdminService {
 
       return topicsWithDetails;
     } catch (error) {
-      console.error('Error fetching all topics including archived:', error);
+      logger.error('Error fetching all topics including archived', error);
       throw error;
     }
   }
@@ -389,7 +390,7 @@ export class AdminService {
       if (error) throw error;
       return count || 0;
     } catch (error) {
-      console.error('Error getting topic message count:', error);
+      logger.error('Error getting topic message count', error);
       return 0;
     }
   }
@@ -429,7 +430,7 @@ export class AdminService {
           error.message?.includes('Could not find a relationship')) {
         return [];
       }
-      console.error('Error fetching archived topics:', error);
+      logger.error('Error fetching archived topics', error);
       return [];
     }
   }
@@ -454,7 +455,7 @@ export class AdminService {
 
       return allTopics.slice(0, limit);
     } catch (error) {
-      console.error('Error fetching all topics including archived:', error);
+      logger.error('Error fetching all topics including archived', error);
       throw error;
     }
   }
@@ -501,7 +502,7 @@ export class AdminService {
 
       return topicsWithDetails;
     } catch (error) {
-      console.error('Error fetching active topics:', error);
+      logger.error('Error fetching active topics', error);
       throw error;
     }
   }
@@ -518,7 +519,7 @@ export class AdminService {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error fetching join requests:', error);
+      logger.error('Error fetching join requests', error);
       return [];
     }
   }
@@ -535,7 +536,7 @@ export class AdminService {
       if (error) throw error;
       return data || [];
     } catch (error) {
-      console.error('Error fetching session presence:', error);
+      logger.error('Error fetching session presence', error);
       return [];
     }
   }
@@ -687,7 +688,7 @@ export class AdminService {
         average_rating: averageRating
       };
     } catch (error) {
-      console.error('Error getting user analytics:', error);
+      logger.error('Error getting user analytics', error);
       throw error;
     }
   }
@@ -721,7 +722,7 @@ export class AdminService {
         total_participants: totalParticipants
       };
     } catch (error) {
-      console.error('Error getting topic analytics:', error);
+      logger.error('Error getting topic analytics', error);
       throw error;
     }
   }
@@ -749,7 +750,7 @@ export class AdminService {
         }))
       };
     } catch (error) {
-      console.error('Error getting message analytics:', error);
+      logger.error('Error getting message analytics', error);
       throw error;
     }
   }
@@ -875,7 +876,7 @@ export class AdminService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error granting admin role:', error);
+      logger.error('Error granting admin role', error);
       throw error;
     }
   }
@@ -889,7 +890,7 @@ export class AdminService {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error revoking admin role:', error);
+      logger.error('Error revoking admin role', error);
       throw error;
     }
   }
@@ -906,7 +907,7 @@ export class AdminService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.warn('Foreign key query failed, trying manual join:', error);
+        logger.warn('Foreign key query failed, trying manual join', { error });
         
         // Fallback: Get admin roles and users separately
         const { data: adminRoles, error: adminError } = await supabase
@@ -938,7 +939,7 @@ export class AdminService {
 
       return data || [];
     } catch (error) {
-      console.error('Error fetching admins:', error);
+      logger.error('Error fetching admins', error);
       // Return empty array instead of throwing to prevent page crashes
       return [];
     }
@@ -978,7 +979,7 @@ export class AdminService {
 
       return usersWithStats;
     } catch (error) {
-      console.error('Error searching users:', error);
+      logger.error('Error searching users', error);
       throw error;
     }
   }
@@ -1025,7 +1026,7 @@ export class AdminService {
           .reduce((sum, [, c]) => sum + (c as number), 0)
       }));
     } catch (error) {
-      console.error('Error getting user growth data:', error);
+      logger.error('Error getting user growth data', error);
       return [];
     }
   }
@@ -1067,7 +1068,7 @@ export class AdminService {
         participants: data.participants
       }));
     } catch (error) {
-      console.error('Error getting session activity data:', error);
+      logger.error('Error getting session activity data', error);
       return [];
     }
   }
@@ -1090,7 +1091,7 @@ export class AdminService {
         percentage: users.length > 0 ? Math.round((count / users.length) * 100) : 0
       }));
     } catch (error) {
-      console.error('Error getting engagement metrics data:', error);
+      logger.error('Error getting engagement metrics data', error);
       return [];
     }
   }
@@ -1137,7 +1138,7 @@ export class AdminService {
         percentage: data?.length > 0 ? Math.round((count / data.length) * 100) : 0
       }));
     } catch (error) {
-      console.error('Error getting topic categories data:', error);
+      logger.error('Error getting topic categories data', error);
       return [];
     }
   }
@@ -1190,7 +1191,7 @@ export class AdminService {
         };
       }
     } catch (error) {
-      console.error('Error exporting user data:', error);
+      logger.error('Error exporting user data', error);
       throw error;
     }
   }
@@ -1255,7 +1256,7 @@ export class AdminService {
         };
       }
     } catch (error) {
-      console.error('Error exporting analytics report:', error);
+      logger.error('Error exporting analytics report', error);
       throw error;
     }
   }
@@ -1301,7 +1302,7 @@ export class AdminService {
         };
       }
     } catch (error) {
-      console.error('Error exporting session data:', error);
+      logger.error('Error exporting session data', error);
       throw error;
     }
   }
@@ -1353,7 +1354,7 @@ export class AdminService {
         };
       }
     } catch (error) {
-      console.error('Error exporting device data:', error);
+      logger.error('Error exporting device data', error);
       throw error;
     }
   }
@@ -1397,11 +1398,11 @@ export class AdminService {
       }
 
       // If view doesn't work, return a default engagement level
-      console.warn('user_footprints view not available, using default engagement level');
+      logger.warn('user_footprints view not available, using default engagement level');
       return { engagement_level: 'Medium' };
 
     } catch (error) {
-      console.warn('Error fetching user engagement metrics:', error);
+      logger.warn('Error fetching user engagement metrics', error);
       // Return a default engagement level as fallback
       return { engagement_level: 'Medium' };
     }
@@ -1446,7 +1447,7 @@ export class AdminService {
         location_history: uniqueLocations
       };
     } catch (error) {
-      console.error('Error getting detailed user footprint:', error);
+      logger.error('Error getting detailed user footprint', error);
       throw error;
     }
   }
@@ -1478,7 +1479,7 @@ export class AdminService {
         activity_type: activity.type
       }));
     } catch (error) {
-      console.error('Error getting user session history:', error);
+      logger.error('Error getting user session history', error);
       return [];
     }
   }
@@ -1680,7 +1681,7 @@ export class AdminService {
 
       return filteredUsers;
     } catch (error) {
-      console.error('Error getting filtered users:', error);
+      logger.error('Error getting filtered users', error);
       throw error;
     }
   }
@@ -1792,7 +1793,7 @@ export class AdminService {
 
       return filteredTopics;
     } catch (error) {
-      console.error('Error getting filtered topics:', error);
+      logger.error('Error getting filtered topics', error);
       throw error;
     }
   }
@@ -1815,7 +1816,7 @@ export class AdminService {
         dateRange: { from: dateFrom, to: dateTo }
       };
     } catch (error) {
-      console.error('Error getting filtered analytics:', error);
+      logger.error('Error getting filtered analytics', error);
       throw error;
     }
   }

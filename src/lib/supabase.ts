@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./database-types";
+import type { Database, Tables } from "./database.types";
 
 // ============================================================================
 // SUPABASE CLIENT CONFIGURATION
@@ -40,14 +40,6 @@ export const supabase = (() => {
         debug: false, // Never debug in production
         storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         storageKey: 'harthio-auth',
-        // Add cookie options for better mobile support
-        cookieOptions: {
-          name: 'harthio-auth',
-          lifetime: 60 * 60 * 24 * 7, // 7 days
-          domain: typeof window !== 'undefined' ? window.location.hostname : undefined,
-          path: '/',
-          sameSite: 'lax', // Better mobile compatibility than 'strict'
-        },
       },
       realtime: {
         params: {
@@ -62,7 +54,7 @@ export const supabase = (() => {
       },
     });
   }
-  return supabaseInstance;
+  return supabaseInstance!;
 })();
 
 // Create a properly typed client for use in services
@@ -78,22 +70,36 @@ export const supabaseClient = supabase as any;
 export type TypedSupabaseClient = typeof supabase;
 
 // Export database type for convenience
-export type { Database } from "./database-types";
+export type { Database, Tables, TablesInsert, TablesUpdate, Enums } from "./database.types";
 
-// Re-export commonly used types
-export type {
-  User,
-  Topic,
-  Message,
-  Rating,
-  TopicWithAuthor,
-  MessageWithSender,
-  UserRatingStats,
-  JoinRequest,
-  RatingValue,
-  ApiResponse,
-  SubscriptionCallback,
-} from "./database-types";
+// Create type aliases from database tables for convenience
+export type User = Tables<'users'>;
+export type Topic = Tables<'topics'>;
+export type Message = Tables<'messages'>;
+export type Rating = Tables<'ratings'>;
+export type JoinRequest = Tables<'join_requests'>;
+export type Notification = Tables<'notifications'>;
+export type UserProfile = Tables<'users'>;
+
+// Composite types for common queries
+export type TopicWithAuthor = Topic & { author: User };
+export type MessageWithSender = Message & { sender: User };
+
+// Helper types
+export type UserRatingStats = {
+  average_rating: number;
+  total_ratings: number;
+};
+
+export type RatingValue = 1 | 2 | 3 | 4 | 5;
+
+export type ApiResponse<T = any> = {
+  data: T | null;
+  error: string | null;
+  success: boolean;
+};
+
+export type SubscriptionCallback<T = any> = (payload: T) => void;
 
 // Temporary workaround: Export supabase with any type to fix dependency issues
 export const supabaseAny = supabase as any;

@@ -39,6 +39,7 @@ export default function EditProfilePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -368,6 +369,7 @@ export default function EditProfilePage() {
               </p>
             </div>
           </div>
+
         </form>
       </div>
     </div>

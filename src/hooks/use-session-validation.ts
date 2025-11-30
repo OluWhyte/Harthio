@@ -77,11 +77,16 @@ export function useSessionValidation(sessionId: string): SessionValidationResult
         const controller = new AbortController();
         validationTimeout = setTimeout(() => controller.abort(), 10000);
 
+        // Get CSRF token
+        const { getCSRFHeaders } = await import('@/lib/csrf-utils');
+        const csrfHeaders = await getCSRFHeaders();
+
         const response = await fetch('/api/validate-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
+            ...csrfHeaders,
           },
           body: JSON.stringify({
             sessionId,

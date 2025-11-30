@@ -73,6 +73,7 @@
     "react-hook-form": "^7.54.2",
     "react-intersection-observer": "^10.0.0",
     "recharts": "^2.15.4",
+    "redis": "^5.10.0",
     "resend": "^6.1.2",
     "swr": "^2.3.6",
     "tailwind-merge": "^3.0.1",
@@ -93,6 +94,7 @@
     "eslint-config-next": "15.5.6",
     "postcss": "^8",
     "rimraf": "^6.1.0",
+    "supabase": "^2.63.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }

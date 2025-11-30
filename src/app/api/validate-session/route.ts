@@ -6,11 +6,34 @@ import {
   sanitizeError,
 } from "@/lib/security-utils";
 import { moderateRateLimit } from "@/lib/rate-limit";
+import { validateCSRFToken } from "@/lib/csrf-middleware";
+import { logger } from "@/lib/logger";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 export async function POST(request: NextRequest) {
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return NextResponse.json(
+      { error: 'Server configuration error' },
+      { status: 500, headers: getSecurityHeaders() }
+    );
+  }
+  // CSRF Protection
+  const csrfValid = validateCSRFToken(request);
+  if (!csrfValid) {
+    logSecurityEvent({
+      type: 'suspicious_activity',
+      ip: request.ip || 'unknown',
+      endpoint: '/api/validate-session',
+      details: { reason: 'CSRF validation failed' }
+    });
+    return NextResponse.json(
+      { error: 'CSRF validation failed', message: 'Security check failed. Please refresh and try again.' },
+      { status: 403, headers: getSecurityHeaders() }
+    );
+  }
+
   // Apply rate limiting
   const rateLimitResult = moderateRateLimit(request);
   if (rateLimitResult) {
@@ -62,10 +85,10 @@ export async function POST(request: NextRequest) {
     }
 
     const { sessionId, userId } = await request.json();
-    console.log(`[API] Validating session ${sessionId} for user ${userId}`);
+    logger.debug('Validating session', { sessionId, userId });
 
     if (!sessionId || !userId) {
-      console.log("[API] Missing sessionId or userId");
+      logger.warn('Missing sessionId or userId');
       return NextResponse.json(
         { error: "Session ID and User ID are required" },
         { status: 400, headers: getSecurityHeaders() }
@@ -74,9 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Validate that the authenticated user matches the userId in the request
     if (user.id !== userId) {
-      console.log(
-        `[API] User ID mismatch: authenticated=${user.id}, requested=${userId}`
-      );
+      logger.security('User ID mismatch', { authenticated: user.id, requested: userId });
       logSecurityEvent({
         type: "suspicious_activity",
         userId: user.id,

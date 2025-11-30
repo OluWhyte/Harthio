@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, User } from '@supabase/supabase-js';
 import { moderateRateLimit } from '@/lib/rate-limit';
 import { sanitizeError, logSecurityEvent, getSecurityHeaders, isValidEmail } from '@/lib/security-utils';
 import { InputSanitizer, SecurityLogger } from '@/lib/security/owasp-security-service';
+import { validateCSRFToken } from '@/lib/csrf-middleware';
 
 // Initialize Resend client only if API key is available
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
@@ -11,7 +12,16 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 export async function POST(request: NextRequest) {
   console.log('📧 [SEND-EMAIL API] Request received');
 
-  // SECURITY FIX: Require authentication for email sending
+  // CSRF Protection
+  const csrfValid = validateCSRFToken(request);
+  if (!csrfValid) {
+    return NextResponse.json(
+      { success: false, error: 'CSRF validation failed' },
+      { status: 403, headers: getSecurityHeaders() }
+    );
+  }
+
+  // Require authentication for email sending
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     logSecurityEvent({

@@ -6,6 +6,7 @@
 
 import { VideoServiceManager, VideoServiceConfig, VideoServiceCallbacks } from './video-service-manager';
 import { DeviceVideoMetadata } from './device-orientation-service';
+import { logger } from './logger';
 
 export interface BackgroundVideoState {
   isInitializing: boolean;
@@ -47,7 +48,7 @@ export class BackgroundVideoService {
       return;
     }
 
-    console.log('🔄 Starting background video initialization...');
+    logger.info('Starting background video initialization');
     this.updateState({
       isInitializing: true,
       isReady: false,
@@ -59,7 +60,7 @@ export class BackgroundVideoService {
       // Create silent video service callbacks
       const silentCallbacks: VideoServiceCallbacks = {
         onStateChange: (state) => {
-          console.log('🔄 Background video state:', state);
+          logger.debug('Background video state', { state });
           if (state === 'connected') {
             this.updateState({
               isInitializing: false,
@@ -79,12 +80,12 @@ export class BackgroundVideoService {
         },
         
         onLocalStream: (stream) => {
-          console.log('📹 Background: Local stream ready');
+          logger.debug('Background: Local stream ready');
           // Stream is ready but not displayed yet
         },
         
         onRemoteStream: (stream) => {
-          console.log('🎥 Background: Remote stream ready');
+          logger.debug('Background: Remote stream ready');
           // Stream is ready but not displayed yet
         },
         
@@ -93,7 +94,7 @@ export class BackgroundVideoService {
         },
         
         onError: (error, isRecoverable) => {
-          console.warn('⚠️ Background video error:', error);
+          logger.warn('Background video error', { error, isRecoverable });
           if (!isRecoverable) {
             this.updateState({
               isInitializing: false,
@@ -113,10 +114,10 @@ export class BackgroundVideoService {
       // Initialize without container (background mode)
       await this.videoManager.initialize();
       
-      console.log('✅ Background video initialization completed');
+      logger.info('Background video initialization completed');
 
     } catch (error) {
-      console.error('❌ Background video initialization failed:', error);
+      logger.error('Background video initialization failed', error);
       this.updateState({
         isInitializing: false,
         isReady: false,
@@ -147,11 +148,11 @@ export class BackgroundVideoService {
    */
   transferToMainSession(mainCallbacks: VideoServiceCallbacks): VideoServiceManager | null {
     if (!this.state.isReady || !this.videoManager) {
-      console.warn('⚠️ Video manager not ready for transfer');
+      logger.warn('Video manager not ready for transfer');
       return null;
     }
 
-    console.log('🔄 Transferring video manager to main session...');
+    logger.info('Transferring video manager to main session');
     
     // The video manager is already initialized and connected
     // The main session just needs to attach UI callbacks and video elements
@@ -167,20 +168,20 @@ export class BackgroundVideoService {
     remoteVideoRef: React.RefObject<HTMLVideoElement>
   ): void {
     if (!this.videoManager || !this.state.isReady) {
-      console.warn('⚠️ Cannot attach UI elements - video manager not ready');
+      logger.warn('Cannot attach UI elements - video manager not ready');
       return;
     }
 
-    console.log('🎨 Attaching UI elements to background video manager...');
+    logger.debug('Attaching UI elements to background video manager');
     
     // Get current streams and attach to video elements
     const currentService = this.videoManager.getCurrentService();
     
     if (currentService === 'p2p') {
       // P2P streams need to be attached to video elements
-      console.log('🔗 P2P streams ready for video elements');
+      logger.debug('P2P streams ready for video elements');
     } else {
-      console.log('📺 No active video service');
+      logger.debug('No active video service');
     }
   }
 
@@ -188,7 +189,7 @@ export class BackgroundVideoService {
    * Cleanup background service
    */
   async destroy(): Promise<void> {
-    console.log('🧹 Destroying background video service...');
+    logger.info('Destroying background video service');
     this.isDestroyed = true;
     
     if (this.videoManager) {

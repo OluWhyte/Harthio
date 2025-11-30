@@ -32,12 +32,18 @@ export function AdminProvider({ children }: AdminProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const loadAdminStatus = async () => {
+    // Skip admin check on login page
+    if (typeof window !== 'undefined' && window.location.pathname === '/admin-v2/login') {
+      setIsLoading(false);
+      return;
+    }
+
     // Wait for auth to finish loading first
     if (authLoading) {
       setIsLoading(true);
       return;
     }
-    
+
     if (!user) {
       setAdminUser(null);
       setIsLoading(false);
@@ -46,25 +52,52 @@ export function AdminProvider({ children }: AdminProviderProps) {
 
     try {
       setIsLoading(true);
-      
-      // Check if user is admin
-      const isAdminUser = await AdminAuthService.isUserAdmin(user.uid);
-      
-      if (!isAdminUser) {
+
+      // Check if user is admin - with error handling to prevent infinite loops
+      let isAdminUser = false;
+      try {
+        console.log('[Admin Context] Checking admin status for user:', user.uid);
+        isAdminUser = await AdminAuthService.isUserAdmin(user.uid);
+        console.log('[Admin Context] Admin check result:', isAdminUser);
+      } catch (error) {
+        console.error('[Admin Context] Admin check failed:', error);
         setAdminUser(null);
         setIsLoading(false);
         return;
       }
 
-      // Get admin details
-      const adminDetails = await AdminAuthService.getAdminDetails(user.uid);
-      
+      if (!isAdminUser) {
+        console.log('[Admin Context] User is not an admin');
+        setAdminUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('[Admin Context] User is an admin, loading details...');
+
+      // Get admin details - with error handling
+      let adminDetails: {
+        role: string;
+        permissions: string[];
+        display_name?: string;
+        email?: string;
+      } | null = null;
+
+      try {
+        adminDetails = await AdminAuthService.getAdminDetails(user.uid);
+      } catch (error) {
+        console.error('Admin details fetch failed:', error);
+        setAdminUser(null);
+        setIsLoading(false);
+        return;
+      }
+
       if (adminDetails) {
         setAdminUser({
           id: user.uid,
           email: user.email || '',
           display_name: adminDetails.display_name || user.displayName || undefined,
-          role: adminDetails.role,
+          role: adminDetails.role as 'admin' | 'editor',
           permissions: adminDetails.permissions || []
         });
       } else {
@@ -80,10 +113,10 @@ export function AdminProvider({ children }: AdminProviderProps) {
 
   const hasPermission = (permission: string): boolean => {
     if (!adminUser) return false;
-    
+
     // Admin role has all permissions
     if (adminUser.role === 'admin') return true;
-    
+
     // Check specific permissions
     return adminUser.permissions.includes(permission);
   };
@@ -99,7 +132,7 @@ export function AdminProvider({ children }: AdminProviderProps) {
   const contextValue: AdminContextType = {
     adminUser,
     isAdmin: !!adminUser,
-    isLoading: authLoading || isLoading, // Show loading while auth or admin check is loading
+    isLoading: authLoading || isLoading,
     hasPermission,
     refreshAdminStatus
   };

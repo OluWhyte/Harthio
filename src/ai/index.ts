@@ -6,3 +6,4 @@ export * from './services/proactive-ai-service';
 export * from './services/ai-rate-limit-service';
 export * from './services/ai-feedback-service';
 export * from './services/ai-chat-history-service';
+export * from './services/ai-personalization-service';

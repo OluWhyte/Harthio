@@ -7,8 +7,8 @@ import { getSecurityHeaders, logSecurityEvent } from '@/lib/security-utils';
 
 // Create Supabase client for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,14 +28,17 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
+    // 1. Verify the JWT token using a clean client
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+
     if (authError || !user) {
       logSecurityEvent({
         type: 'auth_failure',
         ip: request.ip || 'unknown',
         endpoint: '/api/admin/security/dashboard',
-        details: { reason: 'Invalid token' }
+        details: { reason: 'Invalid token', error: authError?.message }
       });
       return NextResponse.json(
         { error: 'Invalid authentication token' },
@@ -43,8 +46,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 2. Use Service Role client for DB operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // Check admin role
-    const { data: adminRole } = await supabase
+    const { data: adminRole } = await supabaseAdmin
       .from('admin_roles')
       .select('role')
       .eq('user_id', user.id)
@@ -121,8 +127,11 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+
+    // 1. Verify the JWT token using a clean client
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey);
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+
     if (authError || !user) {
       return NextResponse.json(
         { error: 'Invalid authentication token' },
@@ -130,8 +139,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 2. Use Service Role client for DB operations
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
     // Check admin role
-    const { data: adminRole } = await supabase
+    const { data: adminRole } = await supabaseAdmin
       .from('admin_roles')
       .select('role')
       .eq('user_id', user.id)

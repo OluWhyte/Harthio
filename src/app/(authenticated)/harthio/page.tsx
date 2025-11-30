@@ -94,11 +94,16 @@ export default function HarthioAIPage() {
     
     // Special handling for tracker creation when rate-limited
     if (action === 'create-tracker' && user) {
+      // Get CSRF token
+      const { getCSRFHeaders } = await import('@/lib/csrf-utils');
+      const csrfHeaders = await getCSRFHeaders();
+
       // Check if user is rate-limited
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...csrfHeaders,
         },
         body: JSON.stringify({ 
           messages: [{ role: 'user', content: 'test' }],
@@ -185,7 +190,7 @@ export default function HarthioAIPage() {
       
       try {
         // Get all progress data
-        const existingTrackers = await sobrietyService.getUserTrackers(user.uid);
+        const existingTrackers = await sobrietyService.getActiveTrackers(user.uid);
         const checkInStreak = await checkinService.getCheckInStreak(user.uid);
         const checkInHistory = await checkinService.getCheckInHistory(user.uid);
         const recentCheckIns = checkInHistory.slice(0, 7);
@@ -267,7 +272,7 @@ export default function HarthioAIPage() {
     if (action === 'create-tracker' && user) {
       try {
         // Check if user has existing trackers
-        const hasExistingTrackers = await sobrietyService.getUserTrackers(user.uid);
+        const hasExistingTrackers = await sobrietyService.getActiveTrackers(user.uid);
         const trackerCount = hasExistingTrackers.length;
         
         // Check if user previously started but didn't complete tracker creation
@@ -371,6 +376,94 @@ export default function HarthioAIPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Helper function to handle AI response after streaming completes
+  const handleAIResponseComplete = async (aiResponse: string, messageId: string) => {
+    // The streaming message is already displayed, just need to handle special commands
+    
+    // Check for tracker reset command
+    if (aiResponse.match(/TRACKER_RESET:/) && user && resetTrackerId) {
+      const cleanedResponse = aiResponse.replace(/TRACKER_RESET:\s*\n\n?/, '');
+      const result = await sobrietyService.resetTracker(resetTrackerId, new Date());
+      
+      if (result.success) {
+        toast({
+          title: 'Counter Reset',
+          description: 'Your tracker has been reset. Remember, recovery is progress, not perfection. 💪',
+        });
+        window.history.replaceState({}, '', '/harthio');
+        setResetTrackerId(null);
+      }
+      
+      // Update message with cleaned response
+      setMessages(prev => 
+        prev.map(msg => msg.id === messageId ? { ...msg, content: cleanedResponse } : msg)
+      );
+      
+      // Save to history
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.get('action')) {
+        aiChatHistoryService.saveMessage(user.uid, 'assistant', cleanedResponse, {
+          cbtFlow: currentCBTFlow || undefined,
+        });
+      }
+      return;
+    }
+    
+    // Check for tracker creation command
+    const trackerMatch = aiResponse.match(/TRACKER_CREATE:\s*(\w+)\|([^|]+)\|(\d{4}-\d{2}-\d{2})/);
+    if (trackerMatch && user) {
+      const [, type, name, dateStr] = trackerMatch;
+      const parsedDate = new Date(dateStr);
+      const now = new Date();
+      const startDate = new Date(
+        parsedDate.getFullYear(),
+        parsedDate.getMonth(),
+        parsedDate.getDate(),
+        now.getHours(),
+        now.getMinutes(),
+        now.getSeconds()
+      );
+      
+      const cleanedResponse = aiResponse.replace(/TRACKER_CREATE:[^\n]+\n\n?/, '');
+      const result = await sobrietyService.createTracker(
+        user.uid,
+        type as any,
+        name,
+        startDate
+      );
+      
+      if (result.success) {
+        toast({
+          title: 'Tracker Created! 🎉',
+          description: `Your ${name} tracker is now active.`,
+        });
+        window.history.replaceState({}, '', '/harthio');
+      }
+      
+      // Update message with cleaned response
+      setMessages(prev => 
+        prev.map(msg => msg.id === messageId ? { ...msg, content: cleanedResponse } : msg)
+      );
+      
+      // Save to history
+      const urlParams = new URLSearchParams(window.location.search);
+      if (!urlParams.get('action')) {
+        aiChatHistoryService.saveMessage(user.uid, 'assistant', cleanedResponse, {
+          cbtFlow: currentCBTFlow || undefined,
+        });
+      }
+      return;
+    }
+    
+    // Normal response - just save to history
+    const urlParams = new URLSearchParams(window.location.search);
+    if (user && !urlParams.get('action')) {
+      aiChatHistoryService.saveMessage(user.uid, 'assistant', aiResponse, {
+        cbtFlow: currentCBTFlow || undefined,
+      });
+    }
+  };
 
   const handleSendMessage = async (userMessage: string, skipCBTDetection = false) => {
     if (!userMessage.trim() || isLoading) return;
@@ -487,6 +580,8 @@ export default function HarthioAIPage() {
     // The actual creation happens when AI detects confirmation
 
     // Get smart context: last 30 messages + memory summary
+    // IMPORTANT: Don't include the current message from state since we add it manually below
+    // messages state hasn't updated yet (setState is async), so we use the old messages
     const recentMessages = messages.slice(-30); // Last 30 messages for better context retention
     const chatMessages: ChatMessage[] = recentMessages
       .filter(m => m.sender !== 'System')
@@ -495,11 +590,16 @@ export default function HarthioAIPage() {
         content: m.content,
       }));
 
-    // Add current user message
+    // Add current user message (not in state yet)
     chatMessages.push({ role: 'user', content: userMessage });
 
     // Get AI response with CBT context and memory
     let systemPrompt = aiService.getSystemPrompt();
+    
+    // Add user's name to system prompt
+    if (userProfile?.first_name) {
+      systemPrompt += `\n\n**USER'S NAME:** ${userProfile.first_name}${userProfile.last_name ? ' ' + userProfile.last_name : ''}\n(Use their name naturally in conversation to make it more personal)`;
+    }
     
     // Add comprehensive user progress context
     if (user) {
@@ -579,223 +679,78 @@ export default function HarthioAIPage() {
       systemPrompt += `\n\n**IMMEDIATE NEED:** The user just expressed ${cbtNeed.keywords.join(', ')}. After validating their feelings, offer relevant CBT tools: ${cbtNeed.suggestedTools.join(', ')}. Guide them through the exercise step-by-step.`;
     }
     
-    const response = await aiService.chat([
-      { role: 'system', content: systemPrompt },
-      ...chatMessages,
-    ]);
+    // Use streaming for better UX
+    let streamingMessageId = Date.now().toString();
+    let fullResponse = '';
+    
+    // Add placeholder message for streaming
+    const streamingMsg: Message = {
+      id: streamingMessageId,
+      content: '',
+      sender: 'Harthio AI',
+      timestamp: new Date(),
+      isOwn: false,
+    };
+    setMessages(prev => [...prev, streamingMsg]);
 
-    setIsLoading(false);
-
-    // Handle rate limit error
-    if (!response.success && response.error === 'rate_limit_exceeded') {
-      const aiMsg: Message = {
+    try {
+      // Note: System prompt with date and user context is added by the backend API
+      // We only send the conversation messages
+      await aiService.chatStream(
+        chatMessages,
+        // On each chunk
+        (chunk) => {
+          fullResponse += chunk;
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === streamingMessageId 
+                ? { ...msg, content: fullResponse }
+                : msg
+            )
+          );
+        },
+        // On complete
+        (finalText) => {
+          fullResponse = finalText;
+          setIsLoading(false);
+          
+          // Continue with existing logic (crisis detection, tracker creation, etc.)
+          handleAIResponseComplete(finalText, streamingMessageId);
+        },
+        // On error - fallback to non-streaming
+        async (error) => {
+          console.log('[Streaming] Error, falling back to non-streaming:', error);
+          
+          // Remove streaming message
+          setMessages(prev => prev.filter(msg => msg.id !== streamingMessageId));
+          
+          // Use regular chat (backend adds system prompt with date)
+          const response = await aiService.chat(chatMessages);
+          
+          setIsLoading(false);
+          handleAIResponseComplete(response.message || "I'm having trouble connecting. Please try again.", Date.now().toString());
+        }
+      );
+    } catch (error) {
+      console.error('[AI Chat] Error:', error);
+      setIsLoading(false);
+      setMessages(prev => prev.filter(msg => msg.id !== streamingMessageId));
+      
+      const errorMsg: Message = {
         id: Date.now().toString(),
-        content: "You've reached your 3 free AI messages for today! 💙\n\nYou can still use all other features - trackers, sessions, check-ins, and community. Your AI messages reset tomorrow at midnight.\n\n**Two ways to get more AI support:**\n\n💬 **Buy Credits** - Pay as you go\n• $2 for 50 messages (30 days)\n• $5 for 150 messages (60 days)\n• $10 for 500 messages (90 days)\n\n✨ **Upgrade to Pro** - Unlimited access\n• Unlimited AI conversations (200/day)\n• Advanced CBT tools\n• 20 custom trackers\n• Visual journey timeline\n• $9.99/month - 14-day free trial",
+        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
         sender: 'Harthio AI',
         timestamp: new Date(),
         isOwn: false,
       };
-      setMessages(prev => [...prev, aiMsg]);
-      
-      // Show upgrade button below the message
-      setTimeout(() => {
-        // Just add a marker - we'll render the button in the UI based on message index
-        setMessages(prev => [...prev]);
-      }, 100);
-      
+      setMessages(prev => [...prev, errorMsg]);
       return;
     }
+    
+    return; // Exit early since streaming handles the rest
+  }; // End of handleSendMessage
 
-    const aiResponse = response.success && response.message
-      ? response.message
-      : "I'm sorry, I'm having trouble connecting right now. Please try again in a moment. If you're in crisis, please call 988 or text HOME to 741741.";
 
-    // Split long responses into multiple bubbles (like iMessage)
-    const splitResponse = (text: string): string[] => {
-      // Split by double newlines first (paragraphs)
-      const paragraphs = text.split('\n\n').filter(p => p.trim());
-      
-      const bubbles: string[] = [];
-      
-      for (const paragraph of paragraphs) {
-        // If paragraph is short enough, keep it as one bubble
-        if (paragraph.length <= 200) {
-          bubbles.push(paragraph.trim());
-        } else {
-          // Split long paragraphs by sentences
-          const sentences = paragraph.match(/[^.!?]+[.!?]+/g) || [paragraph];
-          let currentBubble = '';
-          
-          for (const sentence of sentences) {
-            if ((currentBubble + sentence).length <= 200) {
-              currentBubble += sentence;
-            } else {
-              if (currentBubble) bubbles.push(currentBubble.trim());
-              currentBubble = sentence;
-            }
-          }
-          
-          if (currentBubble) bubbles.push(currentBubble.trim());
-        }
-      }
-      
-      return bubbles.length > 0 ? bubbles : [text];
-    };
-
-    // Check if AI wants to reset a tracker
-    const trackerResetMatch = aiResponse.match(/TRACKER_RESET:/);
-    if (trackerResetMatch && user && resetTrackerId) {
-      // Remove the TRACKER_RESET command from the response
-      const cleanedResponse = aiResponse.replace(/TRACKER_RESET:\s*\n\n?/, '');
-      
-      // Reset the tracker
-      const result = await sobrietyService.resetTracker(resetTrackerId, new Date());
-      
-      if (result.success) {
-        toast({
-          title: 'Counter Reset',
-          description: 'Your tracker has been reset. Remember, recovery is progress, not perfection. 💪',
-        });
-        
-        // Clear URL params and reset state
-        window.history.replaceState({}, '', '/harthio');
-        setResetTrackerId(null);
-      } else {
-        toast({
-          title: 'Error',
-          description: result.error || 'Failed to reset tracker.',
-          variant: 'destructive',
-        });
-      }
-      
-      // Use cleaned response for display
-      const messageBubbles = splitResponse(cleanedResponse);
-      
-      // Save cleaned response to database ONLY if NOT an action-based conversation
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlAction = urlParams.get('action');
-      
-      if (!urlAction) {
-        aiChatHistoryService.saveMessage(user.uid, 'assistant', cleanedResponse, {
-          cbtFlow: currentCBTFlow || undefined,
-        });
-      }
-      
-      // Add messages
-      for (let i = 0; i < messageBubbles.length; i++) {
-        setTimeout(() => {
-          const aiMsg: Message = {
-            id: `${Date.now()}-${i}`,
-            content: messageBubbles[i],
-            sender: 'Harthio AI',
-            timestamp: new Date(),
-            isOwn: false,
-          };
-          setMessages(prev => [...prev, aiMsg]);
-        }, i * 300);
-      }
-    }
-    // Check if AI wants to create a tracker
-    else if (aiResponse.match(/TRACKER_CREATE:\s*(\w+)\|([^|]+)\|(\d{4}-\d{2}-\d{2})/)) {
-      const trackerCreateMatch = aiResponse.match(/TRACKER_CREATE:\s*(\w+)\|([^|]+)\|(\d{4}-\d{2}-\d{2})/);
-      if (trackerCreateMatch && user) {
-        const [, type, name, dateStr] = trackerCreateMatch;
-        // Parse the date from AI and set to current time (not midnight)
-        const parsedDate = new Date(dateStr);
-        const now = new Date();
-        // Use the date from AI but with current time (hours, minutes, seconds)
-        const startDate = new Date(
-          parsedDate.getFullYear(),
-          parsedDate.getMonth(),
-          parsedDate.getDate(),
-          now.getHours(),
-          now.getMinutes(),
-          now.getSeconds()
-        );
-        
-        // Remove the TRACKER_CREATE command from the response
-        const cleanedResponse = aiResponse.replace(/TRACKER_CREATE:[^\n]+\n\n?/, '');
-        
-        // Create the tracker (no image - visual journey moved to v0.4)
-        const result = await sobrietyService.createTracker(
-          user.uid,
-          type as 'alcohol' | 'smoking' | 'drugs' | 'gambling' | 'vaping' | 'food' | 'shopping' | 'gaming' | 'pornography' | 'other',
-          name,
-          startDate
-        );
-        
-        if (result.success) {
-          toast({
-            title: 'Tracker Created! 🎉',
-            description: `Your ${name} tracker is now active.`,
-          });
-          
-          // Clear URL params
-          window.history.replaceState({}, '', '/harthio');
-        } else {
-          toast({
-            title: 'Error',
-            description: result.error || 'Failed to create tracker.',
-            variant: 'destructive',
-          });
-        }
-        
-        // Use cleaned response for display
-        const messageBubbles = splitResponse(cleanedResponse);
-        
-        // Save cleaned response to database ONLY if NOT an action-based conversation
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlAction = urlParams.get('action');
-        
-        if (!urlAction) {
-          aiChatHistoryService.saveMessage(user.uid, 'assistant', cleanedResponse, {
-            cbtFlow: currentCBTFlow || undefined,
-          });
-        }
-        
-        // Add messages
-        for (let i = 0; i < messageBubbles.length; i++) {
-          setTimeout(() => {
-            const aiMsg: Message = {
-              id: `${Date.now()}-${i}`,
-              content: messageBubbles[i],
-              sender: 'Harthio AI',
-              timestamp: new Date(),
-              isOwn: false,
-            };
-            setMessages(prev => [...prev, aiMsg]);
-          }, i * 300);
-        }
-      }
-    } else {
-      // Normal response without tracker creation
-      const messageBubbles = splitResponse(aiResponse);
-      
-      // Save full AI response to database (as one message) ONLY if NOT an action-based conversation
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlAction = urlParams.get('action');
-      
-      if (user && !urlAction) {
-        aiChatHistoryService.saveMessage(user.uid, 'assistant', aiResponse, {
-          cbtFlow: currentCBTFlow || undefined,
-        });
-      }
-      
-      // Add messages with slight delay between each (like typing)
-      for (let i = 0; i < messageBubbles.length; i++) {
-        setTimeout(() => {
-          const aiMsg: Message = {
-            id: `${Date.now()}-${i}`,
-            content: messageBubbles[i],
-            sender: 'Harthio AI',
-            timestamp: new Date(),
-            isOwn: false,
-          };
-          setMessages(prev => [...prev, aiMsg]);
-        }, i * 300); // 300ms delay between each bubble
-      }
-    }
-  };
 
   const handleResetTracker = async () => {
     if (!resetTrackerId || !user) return;
@@ -1251,8 +1206,8 @@ export default function HarthioAIPage() {
             );
           })}
 
-          {/* Typing Indicator - iMessage Style */}
-          {isLoading && (
+          {/* Typing Indicator - Only show when loading and NOT streaming */}
+          {isLoading && !messages.some(m => !m.isOwn && m.content === '') && (
             <div className="flex justify-start mt-4 animate-in slide-in-from-bottom-2 duration-300">
               <div className="bg-gray-100 dark:bg-gray-800 rounded-[20px] rounded-bl-md px-5 py-3 shadow-sm">
                 <div className="flex gap-1">

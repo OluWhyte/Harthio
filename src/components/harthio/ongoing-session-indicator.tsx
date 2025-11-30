@@ -76,12 +76,14 @@ export function OngoingSessionIndicator() {
           setIsInOngoingSession(!!activeSessionTopic);
 
           // Clean up expired topics periodically (only run cleanup every 2 minutes for better state management)
-          const lastCleanup = localStorage.getItem('lastTopicCleanup');
-          const currentTime = Date.now();
-          if (!lastCleanup || currentTime - parseInt(lastCleanup) > 2 * 60 * 1000) {
-            dbUtils.cleanupExpiredTopics().catch(console.error);
-            localStorage.setItem('lastTopicCleanup', currentTime.toString());
-          }
+          // DISABLED: Cleanup requires admin permissions due to RLS policy on topics_deleted_log
+          // Admin cleanup job will handle this instead
+          // const lastCleanup = localStorage.getItem('lastTopicCleanup');
+          // const currentTime = Date.now();
+          // if (!lastCleanup || currentTime - parseInt(lastCleanup) > 2 * 60 * 1000) {
+          //   dbUtils.cleanupExpiredTopics().catch(console.error);
+          //   localStorage.setItem('lastTopicCleanup', currentTime.toString());
+          // }
         } catch (error) {
           console.error('Fetch session status error:', error);
           setActiveSession(null);

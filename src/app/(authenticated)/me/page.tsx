@@ -223,7 +223,7 @@ export default function MePage() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
-                  <span>{getMemberSince(userProfile.created_at)}</span>
+                  <span>{getMemberSince(userProfile.created_at || '')}</span>
                 </div>
               </div>
             </div>

@@ -21,15 +21,25 @@ export default function AdminV2Login() {
     setLoading(true);
 
     try {
+      console.log('[Admin Login] Attempting login with email:', email);
       await logIn(email, password);
-      router.push('/admin-v2');
-    } catch (error) {
+      console.log('[Admin Login] Login successful');
+      
+      toast({
+        title: 'Login Successful',
+        description: 'Redirecting to admin panel...',
+      });
+      
+      // Use window.location for a full page reload to ensure AdminProvider loads fresh
+      window.location.href = '/admin-v2';
+    } catch (error: any) {
+      console.error('[Admin Login] Login failed:', error);
       toast({
         title: 'Login Failed',
-        description: 'Invalid email or password',
-        variant: 'destructive'
+        description: error.message || 'Invalid email or password. Please try again.',
+        variant: 'destructive',
+        duration: 5000,
       });
-    } finally {
       setLoading(false);
     }
   };

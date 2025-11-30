@@ -5,6 +5,8 @@
 // Includes mobile-specific optimizations and fallbacks
 // ============================================================================
 
+import { logger } from './logger';
+
 export interface MediaConstraintsConfig {
   preferredWidth?: number;
   preferredHeight?: number;
@@ -162,7 +164,7 @@ export async function getUserMediaWithFallback(
   // Strategy 1: Try optimal constraints with timeout
   try {
     const constraints = getMediaConstraints(config);
-    console.log('Attempting getUserMedia with optimal constraints:', constraints);
+    logger.debug('Attempting getUserMedia with optimal constraints', { constraints });
     const timeout = deviceInfo.isIOS ? 15000 : 10000; // Longer timeout for iOS
     return await getUserMediaWithTimeout(constraints, timeout);
   } catch (error) {
@@ -172,7 +174,7 @@ export async function getUserMediaWithFallback(
   // Strategy 2: Try iOS-specific constraints if on iOS
   if (deviceInfo.isIOS) {
     try {
-      console.log('Attempting getUserMedia with iOS-optimized constraints');
+      logger.debug('Attempting getUserMedia with iOS-optimized constraints');
       return await getUserMediaWithTimeout({
         video: { 
           facingMode: 'user',
@@ -194,7 +196,7 @@ export async function getUserMediaWithFallback(
 
   // Strategy 3: Try basic constraints with facingMode (important for mobile)
   try {
-    console.log('Attempting getUserMedia with basic constraints');
+    logger.debug('Attempting getUserMedia with basic constraints');
     return await getUserMediaWithTimeout({
       video: { facingMode: 'user' },
       audio: true,
@@ -205,7 +207,7 @@ export async function getUserMediaWithFallback(
 
   // Strategy 4: Try minimal constraints (just true/false)
   try {
-    console.log('Attempting getUserMedia with minimal constraints');
+    logger.debug('Attempting getUserMedia with minimal constraints');
     return await getUserMediaWithTimeout({
       video: true,
       audio: true,
@@ -217,7 +219,7 @@ export async function getUserMediaWithFallback(
   // Strategy 5: Try very low resolution (for older devices)
   if (deviceInfo.isMobile) {
     try {
-      console.log('Attempting getUserMedia with low resolution');
+      logger.debug('Attempting getUserMedia with low resolution');
       return await getUserMediaWithTimeout({
         video: { width: 320, height: 240, frameRate: 15 },
         audio: true,
@@ -229,7 +231,7 @@ export async function getUserMediaWithFallback(
 
   // Strategy 6: Try video only (in case audio is the issue)
   try {
-    console.log('Attempting getUserMedia with video only');
+    logger.debug('Attempting getUserMedia with video only');
     const videoStream = await getUserMediaWithTimeout({
       video: deviceInfo.isMobile ? { facingMode: 'user' } : true,
     }, 5000);

@@ -26,7 +26,7 @@ export default function TestAIPage() {
       // Check user from hook
       if (user) {
         diag.user = {
-          id: user.id,
+          id: (user as any).id,
           uid: user.uid,
           email: user.email,
         };
@@ -74,11 +74,16 @@ export default function TestAIPage() {
         return;
       }
 
+      // Get CSRF token
+      const { getCSRFHeaders } = await import('@/lib/csrf-utils');
+      const csrfHeaders = await getCSRFHeaders();
+
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
+          ...csrfHeaders,
         },
         body: JSON.stringify({
           messages: [

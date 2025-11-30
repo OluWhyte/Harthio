@@ -2,6 +2,7 @@
 // Checks admin-controlled feature flags and settings
 
 import { supabaseClient } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
 
 export interface PlatformSettings {
   proTierEnabled: boolean;
@@ -10,6 +11,10 @@ export interface PlatformSettings {
   trackerLimitsEnabled: boolean;
   trialModeEnabled: boolean;
   maintenanceMode: boolean;
+  aiProviders: {
+    groqEnabled: boolean;
+    deepseekEnabled: boolean;
+  };
   featureFlags: {
     visualJourney: boolean;
     aiTopicHelper: boolean;
@@ -28,7 +33,7 @@ export const platformSettingsService = {
         .select('setting_key, setting_value');
 
       if (error) {
-        console.error('[Platform Settings] Error fetching:', error);
+        logger.error('[Platform Settings] Error fetching', error);
         return this.getDefaultSettings();
       }
 
@@ -44,6 +49,10 @@ export const platformSettingsService = {
         trackerLimitsEnabled: settingsMap['tracker_limits_enabled']?.enabled || false,
         trialModeEnabled: settingsMap['trial_mode_enabled']?.enabled || false,
         maintenanceMode: settingsMap['maintenance_mode']?.enabled || false,
+        aiProviders: {
+          groqEnabled: settingsMap['ai_providers']?.groq_enabled ?? true,
+          deepseekEnabled: settingsMap['ai_providers']?.deepseek_enabled ?? true,
+        },
         featureFlags: {
           visualJourney: settingsMap['feature_flags']?.visual_journey || false,
           aiTopicHelper: settingsMap['feature_flags']?.ai_topic_helper || false,
@@ -51,7 +60,7 @@ export const platformSettingsService = {
         }
       };
 
-      console.log('[Platform Settings] Loaded:', {
+      logger.debug('[Platform Settings] Loaded', {
         proTierEnabled: settings.proTierEnabled,
         rateLimitingEnabled: settings.rateLimitingEnabled,
         rawRateLimitValue: settingsMap['ai_rate_limiting_enabled']
@@ -59,7 +68,7 @@ export const platformSettingsService = {
 
       return settings;
     } catch (err) {
-      console.error('[Platform Settings] Error in getSettings:', err);
+      logger.error('[Platform Settings] Error in getSettings', err);
       return this.getDefaultSettings();
     }
   },
@@ -79,7 +88,7 @@ export const platformSettingsService = {
 
       return (data as any).setting_value?.enabled || false;
     } catch (err) {
-      console.error('Error checking Pro tier:', err);
+      logger.error('Error checking Pro tier', err);
       return false;
     }
   },
@@ -122,7 +131,7 @@ export const platformSettingsService = {
 
       return (userData.subscription_tier as 'free' | 'pro') || 'free';
     } catch (err) {
-      console.error('Error getting effective user tier:', err);
+      logger.error('Error getting effective user tier', err);
       return 'free';
     }
   },
@@ -166,7 +175,7 @@ export const platformSettingsService = {
         limit
       };
     } catch (err) {
-      console.error('Error checking AI access:', err);
+      logger.error('Error checking AI access', err);
       // On error, allow access (fail open for better UX)
       return { allowed: true };
     }
@@ -183,6 +192,10 @@ export const platformSettingsService = {
       trackerLimitsEnabled: false,
       trialModeEnabled: false, // Disabled by default
       maintenanceMode: false,
+      aiProviders: {
+        groqEnabled: true, // Enabled by default
+        deepseekEnabled: true, // Enabled by default
+      },
       featureFlags: {
         visualJourney: false,
         aiTopicHelper: false,
