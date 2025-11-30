@@ -99,7 +99,7 @@ export class ModerationService {
     }
 
     return {
-      reports: data || [],
+      reports: (data || []) as any[],
       total: count || 0
     };
   }
@@ -128,7 +128,7 @@ export class ModerationService {
     }
 
     return {
-      flags: data || [],
+      flags: (data || []) as any[],
       total: count || 0
     };
   }
@@ -166,7 +166,7 @@ export class ModerationService {
     let avgResolutionTime = 0;
     if (resolvedReports && resolvedReports.length > 0) {
       const totalTime = resolvedReports.reduce((sum, report) => {
-        const created = new Date(report.created_at);
+        const created = new Date(report.created_at || Date.now());
         const resolved = new Date(report.reviewed_at!);
         return sum + (resolved.getTime() - created.getTime());
       }, 0);
@@ -334,7 +334,7 @@ export class ModerationService {
       throw new Error(`Failed to fetch user reports: ${error.message}`);
     }
 
-    return data || [];
+    return (data || []) as any[];
   }
 
   /**
@@ -354,7 +354,7 @@ export class ModerationService {
       flagType: 'ai_detected',
       severity,
       reason: `AI Detection: ${reason} (confidence: ${Math.round(confidence * 100)}%)`,
-      flaggedBy: null // System flagged
+      flaggedBy: undefined // System flagged
     });
   }
 

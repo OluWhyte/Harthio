@@ -13,6 +13,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getSecurityHeaders, logSecurityEvent } from '@/lib/security-utils';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 import { moderateRateLimit } from '@/lib/rate-limit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

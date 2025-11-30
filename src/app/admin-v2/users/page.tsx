@@ -121,7 +121,7 @@ export default function UsersPage() {
     
     switch (filterType) {
       case 'active':
-        filtered = filtered.filter(u => u.topic_count > 0 || u.message_count > 0);
+        filtered = filtered.filter(u => (u.topic_count || 0) > 0 || (u.message_count || 0) > 0);
         break;
       case 'new':
         filtered = filtered.filter(u => new Date(u.created_at) > sevenDaysAgo);
@@ -144,7 +144,7 @@ export default function UsersPage() {
         case 'name':
           return (a.display_name || a.email).localeCompare(b.display_name || b.email);
         case 'most_active':
-          return (b.topic_count + b.message_count) - (a.topic_count + a.message_count);
+          return ((b.topic_count || 0) + (b.message_count || 0)) - ((a.topic_count || 0) + (a.message_count || 0));
         case 'highest_rated':
           return (b.rating_stats?.overall_average || 0) - (a.rating_stats?.overall_average || 0);
         default:
@@ -163,8 +163,8 @@ export default function UsersPage() {
         u.email,
         u.phone_number || 'N/A',
         u.country || 'N/A',
-        u.topic_count.toString(),
-        u.message_count.toString(),
+        (u.topic_count || 0).toString(),
+        (u.message_count || 0).toString(),
         u.rating_stats?.overall_average?.toFixed(1) || 'N/A',
         new Date(u.created_at).toLocaleDateString()
       ])
@@ -191,7 +191,7 @@ export default function UsersPage() {
     if (createdAt > sevenDaysAgo) {
       return { label: 'New', color: 'bg-blue-100 text-blue-800' };
     }
-    if (user.topic_count > 0 || user.message_count > 0) {
+    if ((user.topic_count || 0) > 0 || (user.message_count || 0) > 0) {
       return { label: 'Active', color: 'bg-green-100 text-green-800' };
     }
     return { label: 'Inactive', color: 'bg-gray-100 text-gray-800' };
@@ -234,7 +234,7 @@ export default function UsersPage() {
 
   const stats = {
     total: tierFilteredUsers.length,
-    active: tierFilteredUsers.filter(u => u.topic_count > 0 || u.message_count > 0).length,
+    active: tierFilteredUsers.filter(u => (u.topic_count || 0) > 0 || (u.message_count || 0) > 0).length,
     new: tierFilteredUsers.filter(u => {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       return new Date(u.created_at) > sevenDaysAgo;

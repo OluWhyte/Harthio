@@ -19,7 +19,7 @@ interface Notification {
   title: string
   message: string
   severity: 'info' | 'warning' | 'error' | 'critical'
-  read_by: string[]
+  read_by: string[] | null
   created_at: string
   target_url?: string
   expires_at?: string
@@ -40,7 +40,7 @@ export function NotificationBell() {
     
     // Set up real-time subscription
     const unsubscribe = NotificationService.subscribeToNotifications(adminUserId, (notification) => {
-      setNotifications(prev => [notification, ...prev])
+      setNotifications(prev => [notification as any, ...prev])
       setUnreadCount(prev => prev + 1)
       
       // Show toast for new notifications
@@ -58,10 +58,10 @@ export function NotificationBell() {
     if (!adminUserId) return
     
     try {
-      const result = await NotificationService.getNotifications(adminUserId, { limit: 5 })
+      const result = await NotificationService.getNotifications(adminUserId, 5, 0, false)
       const notifications = result.notifications || []
-      setNotifications(notifications)
-      setUnreadCount(notifications.filter(n => !n.read_by.includes(adminUserId)).length)
+      setNotifications(notifications as any[])
+      setUnreadCount(notifications.filter(n => !n.read_by?.includes(adminUserId)).length)
     } catch (error) {
       console.error('Failed to load notifications:', error)
     }
@@ -73,7 +73,7 @@ export function NotificationBell() {
     try {
       await NotificationService.markAsRead(id, adminUserId)
       setNotifications(prev => 
-        prev.map(n => n.id === id ? { ...n, read_by: [...n.read_by, adminUserId] } : n)
+        prev.map(n => n.id === id ? { ...n, read_by: [...(n.read_by || []), adminUserId] } : n)
       )
       setUnreadCount(prev => Math.max(0, prev - 1))
     } catch (error) {
@@ -86,7 +86,7 @@ export function NotificationBell() {
     
     try {
       await NotificationService.markAllAsRead(adminUserId)
-      setNotifications(prev => prev.map(n => ({ ...n, read_by: [...n.read_by, adminUserId] })))
+      setNotifications(prev => prev.map(n => ({ ...n, read_by: [...(n.read_by || []), adminUserId] })))
       setUnreadCount(0)
     } catch (error) {
       console.error('Failed to mark all as read:', error)
@@ -147,7 +147,7 @@ export function NotificationBell() {
                 <div
                   key={notification.id}
                   className={`p-4 border-b hover:bg-gray-50 cursor-pointer ${
-                    !notification.read_by.includes(adminUserId || '') ? 'bg-blue-50' : ''
+                    !notification.read_by?.includes(adminUserId || '') ? 'bg-blue-50' : ''
                   }`}
                   onClick={() => markAsRead(notification.id)}
                 >
@@ -160,7 +160,7 @@ export function NotificationBell() {
                         {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                       </p>
                     </div>
-                    {!notification.read_by.includes(adminUserId || '') && (
+                    {!notification.read_by?.includes(adminUserId || '') && (
                       <div className="w-2 h-2 bg-blue-500 rounded-full mt-1" />
                     )}
                   </div>
@@ -207,16 +207,16 @@ export function NotificationCenter() {
       let filteredData = data
       
       if (filter === 'read') {
-        filteredData = data.filter(n => n.read_by.includes(adminUserId))
+        filteredData = data.filter(n => n.read_by?.includes(adminUserId))
       } else if (filter === 'unread') {
-        filteredData = data.filter(n => !n.read_by.includes(adminUserId))
+        filteredData = data.filter(n => !n.read_by?.includes(adminUserId))
       }
       
       if (typeFilter !== 'all') {
         filteredData = filteredData.filter(n => n.severity === typeFilter)
       }
 
-      setNotifications(filteredData)
+      setNotifications(filteredData as any[])
     } catch (error) {
       console.error('Failed to load notifications:', error)
       toast({
@@ -235,7 +235,7 @@ export function NotificationCenter() {
     try {
       await NotificationService.markAsRead(id, adminUserId)
       setNotifications(prev => 
-        prev.map(n => n.id === id ? { ...n, read_by: [...n.read_by, adminUserId] } : n)
+        prev.map(n => n.id === id ? { ...n, read_by: [...(n.read_by || []), adminUserId] } : n)
       )
     } catch (error) {
       console.error('Failed to mark notification as read:', error)
@@ -246,11 +246,11 @@ export function NotificationCenter() {
     if (!adminUserId) return
     
     try {
-      const unreadIds = notifications.filter(n => !n.read_by.includes(adminUserId)).map(n => n.id)
+      const unreadIds = notifications.filter(n => !n.read_by?.includes(adminUserId)).map(n => n.id)
       if (unreadIds.length === 0) return
       
       await NotificationService.markAllAsRead(adminUserId)
-      setNotifications(prev => prev.map(n => ({ ...n, read_by: [...n.read_by, adminUserId] })))
+      setNotifications(prev => prev.map(n => ({ ...n, read_by: [...(n.read_by || []), adminUserId] })))
       toast({
         title: 'Success',
         description: 'All notifications marked as read'
@@ -294,7 +294,7 @@ export function NotificationCenter() {
     }
   }
 
-  const unreadCount = notifications.filter(n => !n.read_by.includes(adminUserId || '')).length
+  const unreadCount = notifications.filter(n => !n.read_by?.includes(adminUserId || '')).length
 
   return (
     <div className="space-y-6">
@@ -365,7 +365,7 @@ export function NotificationCenter() {
                 <div
                   key={notification.id}
                   className={`p-4 border rounded-lg ${
-                    !notification.read_by.includes(adminUserId || '') ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'
+                    !notification.read_by?.includes(adminUserId || '') ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -374,7 +374,7 @@ export function NotificationCenter() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="font-medium">{notification.title}</h3>
-                          {!notification.read_by.includes(adminUserId || '') && (
+                          {!notification.read_by?.includes(adminUserId || '') && (
                             <Badge variant="secondary" className="text-xs">New</Badge>
                           )}
                         </div>
@@ -386,7 +386,7 @@ export function NotificationCenter() {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      {!notification.read_by.includes(adminUserId || '') && (
+                      {!notification.read_by?.includes(adminUserId || '') && (
                         <Button
                           variant="ghost"
                           size="sm"

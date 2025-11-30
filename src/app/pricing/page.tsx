@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Logo } from '@/components/common/logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { startFreeTrial } from '@/lib/services/tier-service';
 import { useToast } from '@/hooks/use-toast';
 import { platformSettingsService } from '@/lib/services/platform-settings-service';
 
-export default function PricingPage() {
+function PricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isTrial = searchParams?.get('trial') === 'true';
@@ -593,5 +593,17 @@ export default function PricingPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <PricingContent />
+    </Suspense>
   );
 }

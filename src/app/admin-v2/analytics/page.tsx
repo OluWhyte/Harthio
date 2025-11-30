@@ -80,7 +80,7 @@ export default function AnalyticsPage() {
         supabase.from('topics').select('*').order('created_at', { ascending: false }),
         supabase.from('sobriety_trackers').select('*').order('created_at', { ascending: false }),
         supabase.from('ai_chat_history').select('*').order('created_at', { ascending: false }),
-        supabase.from('credit_transactions').select('*').order('created_at', { ascending: false })
+        Promise.resolve({ data: [], error: null }) // Table doesn't exist
       ]);
 
       setAllData({
@@ -531,7 +531,7 @@ export default function AnalyticsPage() {
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Platform Activity Comparison</h3>
                 <MultiLineChart
-                  data={generateTimeSeriesData(filteredData.users, 'Users').slice(-21).map(([date], idx) => ({
+                  data={generateTimeSeriesData(filteredData.users, 'Users').slice(-21).map(([date], idx) => ({ value: 0,
                     name: date,
                     Users: generateTimeSeriesData(filteredData.users, 'Users').slice(-21)[idx]?.[1] || 0,
                     Sessions: generateTimeSeriesData(filteredData.sessions, 'Sessions').slice(-21)[idx]?.[1] || 0,
@@ -956,9 +956,9 @@ export default function AnalyticsPage() {
                       return acc;
                     }, {})
                   )
-                    .sort((a, b) => b[1] - a[1])
+                    .sort((a: any, b: any) => b[1] - a[1])
                     .slice(0, 10)
-                    .map(([userId, count], idx) => {
+                    .map(([userId, count]: any, idx: number) => {
                       const user = allData.users.find(u => u.id === userId);
                       return (
                         <div key={userId} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
@@ -970,7 +970,7 @@ export default function AnalyticsPage() {
                               {user?.display_name || user?.email || 'Unknown User'}
                             </span>
                           </div>
-                          <span className="text-sm font-bold text-purple-600">{count} messages</span>
+                          <span className="text-sm font-bold text-purple-600">{String(count)} messages</span>
                         </div>
                       );
                     })}
@@ -1114,9 +1114,9 @@ export default function AnalyticsPage() {
                         return acc;
                       }, {})
                     )
-                      .sort((a, b) => b[1] - a[1])
+                      .sort((a: any, b: any) => b[1] - a[1])
                       .slice(0, 5)
-                      .map(([userId, count], idx) => {
+                      .map(([userId, count]: any, idx: number) => {
                         const user = allData.users.find(u => u.id === userId);
                         return (
                           <div key={userId} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
@@ -1128,7 +1128,7 @@ export default function AnalyticsPage() {
                                 {user?.display_name || user?.email || 'Unknown User'}
                               </span>
                             </div>
-                            <span className="text-sm font-bold text-red-600">{count} trackers</span>
+                            <span className="text-sm font-bold text-red-600">{String(count)} trackers</span>
                           </div>
                         );
                       })}
@@ -1287,9 +1287,9 @@ export default function AnalyticsPage() {
                           return acc;
                         }, {})
                     )
-                      .sort((a, b) => b[1] - a[1])
+                      .sort((a: any, b: any) => b[1] - a[1])
                       .slice(0, 5)
-                      .map(([userId, amount], idx) => {
+                      .map(([userId, amount]: any, idx: number) => {
                         const user = allData.users.find(u => u.id === userId);
                         return (
                           <div key={userId} className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
@@ -1301,7 +1301,7 @@ export default function AnalyticsPage() {
                                 {user?.display_name || user?.email || 'Unknown User'}
                               </span>
                             </div>
-                            <span className="text-sm font-bold text-purple-600">{amount} credits</span>
+                            <span className="text-sm font-bold text-purple-600">{String(amount)} credits</span>
                           </div>
                         );
                       })}

@@ -57,7 +57,7 @@ export class PricingService {
         return DEFAULT_PRICING;
       }
 
-      cachedPricing = data.setting_value as PricingData;
+      cachedPricing = data.setting_value as unknown as PricingData;
       lastFetch = Date.now();
       return cachedPricing;
     } catch (error) {

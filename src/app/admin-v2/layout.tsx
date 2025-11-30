@@ -57,22 +57,24 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <Logo size="sm" />
           
           {/* Admin badge with user info */}
-          <div className="ml-3 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded max-w-xs">
-            {/* Desktop: Single line with role and name */}
-            <span className="hidden sm:inline">
-              {adminUser.role === 'admin' ? 'Admin' : 'Editor'} • {adminUser.display_name || adminUser.email}
-            </span>
-            
-            {/* Mobile: Stacked layout with role and name */}
-            <div className="sm:hidden flex flex-col leading-tight">
-              <div className="font-semibold">
-                {adminUser.role === 'admin' ? 'Admin' : 'Editor'}
-              </div>
-              <div className="text-blue-600 truncate">
-                {adminUser.display_name || adminUser.email}
+          {adminUser && (
+            <div className="ml-3 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded max-w-xs">
+              {/* Desktop: Single line with role and name */}
+              <span className="hidden sm:inline">
+                {adminUser.role === 'admin' ? 'Admin' : 'Editor'} • {adminUser.display_name || adminUser.email}
+              </span>
+              
+              {/* Mobile: Stacked layout with role and name */}
+              <div className="sm:hidden flex flex-col leading-tight">
+                <div className="font-semibold">
+                  {adminUser.role === 'admin' ? 'Admin' : 'Editor'}
+                </div>
+                <div className="text-blue-600 truncate">
+                  {adminUser.display_name || adminUser.email}
+                </div>
               </div>
             </div>
-          </div>
+          )}
           
           {/* Spacer */}
           <div className="flex-1" />

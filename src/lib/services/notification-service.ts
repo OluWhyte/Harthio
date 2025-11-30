@@ -8,9 +8,13 @@ export interface AdminNotification {
   message: string;
   severity: 'info' | 'warning' | 'error' | 'critical';
   target_url?: string;
-  read_by: string[]; // Array of admin user IDs who have read this
-  created_at: string;
-  expires_at?: string;
+  read_by: string[] | null; // Array of admin user IDs who have read this
+  created_at: string | null;
+  expires_at?: string | null;
+  type: string;
+  read: boolean | null;
+  metadata: any;
+  updated_at: string | null;
 }
 
 export interface NotificationStats {
@@ -52,7 +56,7 @@ export class NotificationService {
     }
 
     return {
-      notifications: data || [],
+      notifications: (data || []) as AdminNotification[],
       total: count || 0
     };
   }
@@ -250,7 +254,7 @@ export class NotificationService {
       throw new Error(`Failed to fetch recent activity: ${error.message}`);
     }
 
-    return data || [];
+    return (data || []) as AdminNotification[];
   }
 
   /**
@@ -272,7 +276,7 @@ export class NotificationService {
         (payload) => {
           const notification = payload.new as AdminNotification;
           // Only notify if this admin hasn't read it yet
-          if (!notification.read_by.includes(adminUserId)) {
+          if (!notification.read_by?.includes(adminUserId)) {
             onNotification(notification);
           }
         }
@@ -320,7 +324,7 @@ export class NotificationService {
       throw new Error(`Failed to fetch notification: ${error.message}`);
     }
 
-    return data;
+    return data as AdminNotification;
   }
 
   /**

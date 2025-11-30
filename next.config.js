@@ -13,8 +13,8 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Increase timeout for Google Fonts download (fixes retry issues)
-  staticPageGenerationTimeout: 180, // 3 minutes instead of default 60s
+  // Reduce timeout - if pages take this long, they should be dynamic
+  staticPageGenerationTimeout: 60, // 1 minute max
   // Increase fetch timeout for external resources
   experimental: {
     fetchCacheKeyPrefix: 'v1',

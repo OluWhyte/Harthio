@@ -58,7 +58,7 @@ export default function RecoveryManagementPage() {
   const [stats, setStats] = useState<TrackerStats>({
     activeTrackers: 0,
     totalCheckins: 0,
-    visualJourneys: 0,
+
     avgCheckinsPerDay: 0,
     trackersByType: [],
     recentRelapses: 0
@@ -253,7 +253,7 @@ export default function RecoveryManagementPage() {
           .single();
 
         if (lastCheckin) {
-          const lastCheckinDate = new Date(lastCheckin.checkin_date);
+          const lastCheckinDate = new Date((lastCheckin as any).checkin_date);
           const daysSinceCheckin = Math.floor((Date.now() - lastCheckinDate.getTime()) / (1000 * 60 * 60 * 24));
           
           if (daysSinceCheckin >= 3) {
@@ -264,7 +264,7 @@ export default function RecoveryManagementPage() {
               user_id: tracker.user_id,
               display_name: tracker.users?.display_name || 'Unknown User',
               tracker_type: tracker.tracker_type,
-              last_checkin: lastCheckin.checkin_date,
+              last_checkin: (lastCheckin as any).checkin_date,
               days_since_checkin: daysSinceCheckin,
               current_streak: currentStreak
             });

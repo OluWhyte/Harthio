@@ -26,7 +26,7 @@ import {
   Star,
   AlertTriangle
 } from 'lucide-react';
-import { AnalyticsCharts } from '@/components/admin/analytics-charts';
+import { LineChartComponent, AreaChartComponent, BarChartComponent } from '@/components/admin/analytics-charts';
 import { CacheMonitor } from '@/components/admin/cache-monitor';
 
 export default function AdminDashboardContent() {
@@ -281,12 +281,24 @@ export default function AdminDashboardContent() {
         </div>
 
         {/* Advanced Analytics Charts */}
-        <AnalyticsCharts 
-          userGrowth={chartData.userGrowth}
-          sessionActivity={chartData.sessionActivity}
-          engagementMetrics={chartData.engagementMetrics}
-          topicCategories={chartData.topicCategories}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Growth</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LineChartComponent data={chartData.userGrowth} dataKey="value" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Session Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AreaChartComponent data={chartData.sessionActivity} dataKey="value" />
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Primary Admin Sections - Prioritized by Importance */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8">

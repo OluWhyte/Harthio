@@ -114,7 +114,7 @@ export default function MonetizationPage() {
           ...p,
           user_email: usersData?.find(u => u.id === p.user_id)?.email || 'Unknown'
         }));
-        setAllPurchases(purchasesWithEmails);
+        setAllPurchases(purchasesWithEmails as any);
       }
     } catch (error) {
       console.error('Error loading data:', error);

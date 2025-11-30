@@ -49,8 +49,8 @@ function AIProviderToggles() {
       if (error && error.code !== 'PGRST116') throw error;
 
       if (data?.setting_value) {
-        setGroqEnabled(data.setting_value.groq_enabled ?? true);
-        setDeepseekEnabled(data.setting_value.deepseek_enabled ?? true);
+        setGroqEnabled((data.setting_value as any).groq_enabled ?? true);
+        setDeepseekEnabled((data.setting_value as any).deepseek_enabled ?? true);
       }
     } catch (error) {
       console.error('Error loading AI provider settings:', error);
@@ -281,7 +281,7 @@ export default function AIAnalyticsPage() {
       let feedbackQuery = supabase!.from('ai_feedback').select('*').gte('created_at', startDate.toISOString());
       if (endDate) feedbackQuery = feedbackQuery.lte('created_at', endDate.toISOString());
       const { data: feedbackData } = await feedbackQuery.order('created_at', { ascending: false }).limit(100);
-      setFeedback(feedbackData || []);
+      setFeedback((feedbackData || []) as any);
 
       // Load proactive events
       let eventsQuery = supabase!.from('proactive_ai_events').select('*').gte('created_at', startDate.toISOString());

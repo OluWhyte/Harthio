@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AnalyticsCharts } from '@/components/admin/analytics-charts';
+import { LineChartComponent, AreaChartComponent, BarChartComponent, PieChartComponent } from '@/components/admin/analytics-charts';
 import { ResponsiveAdminHeader } from '@/components/admin/responsive-admin-header';
 import { 
   ArrowLeft, 
@@ -156,8 +156,8 @@ export default function AdvancedAnalyticsPage() {
         sessionActivity,
         engagementMetrics,
         topicCategories,
-        deviceAnalytics: deviceData.data || [],
-        userFootprints: footprintData.data || []
+        deviceAnalytics: (deviceData.data || []) as any[],
+        userFootprints: (footprintData.data || []) as any[]
       });
     } catch (err) {
       console.error('Error fetching analytics:', err);
@@ -337,13 +337,23 @@ export default function AdvancedAnalyticsPage() {
         </div>
 
         {/* Advanced Charts */}
-        <div className="mb-8">
-          <AnalyticsCharts 
-            userGrowth={analyticsData.userGrowth}
-            sessionActivity={analyticsData.sessionActivity}
-            engagementMetrics={analyticsData.engagementMetrics}
-            topicCategories={analyticsData.topicCategories}
-          />
+        <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Growth</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LineChartComponent data={analyticsData.userGrowth} dataKey="value" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Session Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AreaChartComponent data={analyticsData.sessionActivity} dataKey="value" />
+            </CardContent>
+          </Card>
         </div>
 
         {/* Detailed Analytics Tabs */}

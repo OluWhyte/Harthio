@@ -8,7 +8,10 @@ export type SecurityEventType =
   | 'suspicious_activity'
   | 'validation_error'
   | 'brute_force_attempt'
-  | 'coordinated_attack';
+  | 'coordinated_attack'
+  | 'api_error'
+  | 'security_scan'
+  | 'contact_form';
 
 // Define security event interface
 export interface SecurityEvent {

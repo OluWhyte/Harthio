@@ -71,7 +71,7 @@ export function AddTrackerDialog({ userId, onTrackerAdded, children }: AddTracke
       trackerType,
       trackerName.trim(),
       startDate,
-      notes.trim() || undefined
+      (notes.trim() || undefined) as any
     );
 
     setIsSubmitting(false);

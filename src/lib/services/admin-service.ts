@@ -151,7 +151,7 @@ export class AdminService {
         .limit(limit);
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as any[];
     } catch (error) {
       logger.error('Error searching users', error);
       throw error;
@@ -435,30 +435,7 @@ export class AdminService {
     }
   }
 
-  static async getAllTopicsIncludingArchived(limit = 50, offset = 0): Promise<any[]> {
-    try {
-      // Get archived topics (will return empty array if table doesn't exist)
-      const [activeTopics, archivedTopics] = await Promise.all([
-        AdminService.getAllTopics(limit, offset),
-        AdminService.getArchivedTopics(limit, offset).catch(() => [])
-      ]);
-
-      // Combine and sort by most recent
-      const allTopics = [
-        ...activeTopics.map(t => ({ ...t, is_archived: false })),
-        ...archivedTopics
-      ].sort((a, b) => {
-        const dateA = new Date(a.archived_at || a.created_at).getTime();
-        const dateB = new Date(b.archived_at || b.created_at).getTime();
-        return dateB - dateA;
-      });
-
-      return allTopics.slice(0, limit);
-    } catch (error) {
-      logger.error('Error fetching all topics including archived', error);
-      throw error;
-    }
-  }
+  // Removed duplicate function - using the one above with TopicWithDetails return type
 
   static async getActiveTopics(): Promise<TopicWithDetails[]> {
     const now = new Date().toISOString();
@@ -517,7 +494,7 @@ export class AdminService {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as any[];
     } catch (error) {
       logger.error('Error fetching join requests', error);
       return [];
@@ -534,7 +511,7 @@ export class AdminService {
         .order('joined_at', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as any[];
     } catch (error) {
       logger.error('Error fetching session presence', error);
       return [];
@@ -937,7 +914,7 @@ export class AdminService {
         })).filter(admin => admin.user !== null);
       }
 
-      return data || [];
+      return (data || []) as any[];
     } catch (error) {
       logger.error('Error fetching admins', error);
       // Return empty array instead of throwing to prevent page crashes

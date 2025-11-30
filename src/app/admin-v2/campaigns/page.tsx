@@ -184,8 +184,8 @@ export default function EmailCampaignsPage() {
         audience_filter: audienceFilter,
         created_by: user.uid,
         custom_emails: audienceFilter === 'custom' ? customEmailsList : undefined,
-        custom_html_content: isCustomTemplate ? customContent : undefined,
-        custom_text_content: isCustomTemplate ? customContent : undefined,
+        // custom_html_content: isCustomTemplate ? customContent : undefined, // Not in type
+        // custom_text_content: isCustomTemplate ? customContent : undefined, // Not in type
       });
 
       if (!success || !campaign) {

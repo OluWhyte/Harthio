@@ -3,6 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import { getSecurityHeaders, logSecurityEvent } from '@/lib/security-utils';
 import { moderateRateLimit } from '@/lib/rate-limit';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

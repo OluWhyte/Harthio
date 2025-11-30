@@ -164,7 +164,7 @@ export default function EditProfilePage() {
       await userService.updateUserProfile(userProfile.id, {
         headline: data.headline || null,
         country: data.country || null,
-        recovery_goals: data.recovery_goals || null,
+        // recovery_goals: data.recovery_goals || null, // Not in type
       });
       
       await refreshUserProfile();

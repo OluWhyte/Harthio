@@ -63,7 +63,7 @@ export const aiChatHistoryService = {
         return [];
       }
 
-      return data || [];
+      return (data || []) as any[];
     } catch (error) {
       console.error('Error in getChatHistory:', error);
       return [];

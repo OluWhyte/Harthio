@@ -236,7 +236,7 @@ export async function detectNoCheckins(userId: string) {
   if (!lastCheckin) return;
 
   const daysSince = Math.floor(
-    (Date.now() - new Date(lastCheckin.created_at).getTime()) / (1000 * 60 * 60 * 24)
+    (Date.now() - new Date(lastCheckin.created_at || Date.now()).getTime()) / (1000 * 60 * 60 * 24)
   );
 
   if (daysSince < 3) return;

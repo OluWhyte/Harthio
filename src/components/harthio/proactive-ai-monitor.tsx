@@ -76,11 +76,11 @@ export function ProactiveAIMonitor() {
           url = `/harthio?action=session-debrief`;
           
           // Add session metadata to URL
-          if (prompt?.metadata?.sessionTitle) {
-            url += `&session_title=${encodeURIComponent(prompt.metadata.sessionTitle)}`;
+          if ((prompt as any)?.metadata?.sessionTitle) {
+            url += `&session_title=${encodeURIComponent((prompt as any).metadata.sessionTitle)}`;
           }
-          if (prompt?.metadata?.sessionTopic) {
-            url += `&session_topic=${encodeURIComponent(prompt.metadata.sessionTopic)}`;
+          if ((prompt as any)?.metadata?.sessionTopic) {
+            url += `&session_topic=${encodeURIComponent((prompt as any).metadata.sessionTopic)}`;
           }
         }
         

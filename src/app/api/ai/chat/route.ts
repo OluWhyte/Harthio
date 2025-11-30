@@ -801,7 +801,7 @@ export async function POST(request: NextRequest) {
     if (cacheKey) {
       const cached = responseCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-        console.log(`[AI] Cache HIT for: "${cacheKey.substring(0, 50)}..."`);
+        console.log(`[AI] Cache HIT for: "${String(cacheKey).substring(0, 50)}..."`);
         
         // Still increment usage for tracking (but no API cost)
         await incrementAIMessageUsage(user.id, supabase);

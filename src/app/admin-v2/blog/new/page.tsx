@@ -196,7 +196,7 @@ export default function NewBlogPost() {
                     className="resize-none"
                   />
                   <p className="text-xs text-gray-500 mt-2">
-                    {formData.excerpt.length} characters
+                    {formData.excerpt?.length || 0} characters
                   </p>
                 </CardContent>
               </Card>

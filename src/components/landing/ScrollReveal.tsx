@@ -74,7 +74,7 @@ const ScrollRevealComponent = ({
             ref={ref}
             initial="hidden"
             animate={controls}
-            variants={variants}
+            variants={variants as any}
             className={className}
         >
             {children}

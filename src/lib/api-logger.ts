@@ -129,10 +129,10 @@ class APILogger {
       securityMonitor.recordEvent({
         type: 'suspicious_activity',
         ip,
-        userAgent,
         endpoint,
         userId,
         details: {
+          userAgent,
           riskScore: securityScan.riskScore,
           issues: securityScan.issues,
           url: request.url
@@ -145,10 +145,10 @@ class APILogger {
       securityMonitor.recordEvent({
         type: 'api_error',
         ip,
-        userAgent,
         endpoint,
         userId,
         details: {
+          userAgent,
           error: error.message,
           statusCode: response?.status,
           method: request.method

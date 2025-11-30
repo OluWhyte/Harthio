@@ -76,7 +76,7 @@ export const aiFeedbackService = {
         return [];
       }
 
-      return data || [];
+      return (data || []) as any[];
     } catch (error) {
       console.error('Error fetching user feedback:', error);
       return [];

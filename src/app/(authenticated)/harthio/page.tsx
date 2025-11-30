@@ -288,7 +288,7 @@ export default function HarthioAIPage() {
           welcomeMessage = `Hi ${userProfile?.first_name || 'there'}! 👋\n\nI noticed we started setting up a tracker last time but didn't finish. That's totally okay - sometimes timing isn't right.\n\nReady to try again? You can tap one of the buttons below for quick setup, or tell me what you'd like to track.`;
         } else if (trackerCount > 0) {
           // User has existing trackers
-          const trackerList = hasExistingTrackers.map(t => `• ${t.name} (${sobrietyService.calculateTimeBreakdown(t.start_date).days} days)`).join('\n');
+          const trackerList = hasExistingTrackers.map(t => `• ${(t as any).name} (${sobrietyService.calculateTimeBreakdown(t.start_date).days} days)`).join('\n');
           welcomeMessage = `Hi ${userProfile?.first_name || 'there'}! 👋\n\nI see you're already tracking:\n${trackerList}\n\nThat's amazing progress! 💪\n\nWant to add another? Tap a button below for quick setup, or tell me what else you'd like to track.`;
         } else {
           // First time creating a tracker
@@ -818,7 +818,7 @@ export default function HarthioAIPage() {
       userMessage: userMessage.content,
       aiResponse: aiMessage.content,
       feedbackType,
-      reason,
+      reason: reason as any,
       reasonDetails: details,
     });
     

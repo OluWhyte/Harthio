@@ -246,7 +246,7 @@ export class AdminUserService {
       throw new Error(`Failed to fetch audit log: ${error.message}`);
     }
 
-    return data || [];
+    return (data || []) as any[];
   }
 
   /**
@@ -271,7 +271,7 @@ export class AdminUserService {
       throw new Error(`Failed to fetch user audit log: ${error.message}`);
     }
 
-    return data || [];
+    return (data || []) as any[];
   }
 
   /**

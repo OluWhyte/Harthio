@@ -1059,7 +1059,7 @@ export default function ProfilePage() {
           
           {/* Profile Completion & Stats */}
           {userProfile && (() => {
-            const completion = calculateProfileCompletion(userProfile);
+            const completion = calculateProfileCompletion(userProfile as any);
             return (
               <Card className="border-l-4 border-l-blue-500">
                 <CardContent className="pt-4 sm:pt-6">

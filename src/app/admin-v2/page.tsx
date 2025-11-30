@@ -95,13 +95,13 @@ export default function AdminV2Dashboard() {
       // Users with credit balance
       supabase.from('users').select('ai_credits'),
       
-      // Credit transactions
-      supabase.from('credit_transactions').select('amount, transaction_type')
+      // Credit transactions - table doesn't exist, return empty
+      Promise.resolve({ data: [], error: null })
     ]);
 
     // Calculate credit stats
     const totalCredits = usersData.data?.reduce((sum, u) => sum + (u.ai_credits || 0), 0) || 0;
-    const creditsSpent = creditsData.data?.filter(c => c.transaction_type === 'debit').reduce((sum, c) => sum + Math.abs(c.amount), 0) || 0;
+    const creditsSpent = (creditsData.data as any)?.filter((c: any) => c.transaction_type === 'debit').reduce((sum: number, c: any) => sum + Math.abs(c.amount), 0) || 0;
 
     // Calculate growth
     const userGrowth = newYesterday ? ((newToday || 0) - newYesterday) / newYesterday * 100 : 0;

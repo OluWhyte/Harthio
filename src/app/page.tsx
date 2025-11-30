@@ -33,9 +33,6 @@ const HowHarthioHelps = dynamicImport(
   { ssr: false, loading: () => <div className="h-[600px] animate-pulse bg-gray-50" /> }
 );
 
-// Force dynamic rendering to avoid build issues
-export const dynamic = "force-dynamic";
-
 export default function LandingPage() {
   return (
     <>

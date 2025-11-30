@@ -15,8 +15,8 @@ export class AdminAuthService {
       }
 
       // Retry getting session up to 3 times with delays
-      let session = null;
-      let sessionError = null;
+      let session: any = null;
+      let sessionError: any = null;
       
       for (let attempt = 0; attempt < 3; attempt++) {
         const result = await supabase.auth.getSession();
@@ -86,8 +86,8 @@ export class AdminAuthService {
       }
 
       // Retry getting session up to 3 times with delays
-      let session = null;
-      let sessionError = null;
+      let session: any = null;
+      let sessionError: any = null;
       
       for (let attempt = 0; attempt < 3; attempt++) {
         const result = await supabase.auth.getSession();

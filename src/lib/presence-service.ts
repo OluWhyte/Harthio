@@ -123,7 +123,7 @@ export class PresenceService {
         return [];
       }
 
-      return data || [];
+      return (data || []) as any[];
     } catch (error) {
       console.error('Error getting active users:', error);
       return [];

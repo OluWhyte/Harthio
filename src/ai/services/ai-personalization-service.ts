@@ -29,7 +29,7 @@ export class AIPersonalizationService {
 
       // Try to get existing preferences
       const { data, error } = await supabase
-        .from('ai_user_preferences')
+        .from('ai_user_preferences' as any)
         .select('*')
         .eq('user_id', userId)
         .single();
@@ -37,7 +37,7 @@ export class AIPersonalizationService {
       if (error && error.code === 'PGRST116') {
         // No preferences found, create default
         const { data: newPrefs, error: insertError } = await supabase
-          .from('ai_user_preferences')
+          .from('ai_user_preferences' as any)
           .insert({ user_id: userId })
           .select()
           .single();
@@ -47,7 +47,7 @@ export class AIPersonalizationService {
           return null;
         }
 
-        return newPrefs;
+        return newPrefs as any;
       }
 
       if (error) {
@@ -55,7 +55,7 @@ export class AIPersonalizationService {
         return null;
       }
 
-      return data;
+      return data as any;
     } catch (error) {
       console.error('Error in getUserPreferences:', error);
       return null;
@@ -73,8 +73,8 @@ export class AIPersonalizationService {
       if (!supabase) return false;
 
       const { error } = await supabase
-        .from('ai_user_preferences')
-        .update(updates)
+        .from('ai_user_preferences' as any)
+        .update(updates as any)
         .eq('user_id', userId);
 
       if (error) {

@@ -54,7 +54,7 @@ export default function ManageCreditsPage() {
         return;
       }
 
-      setSearchedUser(data);
+      setSearchedUser(data as any);
     } catch (error) {
       console.error('Error searching user:', error);
       toast({

@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lenientRateLimit } from '@/lib/rate-limit';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   try {
     // Rate limiting to prevent DoS

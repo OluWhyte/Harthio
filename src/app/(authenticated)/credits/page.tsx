@@ -94,7 +94,7 @@ export default function CreditsPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <MobilePageHeader title="Buy Credits" showBackButton />
+      <MobilePageHeader />
 
       <main className="flex-1 container px-4 py-6 max-w-6xl mx-auto">
         {/* Current Balance */}

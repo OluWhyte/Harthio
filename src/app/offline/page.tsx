@@ -1,11 +1,8 @@
+'use client';
+
 import { WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-
-export const metadata = {
-  title: 'Offline - Harthio',
-  description: 'You are currently offline',
-};
 
 export default function OfflinePage() {
   return (

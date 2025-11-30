@@ -172,7 +172,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4 gap-1">
           {navItems.map(item => {
             const Icon = item.icon;
-            if (item.isComingSoon) {
+            if ((item as any).isComingSoon) {
               return (
                  <button
                     key={item.label}

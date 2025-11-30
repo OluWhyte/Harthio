@@ -28,7 +28,7 @@ export const checkinService = {
       return null;
     }
 
-    return data;
+    return data as any;
   },
 
   // Create or update today's check-in
@@ -75,7 +75,7 @@ export const checkinService = {
       return [];
     }
 
-    return data || [];
+    return (data || []) as any[];
   },
 
   // Get check-in streak (consecutive days)
