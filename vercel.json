@@ -8,6 +8,12 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/send-automated-emails",
+      "schedule": "0 7 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

@@ -1,11 +1,11 @@
 -- ============================================================================
 -- ADD NEW FEATURES ANNOUNCEMENT EMAIL TEMPLATE
 -- ============================================================================
--- Email to announce V0.4 features to existing users
+-- Email to announce V0.3.0 features to existing users
 
 INSERT INTO email_templates (name, subject, html_content, text_content, description, category, variables) VALUES
 (
-  'New Features Announcement V0.4',
+  'New Features Announcement V0.3.0',
   '🚀 Exciting New Features on Harthio!',
   '<!DOCTYPE html>
 <html>
@@ -15,7 +15,7 @@ INSERT INTO email_templates (name, subject, html_content, text_content, descript
   <title>New Features on Harthio</title>
   <style>
     body { font-family: ''Inter'', -apple-system, BlinkMacSystemFont, ''Segoe UI'', Roboto, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background-color: hsl(240, 67%, 94%); }
-    .container { max-width: 600px; margin: 0; auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     .header { background: linear-gradient(135deg, hsl(340, 82%, 52%) 0%, hsl(180, 100%, 25%) 100%); color: white; padding: 40px 20px; text-align: center; }
     .content { padding: 40px 30px; }
     .feature-box { background: hsl(240, 67%, 97%); border-left: 4px solid hsl(340, 82%, 52%); padding: 20px; margin: 20px 0; border-radius: 8px; }
@@ -154,7 +154,7 @@ P.S. - All these features are free to use. We''re committed to making meaningful
 ---
 Visit Harthio: {{appUrl}}
 Unsubscribe: {{appUrl}}/unsubscribe?token={{unsubscribeToken}}',
-  'Announcement email for V0.4 new features - sent to all existing users',
+  'Announcement email for V0.3.0 new features - sent to all existing users',
   'announcement',
   '["firstName", "appUrl", "unsubscribeToken"]'::jsonb
 );
@@ -167,5 +167,5 @@ SELECT
   description,
   '✅ Created' as status
 FROM email_templates
-WHERE name = 'New Features Announcement V0.4';
+WHERE name = 'New Features Announcement V0.3.0';
 

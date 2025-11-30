@@ -476,12 +476,15 @@ export const emailCampaignService = {
 
           console.log(`📧 [CAMPAIGN] Sending to ${user.email} (${i + 1}/${users.length})`);
 
+          // Format sender name properly
+          const formattedFrom = this.getSenderFormat(campaign.from_email);
+
           // Send email
           const sent = await emailService.sendEmail(user.email, {
             subject,
             html: htmlContent,
             text: textContent
-          }, campaign.from_email);
+          }, formattedFrom);
 
           // Track send
           await typedSupabase
@@ -627,15 +630,15 @@ export const emailCampaignService = {
 
   // Get dynamic email signature based on sender
   getEmailSignature(fromEmail: string): { htmlSignature: string; textSignature: string } {
-    if (fromEmail.includes('tosin@')) {
+    if (fromEmail.includes('tosin@') || fromEmail.includes('Tosin')) {
       return {
         htmlSignature: '<p>Best,<br><strong>Tosin</strong><br>Co-founder, Harthio</p>',
         textSignature: 'Best,\nTosin\nCo-founder, Harthio'
       };
-    } else if (fromEmail.includes('seyi@')) {
+    } else if (fromEmail.includes('seyi@') || fromEmail.includes('Seyi')) {
       return {
-        htmlSignature: '<p>Best regards,<br><strong>Seyi</strong><br>Founder, Harthio</p>',
-        textSignature: 'Best regards,\nSeyi\nFounder, Harthio'
+        htmlSignature: '<p>With gratitude,<br><strong>Seyi</strong><br>Founder, Harthio</p>',
+        textSignature: 'With gratitude,\nSeyi\nFounder, Harthio'
       };
     } else {
       // no-reply or generic
@@ -644,5 +647,18 @@ export const emailCampaignService = {
         textSignature: 'Best regards,\nThe Harthio Team'
       };
     }
+  },
+
+  // Get properly formatted sender name and email
+  getSenderFormat(fromEmail: string): string {
+    if (fromEmail.includes('tosin@')) {
+      return 'Tosin from Harthio <tosin@harthio.com>';
+    } else if (fromEmail.includes('seyi@')) {
+      return 'Seyi <seyi@harthio.com>';
+    } else if (fromEmail.includes('no-reply@')) {
+      return 'Harthio <no-reply@harthio.com>';
+    }
+    // If already formatted or unknown, return as-is
+    return fromEmail;
   }
 };
