@@ -199,3 +199,8 @@ staging-credentials.*
 # Build artifacts with potential sensitive data
 build-info.json
 deployment-info.json
+
+# Documentation (internal use only)
+docs/setup/
+docs/deployment/
+docs/testing/
