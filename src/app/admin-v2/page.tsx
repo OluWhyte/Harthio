@@ -28,7 +28,12 @@ export default function AdminV2Dashboard() {
     totalCredits: 0,
     creditsSpent: 0
   });
-  const [chartData, setChartData] = useState({
+  const [chartData, setChartData] = useState<{
+    userGrowth: Array<{ date: string; users: number; cumulative: number }>;
+    sessionActivity: Array<{ date: string; sessions: number; participants: number }>;
+    engagementMetrics: Array<{ level: string; count: number; percentage: number }>;
+    topicCategories: Array<{ category: string; count: number; percentage: number }>;
+  }>({
     userGrowth: [],
     sessionActivity: [],
     engagementMetrics: [],
@@ -161,15 +166,15 @@ export default function AdminV2Dashboard() {
       userGrowth: generateChartData(),
       sessionActivity: generateSessionData(),
       engagementMetrics: [
-        { level: 'High', count: Math.floor((userCount || 0) * 0.35), percentage: 35 } as any,
-        { level: 'Medium', count: Math.floor((userCount || 0) * 0.45), percentage: 45 } as any,
-        { level: 'Low', count: Math.floor((userCount || 0) * 0.20), percentage: 20 } as any
+        { level: 'High', count: Math.floor((userCount || 0) * 0.35), percentage: 35 },
+        { level: 'Medium', count: Math.floor((userCount || 0) * 0.45), percentage: 45 },
+        { level: 'Low', count: Math.floor((userCount || 0) * 0.20), percentage: 20 }
       ],
       topicCategories: [
-        { category: 'Recovery', count: 45, percentage: 30 } as any,
-        { category: 'Support', count: 35, percentage: 23 } as any,
-        { category: 'Wellness', count: 40, percentage: 27 } as any,
-        { category: 'Community', count: 30, percentage: 20 } as any
+        { category: 'Recovery', count: 45, percentage: 30 },
+        { category: 'Support', count: 35, percentage: 23 },
+        { category: 'Wellness', count: 40, percentage: 27 },
+        { category: 'Community', count: 30, percentage: 20 }
       ]
     });
   };
