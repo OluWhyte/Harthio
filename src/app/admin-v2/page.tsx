@@ -70,7 +70,9 @@ export default function AdminV2Dashboard() {
       { count: trackerCount },
       { count: aiCount },
       usersData,
-      creditsData
+      creditsData,
+      allUsersData,
+      allSessionsData
     ] = await Promise.all([
       // Total users
       supabase.from('users').select('*', { count: 'exact', head: true }),
@@ -108,7 +110,13 @@ export default function AdminV2Dashboard() {
       supabase.from('users').select('ai_credits'),
       
       // Credit transactions - table doesn't exist, return empty
-      Promise.resolve({ data: [], error: null })
+      Promise.resolve({ data: [], error: null }),
+      
+      // All users with created_at for chart data
+      supabase.from('users').select('created_at').order('created_at', { ascending: true }),
+      
+      // All sessions with created_at for chart data
+      supabase.from('topics').select('created_at, user_id').order('created_at', { ascending: true })
     ]);
 
     // Calculate credit stats
@@ -118,17 +126,28 @@ export default function AdminV2Dashboard() {
     // Calculate growth
     const userGrowth = newYesterday ? ((newToday || 0) - newYesterday) / newYesterday * 100 : 0;
 
-    // Generate mock chart data for now (can be replaced with real data)
+    // Generate real chart data from database
     const generateChartData = () => {
       const days = 30;
       const data: Array<{ date: string; users: number; cumulative: number }> = [];
+      let cumulativeCount = 0;
+      
       for (let i = days; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Count users created on this date
+        const usersOnDate = (allUsersData.data || []).filter(u => 
+          new Date(u.created_at).toISOString().split('T')[0] === dateStr
+        ).length;
+        
+        cumulativeCount += usersOnDate;
+        
         data.push({
-          date: date.toISOString().split('T')[0],
-          users: Math.floor(Math.random() * 20) + 5,
-          cumulative: (userCount || 0) - Math.floor(Math.random() * 50)
+          date: dateStr,
+          users: usersOnDate,
+          cumulative: cumulativeCount
         });
       }
       return data;
@@ -137,13 +156,28 @@ export default function AdminV2Dashboard() {
     const generateSessionData = () => {
       const days = 30;
       const data: Array<{ date: string; sessions: number; participants: number }> = [];
+      
       for (let i = days; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        
+        // Count sessions created on this date
+        const sessionsOnDate = (allSessionsData.data || []).filter(s => 
+          new Date(s.created_at).toISOString().split('T')[0] === dateStr
+        ).length;
+        
+        // Count unique participants (users) on this date
+        const participantsOnDate = new Set(
+          (allSessionsData.data || [])
+            .filter(s => new Date(s.created_at).toISOString().split('T')[0] === dateStr)
+            .map(s => s.user_id)
+        ).size;
+        
         data.push({
-          date: date.toISOString().split('T')[0],
-          sessions: Math.floor(Math.random() * 15) + 3,
-          participants: Math.floor(Math.random() * 30) + 10
+          date: dateStr,
+          sessions: sessionsOnDate,
+          participants: participantsOnDate
         });
       }
       return data;
