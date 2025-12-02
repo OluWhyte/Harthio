@@ -1,6 +1,6 @@
-# 📚 Harthio Acquisition Content Library V0.4
+# 📚 Harthio Acquisition Content Library V0.3
 
-**Version:** 0.4  
+**Version:** 0.3  
 **Last Updated:** November 29, 2025  
 **Campaign Duration:** 21 Days  
 
@@ -1336,7 +1336,7 @@ All content is ready to copy-paste. Just personalize with your story and hit sen
 
 ---
 
-**Version:** 0.4  
+**Version:** 0.3  
 **Created:** November 29, 2025  
 **Total Content Pieces:** 100+  
 **Ready to Use:** ✅

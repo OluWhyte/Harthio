@@ -21,6 +21,13 @@ export async function middleware(request: NextRequest) {
     }
   }
   
+  // Redirect old /admin routes to /admin-v2
+  if (url.pathname.startsWith('/admin') && !url.pathname.startsWith('/admin-v2')) {
+    const newPath = url.pathname.replace(/^\/admin/, '/admin-v2');
+    url.pathname = newPath;
+    return NextResponse.redirect(url);
+  }
+  
   // Security: Protect admin routes - validate token
   if (url.pathname.startsWith('/admin-v2') && url.pathname !== '/admin-v2/login') {
     // Get all possible Supabase auth cookie names

@@ -28,7 +28,7 @@ Your complete day-by-day action plan for the 21-day campaign.
 
 ---
 
-### 2. **HARTHIO_ACQUISITION_CONTENT_LIBRARY_V0.4.md**
+### 2. **HARTHIO_ACQUISITION_CONTENT_LIBRARY_V0.3.md**
 Your complete copy-paste content library with 100+ ready-to-use messages, posts, and scripts.
 
 **What's Inside:**

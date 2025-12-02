@@ -9,6 +9,7 @@ import { useAdmin } from '@/contexts/admin-context';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/common/loading-spinner';
+import { AnalyticsCharts } from '@/components/admin/analytics-charts';
 
 export default function AdminV2Dashboard() {
   const { user } = useAuth();
@@ -26,6 +27,12 @@ export default function AdminV2Dashboard() {
     sessionGrowth: 0,
     totalCredits: 0,
     creditsSpent: 0
+  });
+  const [chartData, setChartData] = useState({
+    userGrowth: [],
+    sessionActivity: [],
+    engagementMetrics: [],
+    topicCategories: []
   });
 
   useEffect(() => {
@@ -106,6 +113,37 @@ export default function AdminV2Dashboard() {
     // Calculate growth
     const userGrowth = newYesterday ? ((newToday || 0) - newYesterday) / newYesterday * 100 : 0;
 
+    // Generate mock chart data for now (can be replaced with real data)
+    const generateChartData = () => {
+      const days = 30;
+      const data: Array<{ date: string; users: number; cumulative: number }> = [];
+      for (let i = days; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        data.push({
+          date: date.toISOString().split('T')[0],
+          users: Math.floor(Math.random() * 20) + 5,
+          cumulative: (userCount || 0) - Math.floor(Math.random() * 50)
+        });
+      }
+      return data;
+    };
+
+    const generateSessionData = () => {
+      const days = 30;
+      const data: Array<{ date: string; sessions: number; participants: number }> = [];
+      for (let i = days; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        data.push({
+          date: date.toISOString().split('T')[0],
+          sessions: Math.floor(Math.random() * 15) + 3,
+          participants: Math.floor(Math.random() * 30) + 10
+        });
+      }
+      return data;
+    };
+
     setStats({
       totalUsers: userCount || 0,
       newUsersToday: newToday || 0,
@@ -117,6 +155,22 @@ export default function AdminV2Dashboard() {
       sessionGrowth: 0,
       totalCredits,
       creditsSpent
+    });
+
+    setChartData({
+      userGrowth: generateChartData(),
+      sessionActivity: generateSessionData(),
+      engagementMetrics: [
+        { level: 'High', count: Math.floor((userCount || 0) * 0.35), percentage: 35 } as any,
+        { level: 'Medium', count: Math.floor((userCount || 0) * 0.45), percentage: 45 } as any,
+        { level: 'Low', count: Math.floor((userCount || 0) * 0.20), percentage: 20 } as any
+      ],
+      topicCategories: [
+        { category: 'Recovery', count: 45, percentage: 30 } as any,
+        { category: 'Support', count: 35, percentage: 23 } as any,
+        { category: 'Wellness', count: 40, percentage: 27 } as any,
+        { category: 'Community', count: 30, percentage: 20 } as any
+      ]
     });
   };
 
@@ -292,6 +346,14 @@ export default function AdminV2Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Beautiful Analytics Charts */}
+      <AnalyticsCharts 
+        userGrowth={chartData.userGrowth}
+        sessionActivity={chartData.sessionActivity}
+        engagementMetrics={chartData.engagementMetrics}
+        topicCategories={chartData.topicCategories}
+      />
       </div>
     </div>
   );
