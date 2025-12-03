@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!;
 
@@ -81,7 +81,7 @@ async function handleSuccessfulPayment(data: any) {
     await handleProSubscription(data);
   } else {
     // Generic payment record
-    const { error } = await supabase.from('payments').insert({
+    const { error } = await supabaseAdmin.from('payments').insert({
       user_id: metadata?.user_id,
       amount_usd: amount / 100,
       currency: data.currency || 'NGN',
@@ -108,7 +108,7 @@ async function handleSuccessfulPayment(data: any) {
 async function handleCreditPurchase(data: any) {
   const { reference, amount, customer, metadata } = data;
   
-  const { data: result, error } = await supabase.rpc('add_credits_to_user', {
+  const { data: result, error } = await supabaseAdmin.rpc('add_credits_to_user', {
     p_user_id: metadata.user_id,
     p_credits: metadata.credits,
     p_amount_usd: amount / 100,
@@ -134,7 +134,7 @@ async function handleProSubscription(data: any) {
   const { reference, amount, customer, metadata } = data;
   const plan = metadata.plan || 'monthly';
   
-  const { data: result, error } = await supabase.rpc('upgrade_user_to_pro', {
+  const { data: result, error } = await supabaseAdmin.rpc('upgrade_user_to_pro', {
     p_user_id: metadata.user_id,
     p_plan: plan,
     p_amount_usd: amount / 100,
@@ -161,7 +161,7 @@ async function handleSubscriptionCreated(data: any) {
   const { subscription_code, customer, plan, status } = data;
 
   // Record subscription in database
-  const { error } = await supabase.from('subscriptions').insert({
+  const { error } = await supabaseAdmin.from('subscriptions').insert({
     user_id: customer.metadata?.user_id,
     plan: plan.interval || 'monthly',
     status: status === 'active' ? 'active' : 'trialing',
@@ -189,7 +189,7 @@ async function handleSubscriptionCancelled(data: any) {
   console.log('⚠️ [PAYSTACK] Subscription cancelled:', data.subscription_code);
 
   // Update subscription status
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('subscriptions')
     .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
     .eq('gateway_subscription_id', data.subscription_code);
@@ -206,7 +206,7 @@ async function handleSubscriptionCancelled(data: any) {
  * Upgrade user tier after successful payment
  */
 async function upgradeUserTier(userId: string, tier: string) {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('users')
     .update({ subscription_tier: tier })
     .eq('id', userId);

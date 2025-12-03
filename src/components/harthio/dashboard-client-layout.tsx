@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { OngoingSessionIndicator } from './ongoing-session-indicator';
 import { useToast } from '@/hooks/use-toast';
 import { MobileNavigation } from '@/components/harthio/mobile-navigation';
-import { useOptimizedRequests } from '@/hooks/use-optimized-requests';
+import { useRequestsCount } from '@/hooks/use-requests-count';
 import { usePageTracking, useNoCheckinsDetection } from '@/hooks/useProactiveAI';
 import { ContactUsDialog } from '@/components/harthio/contact-us-dialog';
 
@@ -50,18 +50,8 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
   usePageTracking(); // Track page views
   useNoCheckinsDetection(); // Check for no check-ins (once on load)
   
-  // Get pending requests count for badge
-  const { receivedRequests, refresh } = useOptimizedRequests({
-    enableCache: true,
-    enableRealtime: true,
-  });
-  
-  const notificationCount = receivedRequests.length;
-  
-  // Refresh requests when pathname changes (user navigates)
-  useEffect(() => {
-    refresh?.(false);
-  }, [pathname, refresh]);
+  // Get pending requests count for badge (lightweight - no heavy processing)
+  const notificationCount = useRequestsCount();
 
   const handleLogout = async () => {
     try {

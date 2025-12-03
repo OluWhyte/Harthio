@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!;
 
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     // Handle credit purchase using atomic function
     if (data.metadata?.credits && data.metadata?.user_id) {
-      const { data: result, error } = await supabase.rpc('add_credits_to_user', {
+      const { data: result, error } = await supabaseAdmin.rpc('add_credits_to_user', {
         p_user_id: data.metadata.user_id,
         p_credits: data.metadata.credits,
         p_amount_usd: data.amount / 100,
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     if (data.metadata?.tier === 'pro' && data.metadata?.user_id) {
       const plan = data.metadata.plan || 'monthly';
       
-      const { data: result, error } = await supabase.rpc('upgrade_user_to_pro', {
+      const { data: result, error } = await supabaseAdmin.rpc('upgrade_user_to_pro', {
         p_user_id: data.metadata.user_id,
         p_plan: plan,
         p_amount_usd: data.amount / 100,
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
  * Upgrade user tier after successful payment
  */
 async function upgradeUserTier(userId: string, tier: string) {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('users')
     .update({ subscription_tier: tier })
     .eq('id', userId);
