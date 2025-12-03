@@ -22,6 +22,9 @@ export async function POST(request: NextRequest) {
     // Generate unique reference
     const reference = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+    // Get the base URL from request origin (works for preview and production)
+    const baseUrl = request.nextUrl.origin;
+    
     // Initialize payment with Paystack
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
@@ -34,7 +37,7 @@ export async function POST(request: NextRequest) {
         amount: Math.round(amount), // Ensure integer (kobo/cents)
         currency: currency || 'NGN',
         reference,
-        callback_url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://harthio.com'}/api/paystack/callback`,
+        callback_url: `${baseUrl}/api/paystack/callback`,
         metadata: metadata || {},
       }),
     });

@@ -13,6 +13,7 @@ import { MobilePageHeader } from '@/components/harthio/mobile-page-header';
 import { LoadingSpinner } from '@/components/common/loading-spinner';
 import { platformSettingsService } from '@/lib/services/platform-settings-service';
 import { paystackService } from '@/lib/services/paystack-service';
+import { supabase } from '@/lib/supabase';
 
 export default function CreditsPage() {
   const router = useRouter();
@@ -70,10 +71,11 @@ export default function CreditsPage() {
         .eq('setting_key', 'pricing')
         .single();
       
-      if (pricingData?.setting_value?.pro) {
+      if (pricingData?.setting_value && typeof pricingData.setting_value === 'object' && 'pro' in pricingData.setting_value) {
+        const proData = pricingData.setting_value.pro as any;
         setProPricing({
-          usd: pricingData.setting_value.pro.usd || '9.99',
-          ngn: pricingData.setting_value.pro.ngn || '15000',
+          usd: proData?.usd || '9.99',
+          ngn: proData?.ngn || '15000',
         });
       }
       
@@ -261,24 +263,8 @@ export default function CreditsPage() {
 
         {/* Credit Packs */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4">
             <h2 className="text-2xl font-bold">Buy Credit Packs</h2>
-            <div className="flex gap-2">
-              <Button
-                variant={currency === 'usd' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCurrency('usd')}
-              >
-                USD ($)
-              </Button>
-              <Button
-                variant={currency === 'ngn' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCurrency('ngn')}
-              >
-                NGN (₦)
-              </Button>
-            </div>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {creditPacks.map((pack, index) => (

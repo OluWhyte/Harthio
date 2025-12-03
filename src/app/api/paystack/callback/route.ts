@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
     const trxref = searchParams.get('trxref');
 
     if (!reference && !trxref) {
-      return NextResponse.redirect(new URL('/me?payment=error', request.url));
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+      return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
     }
 
     const paymentReference = reference || trxref;
@@ -35,7 +36,8 @@ export async function GET(request: NextRequest) {
 
     if (!verifyData.status || verifyData.data.status !== 'success') {
       console.error('❌ [PAYSTACK] Payment verification failed:', verifyData);
-      return NextResponse.redirect(new URL('/me?payment=failed', request.url));
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+      return NextResponse.redirect(new URL('/me?payment=failed', baseUrl));
     }
 
     const { data } = verifyData;
@@ -57,7 +59,8 @@ export async function GET(request: NextRequest) {
 
     if (paymentError) {
       console.error('❌ [PAYSTACK] Failed to record payment:', paymentError);
-      return NextResponse.redirect(new URL('/me?payment=error', request.url));
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+      return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
     }
 
     // Add credits to user's balance
@@ -100,10 +103,12 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('✅ [PAYSTACK] Payment processed successfully');
-    return NextResponse.redirect(new URL('/me?payment=success', request.url));
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    return NextResponse.redirect(new URL('/me?payment=success', baseUrl));
   } catch (error) {
     console.error('❌ [PAYSTACK] Callback error:', error);
-    return NextResponse.redirect(new URL('/me?payment=error', request.url));
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
   }
 }
 

@@ -38,10 +38,11 @@ function PricingContent() {
         .eq('setting_key', 'pricing')
         .single();
       
-      if (data?.setting_value?.pro) {
+      if (data?.setting_value && typeof data.setting_value === 'object' && 'pro' in data.setting_value) {
+        const proData = data.setting_value.pro as any;
         setProPricing({
-          usd: data.setting_value.pro.usd || '9.99',
-          ngn: data.setting_value.pro.ngn || '15000',
+          usd: proData?.usd || '9.99',
+          ngn: proData?.ngn || '15000',
         });
       }
     };
@@ -177,6 +178,25 @@ function PricingContent() {
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent leading-tight">
                 Simple, Transparent Pricing
               </h1>
+              
+              {/* Currency Toggle */}
+              <div className="flex justify-center gap-2 mb-6">
+                <Button
+                  variant={currency === 'usd' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCurrency('usd')}
+                >
+                  USD ($)
+                </Button>
+                <Button
+                  variant={currency === 'ngn' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCurrency('ngn')}
+                >
+                  NGN (₦)
+                </Button>
+              </div>
+              
               <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed px-4">
                 Start free with peer support. Upgrade to Pro for unlimited AI companion and advanced recovery tools.
               </p>
@@ -367,12 +387,29 @@ function PricingContent() {
             </div>
 
             {/* Pro Subscription Section */}
-            <div className="text-center mb-8">
-              <h2 className="text-2xl sm:text-3xl font-bold mb-3">Unlimited Access</h2>
-              <p className="text-base text-gray-600 max-w-2xl mx-auto">
-                For power users who want unlimited AI support and advanced recovery tools.
-              </p>
+            <div className="flex items-center justify-between mb-8">
+              <div className="text-center flex-1">
+                <h2 className="text-3xl font-bold mb-2">Pro Subscription</h2>
+                <p className="text-gray-600">Unlimited AI messages and premium features</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={currency === 'usd' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCurrency('usd')}
+                >
+                  USD ($)
+                </Button>
+                <Button
+                  variant={currency === 'ngn' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCurrency('ngn')}
+                >
+                  NGN (₦)
+                </Button>
+              </div>
             </div>
+
 
             <div className="flex flex-wrap justify-center gap-5 sm:gap-6 max-w-6xl mx-auto">
               {/* Pro Monthly - Apple Premium Style */}
