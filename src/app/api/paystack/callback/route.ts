@@ -11,12 +11,16 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!;
  */
 export async function GET(request: NextRequest) {
   try {
+    // Get the correct base URL from headers
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || request.nextUrl.host;
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const baseUrl = `${protocol}://${host}`;
+    
     const searchParams = request.nextUrl.searchParams;
     const reference = searchParams.get('reference');
     const trxref = searchParams.get('trxref');
 
     if (!reference && !trxref) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
       return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
     }
 
@@ -36,7 +40,6 @@ export async function GET(request: NextRequest) {
 
     if (!verifyData.status || verifyData.data.status !== 'success') {
       console.error('❌ [PAYSTACK] Payment verification failed:', verifyData);
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
       return NextResponse.redirect(new URL('/me?payment=failed', baseUrl));
     }
 
@@ -59,7 +62,6 @@ export async function GET(request: NextRequest) {
 
     if (paymentError) {
       console.error('❌ [PAYSTACK] Failed to record payment:', paymentError);
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
       return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
     }
 
@@ -103,11 +105,13 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('✅ [PAYSTACK] Payment processed successfully');
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     return NextResponse.redirect(new URL('/me?payment=success', baseUrl));
   } catch (error) {
     console.error('❌ [PAYSTACK] Callback error:', error);
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+    // Get base URL again in catch block
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || request.nextUrl.host;
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const baseUrl = `${protocol}://${host}`;
     return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
   }
 }
