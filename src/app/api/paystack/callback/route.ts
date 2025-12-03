@@ -73,9 +73,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Upgrade user tier if applicable (for Pro subscriptions)
-    if (data.metadata?.tier && data.metadata?.user_id) {
-      await upgradeUserTier(data.metadata.user_id, data.metadata.tier);
+    // Handle Pro subscription
+    if (data.metadata?.tier === 'pro' && data.metadata?.user_id) {
+      const plan = data.metadata?.plan || 'monthly';
+      const daysToAdd = plan === 'yearly' ? 365 : 30;
+      
+      // Calculate subscription end date
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + daysToAdd);
+      
+      // Update user to Pro tier
+      const { error: tierError } = await supabase
+        .from('users')
+        .update({
+          subscription_tier: 'pro',
+          subscription_end_date: endDate.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', data.metadata.user_id);
+      
+      if (tierError) {
+        console.error('❌ [PAYSTACK] Failed to upgrade user tier:', tierError);
+      } else {
+        console.log(`✅ [PAYSTACK] User upgraded to Pro (${plan})`);
+      }
     }
 
     console.log('✅ [PAYSTACK] Payment processed successfully');

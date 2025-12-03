@@ -25,9 +25,10 @@ export default function CreditsPage() {
   const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]);
   const [creditPacks, setCreditPacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currency, setCurrency] = useState<'usd' | 'ngn'>('usd');
+  const [currency, setCurrency] = useState<'usd' | 'ngn'>('ngn'); // Default to NGN since USD not enabled yet
   const [creditsEnabled, setCreditsEnabled] = useState(false);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
+  const [proPricing, setProPricing] = useState({ usd: '9.99', ngn: '15000' });
 
   useEffect(() => {
     if (user?.uid) {
@@ -53,10 +54,22 @@ export default function CreditsPage() {
       setCreditsEnabled(settings.creditsEnabled);
       setPaymentsEnabled(settings.paymentsEnabled);
       
-      // Detect currency based on user's country
-      // You can get this from user profile if available
-      // For now, defaulting to USD
-      setCurrency('usd');
+      // Load Pro pricing from settings
+      const { data: pricingData } = await supabase
+        .from('platform_settings')
+        .select('setting_value')
+        .eq('setting_key', 'pricing')
+        .single();
+      
+      if (pricingData?.setting_value?.pro) {
+        setProPricing({
+          usd: pricingData.setting_value.pro.usd || '9.99',
+          ngn: pricingData.setting_value.pro.ngn || '15000',
+        });
+      }
+      
+      // Default to NGN since Paystack USD not enabled yet
+      setCurrency('ngn');
     } catch (error) {
       console.error('Error loading credits data:', error);
       // Set defaults on error
@@ -134,6 +147,61 @@ export default function CreditsPage() {
       }
     } catch (error) {
       console.error('Payment initialization error:', error);
+      toast({
+        title: 'Payment Error',
+        description: error instanceof Error ? error.message : 'Failed to initialize payment',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSubscribePro = async (plan: 'monthly' | 'yearly') => {
+    // Check if payments are enabled
+    if (!paymentsEnabled) {
+      toast({
+        title: 'Payments Coming Soon',
+        description: 'Payment processing will be enabled soon. Check back later!',
+      });
+      return;
+    }
+
+    if (!user?.uid || !user?.email) {
+      toast({
+        title: 'Error',
+        description: 'Please log in to subscribe',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Calculate amount based on plan and currency
+      const monthlyPrice = currency === 'usd' 
+        ? parseFloat(proPricing.usd) 
+        : parseFloat(proPricing.ngn);
+      
+      const amount = plan === 'monthly' ? monthlyPrice : monthlyPrice * 12 * 0.83; // 17% discount for yearly
+
+      // Initialize Paystack payment
+      const response = await paystackService.initializeTransaction({
+        email: user.email,
+        amount: paystackService.toKobo(amount),
+        currency: currency.toUpperCase() as 'NGN' | 'USD',
+        metadata: {
+          user_id: user.uid,
+          tier: 'pro',
+          plan: plan,
+          description: `Pro ${plan} subscription`,
+        },
+      });
+
+      if (response.status && response.data?.authorization_url) {
+        window.location.href = response.data.authorization_url;
+      } else {
+        throw new Error(response.message || 'Failed to initialize payment');
+      }
+    } catch (error) {
+      console.error('Subscription payment error:', error);
       toast({
         title: 'Payment Error',
         description: error instanceof Error ? error.message : 'Failed to initialize payment',
@@ -309,7 +377,9 @@ export default function CreditsPage() {
                 <div className="p-4 bg-white rounded-lg border-2 border-primary/30">
                   <div className="text-center mb-3">
                     <p className="text-sm text-gray-600 mb-1">Pro Monthly</p>
-                    <div className="text-3xl font-bold text-primary">$9.99</div>
+                    <div className="text-3xl font-bold text-primary">
+                      {currency === 'usd' ? `$${proPricing.usd}` : `₦${parseFloat(proPricing.ngn).toLocaleString()}`}
+                    </div>
                     <p className="text-xs text-gray-500">per month</p>
                   </div>
                   <div className="space-y-2 mb-4">
@@ -332,12 +402,7 @@ export default function CreditsPage() {
                   </div>
                   <Button 
                     className="w-full"
-                    onClick={() => {
-                      toast({
-                        title: 'Coming Soon',
-                        description: 'Pro subscription will be available soon!',
-                      });
-                    }}
+                    onClick={() => handleSubscribePro('monthly')}
                   >
                     Start Free Trial
                   </Button>
@@ -347,8 +412,12 @@ export default function CreditsPage() {
                 <div className="p-4 bg-white rounded-lg border-2 border-accent/30">
                   <div className="text-center mb-3">
                     <p className="text-sm text-gray-600 mb-1">Pro Yearly</p>
-                    <div className="text-3xl font-bold text-accent">$99.90</div>
-                    <p className="text-xs text-gray-500">per year (save $20)</p>
+                    <div className="text-3xl font-bold text-accent">
+                      {currency === 'usd' 
+                        ? `$${(parseFloat(proPricing.usd) * 12 * 0.83).toFixed(2)}` 
+                        : `₦${(parseFloat(proPricing.ngn) * 12 * 0.83).toLocaleString()}`}
+                    </div>
+                    <p className="text-xs text-gray-500">per year (save 17%)</p>
                   </div>
                   <div className="space-y-2 mb-4">
                     <div className="flex items-start gap-2 text-sm">
@@ -357,7 +426,7 @@ export default function CreditsPage() {
                     </div>
                     <div className="flex items-start gap-2 text-sm">
                       <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span>Save $19.98 per year</span>
+                      <span>Save {currency === 'usd' ? `$${(parseFloat(proPricing.usd) * 12 * 0.17).toFixed(2)}` : `₦${(parseFloat(proPricing.ngn) * 12 * 0.17).toLocaleString()}`} per year</span>
                     </div>
                     <div className="flex items-start gap-2 text-sm">
                       <Check className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
@@ -367,14 +436,9 @@ export default function CreditsPage() {
                   <Button 
                     className="w-full"
                     variant="outline"
-                    onClick={() => {
-                      toast({
-                        title: 'Coming Soon',
-                        description: 'Pro subscription will be available soon!',
-                      });
-                    }}
+                    onClick={() => handleSubscribePro('yearly')}
                   >
-                    View Details
+                    Subscribe Yearly
                   </Button>
                 </div>
               </div>
