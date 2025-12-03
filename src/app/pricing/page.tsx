@@ -387,27 +387,9 @@ function PricingContent() {
             </div>
 
             {/* Pro Subscription Section */}
-            <div className="flex items-center justify-between mb-8">
-              <div className="text-center flex-1">
-                <h2 className="text-3xl font-bold mb-2">Pro Subscription</h2>
-                <p className="text-gray-600">Unlimited AI messages and premium features</p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={currency === 'usd' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setCurrency('usd')}
-                >
-                  USD ($)
-                </Button>
-                <Button
-                  variant={currency === 'ngn' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setCurrency('ngn')}
-                >
-                  NGN (₦)
-                </Button>
-              </div>
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-2">Pro Subscription</h2>
+              <p className="text-gray-600">Unlimited AI messages and premium features</p>
             </div>
 
 
