@@ -46,62 +46,47 @@ export async function GET(request: NextRequest) {
     const { data } = verifyData;
     console.log('✅ [PAYSTACK] Payment verified:', data.reference);
 
-    // Record payment in database
-    const { error: paymentError } = await supabase.from('credit_purchases').insert({
-      user_id: data.metadata?.user_id,
-      credits_purchased: data.metadata?.credits || 0,
-      amount_usd: data.amount / 100,
-      currency: data.currency || 'NGN',
-      status: 'completed',
-      payment_gateway: 'paystack',
-      gateway_payment_id: data.reference,
-      gateway_customer_id: data.customer?.customer_code,
-      pack_id: data.metadata?.pack_id,
-      created_at: new Date().toISOString(),
-    });
-
-    if (paymentError) {
-      console.error('❌ [PAYSTACK] Failed to record payment:', paymentError);
-      return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
-    }
-
-    // Add credits to user's balance
-    if (data.metadata?.user_id && data.metadata?.credits) {
-      const { error: creditsError } = await supabase.rpc('add_credits_to_user', {
+    // Handle credit purchase using atomic function
+    if (data.metadata?.credits && data.metadata?.user_id) {
+      const { data: result, error } = await supabase.rpc('add_credits_to_user', {
         p_user_id: data.metadata.user_id,
         p_credits: data.metadata.credits,
-        p_days: 30, // Default expiry
+        p_amount_usd: data.amount / 100,
+        p_pack_id: data.metadata.pack_id || 'unknown',
+        p_payment_gateway: 'paystack',
+        p_gateway_payment_id: data.reference,
+        p_currency: data.currency || 'NGN',
+        p_gateway_customer_id: data.customer?.customer_code || null,
       });
 
-      if (creditsError) {
-        console.error('❌ [PAYSTACK] Failed to add credits:', creditsError);
+      if (error || !result?.success) {
+        console.error('❌ [PAYSTACK] Failed to add credits:', error || result?.error);
+        return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
       }
+
+      console.log(`✅ [PAYSTACK] Added ${result.credits_added} credits (new balance: ${result.new_balance})`);
     }
 
-    // Handle Pro subscription
+    // Handle Pro subscription using atomic function
     if (data.metadata?.tier === 'pro' && data.metadata?.user_id) {
-      const plan = data.metadata?.plan || 'monthly';
-      const daysToAdd = plan === 'yearly' ? 365 : 30;
+      const plan = data.metadata.plan || 'monthly';
       
-      // Calculate subscription end date
-      const endDate = new Date();
-      endDate.setDate(endDate.getDate() + daysToAdd);
-      
-      // Update user to Pro tier
-      const { error: tierError } = await supabase
-        .from('users')
-        .update({
-          subscription_tier: 'pro',
-          subscription_end_date: endDate.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', data.metadata.user_id);
-      
-      if (tierError) {
-        console.error('❌ [PAYSTACK] Failed to upgrade user tier:', tierError);
-      } else {
-        console.log(`✅ [PAYSTACK] User upgraded to Pro (${plan})`);
+      const { data: result, error } = await supabase.rpc('upgrade_user_to_pro', {
+        p_user_id: data.metadata.user_id,
+        p_plan: plan,
+        p_amount_usd: data.amount / 100,
+        p_payment_gateway: 'paystack',
+        p_gateway_payment_id: data.reference,
+        p_currency: data.currency || 'NGN',
+        p_gateway_customer_id: data.customer?.customer_code || null,
+      });
+
+      if (error || !result?.success) {
+        console.error('❌ [PAYSTACK] Failed to upgrade to Pro:', error || result?.error);
+        return NextResponse.redirect(new URL('/me?payment=error', baseUrl));
       }
+
+      console.log(`✅ [PAYSTACK] User upgraded to Pro (${plan}, expires: ${result.subscription_end_date})`);
     }
 
     console.log('✅ [PAYSTACK] Payment processed successfully');

@@ -72,26 +72,84 @@ async function handleSuccessfulPayment(data: any) {
 
   const { reference, amount, customer, metadata } = data;
 
-  // Record payment in database
-  const { error } = await supabase.from('payments').insert({
-    user_id: metadata?.user_id,
-    amount_usd: amount / 100, // Paystack uses kobo/cents
-    currency: data.currency || 'NGN',
-    status: 'succeeded',
-    payment_gateway: 'paystack',
-    payment_method: 'card',
-    gateway_payment_id: reference,
-    gateway_customer_id: customer.customer_code,
-    description: metadata?.description || 'Paystack payment',
-    paid_at: new Date().toISOString()
+  // Check if this is a credit purchase or subscription
+  if (metadata?.credits) {
+    // Handle credit purchase
+    await handleCreditPurchase(data);
+  } else if (metadata?.tier === 'pro') {
+    // Handle Pro subscription
+    await handleProSubscription(data);
+  } else {
+    // Generic payment record
+    const { error } = await supabase.from('payments').insert({
+      user_id: metadata?.user_id,
+      amount_usd: amount / 100,
+      currency: data.currency || 'NGN',
+      status: 'succeeded',
+      payment_gateway: 'paystack',
+      payment_method: 'card',
+      gateway_payment_id: reference,
+      gateway_customer_id: customer.customer_code,
+      description: metadata?.description || 'Paystack payment',
+      paid_at: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('❌ [PAYSTACK] Failed to record payment:', error);
+    }
+  }
+
+  console.log('✅ [PAYSTACK] Payment processed successfully');
+}
+
+/**
+ * Handle credit purchase using atomic function
+ */
+async function handleCreditPurchase(data: any) {
+  const { reference, amount, customer, metadata } = data;
+  
+  const { data: result, error } = await supabase.rpc('add_credits_to_user', {
+    p_user_id: metadata.user_id,
+    p_credits: metadata.credits,
+    p_amount_usd: amount / 100,
+    p_pack_id: metadata.pack_id || 'unknown',
+    p_payment_gateway: 'paystack',
+    p_gateway_payment_id: reference,
+    p_currency: data.currency || 'NGN',
+    p_gateway_customer_id: customer?.customer_code || null,
   });
 
-  if (error) {
-    console.error('❌ [PAYSTACK] Failed to record payment:', error);
+  if (error || !result?.success) {
+    console.error('❌ [PAYSTACK] Failed to add credits:', error || result?.error);
     return;
   }
 
-  console.log('✅ [PAYSTACK] Payment recorded successfully');
+  console.log(`✅ [PAYSTACK] Added ${result.credits_added} credits (new balance: ${result.new_balance})`);
+}
+
+/**
+ * Handle Pro subscription using atomic function
+ */
+async function handleProSubscription(data: any) {
+  const { reference, amount, customer, metadata } = data;
+  const plan = metadata.plan || 'monthly';
+  
+  const { data: result, error } = await supabase.rpc('upgrade_user_to_pro', {
+    p_user_id: metadata.user_id,
+    p_plan: plan,
+    p_amount_usd: amount / 100,
+    p_payment_gateway: 'paystack',
+    p_gateway_payment_id: reference,
+    p_currency: data.currency || 'NGN',
+    p_gateway_customer_id: customer?.customer_code || null,
+  });
+
+  if (error || !result?.success) {
+    console.error('❌ [PAYSTACK] Failed to upgrade to Pro:', error || result?.error);
+    return;
+  }
+
+  console.log(`✅ [PAYSTACK] User upgraded to Pro (${plan}, expires: ${result.subscription_end_date})`);
 }
 
 /**
