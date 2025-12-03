@@ -24,6 +24,11 @@ function PricingContent() {
   const [creditsEnabled, setCreditsEnabled] = useState(false);
   const [currency, setCurrency] = useState<'usd' | 'ngn'>('ngn');
   const [proPricing, setProPricing] = useState({ usd: '9.99', ngn: '15000' });
+  const [creditPacks, setCreditPacks] = useState([
+    { id: 'starter', priceUSD: '2.00', priceNGN: '3000', credits: 50 },
+    { id: 'popular', priceUSD: '5.00', priceNGN: '7500', credits: 150 },
+    { id: 'power', priceUSD: '10.00', priceNGN: '15000', credits: 500 },
+  ]);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -44,6 +49,14 @@ function PricingContent() {
           usd: proData?.usd || '9.99',
           ngn: proData?.ngn || '15000',
         });
+      }
+      
+      // Load credit packs pricing
+      if (data?.setting_value && typeof data.setting_value === 'object' && 'credits' in data.setting_value) {
+        const creditsData = data.setting_value.credits as any;
+        if (Array.isArray(creditsData)) {
+          setCreditPacks(creditsData);
+        }
       }
     };
     loadSettings();
@@ -269,9 +282,11 @@ function PricingContent() {
                   <CardHeader className="text-center pb-3 pt-5 px-4">
                     <CardTitle className="text-lg font-bold mb-1.5">Starter Pack</CardTitle>
                     <div className="text-3xl font-bold text-gray-900">
-                      $2<span className="text-sm text-gray-500 font-normal">.00</span>
+                      {currency === 'usd' 
+                        ? `$${creditPacks[0].priceUSD}` 
+                        : `₦${parseFloat(creditPacks[0].priceNGN).toLocaleString()}`}
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">50 AI messages</p>
+                    <p className="text-xs text-gray-600 mt-1">{creditPacks[0].credits} AI messages</p>
                   </CardHeader>
 
                   <CardContent className="px-4 pb-4">
@@ -314,9 +329,11 @@ function PricingContent() {
                   <CardHeader className="text-center pb-3 pt-5 px-4">
                     <CardTitle className="text-lg font-bold text-primary mb-1.5">Popular Pack</CardTitle>
                     <div className="text-3xl font-bold text-primary">
-                      $5<span className="text-sm text-gray-600 font-normal">.00</span>
+                      {currency === 'usd' 
+                        ? `$${creditPacks[1].priceUSD}` 
+                        : `₦${parseFloat(creditPacks[1].priceNGN).toLocaleString()}`}
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">150 AI messages</p>
+                    <p className="text-xs text-gray-600 mt-1">{creditPacks[1].credits} AI messages</p>
                   </CardHeader>
 
                   <CardContent className="px-4 pb-4">
@@ -359,9 +376,11 @@ function PricingContent() {
                   <CardHeader className="text-center pb-3 pt-5 px-4">
                     <CardTitle className="text-lg font-bold text-accent mb-1.5">Power Pack</CardTitle>
                     <div className="text-3xl font-bold text-accent">
-                      $10<span className="text-sm text-gray-600 font-normal">.00</span>
+                      {currency === 'usd' 
+                        ? `$${creditPacks[2].priceUSD}` 
+                        : `₦${parseFloat(creditPacks[2].priceNGN).toLocaleString()}`}
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">500 AI messages</p>
+                    <p className="text-xs text-gray-600 mt-1">{creditPacks[2].credits} AI messages</p>
                   </CardHeader>
 
                   <CardContent className="px-4 pb-4">
