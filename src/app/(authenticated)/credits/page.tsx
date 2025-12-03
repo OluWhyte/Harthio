@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MobilePageHeader } from '@/components/harthio/mobile-page-header';
 import { LoadingSpinner } from '@/components/common/loading-spinner';
 import { platformSettingsService } from '@/lib/services/platform-settings-service';
+import { paystackService } from '@/lib/services/paystack-service';
 
 export default function CreditsPage() {
   const router = useRouter();
@@ -67,7 +68,7 @@ export default function CreditsPage() {
     }
   };
 
-  const handleBuyPack = (packId: string) => {
+  const handleBuyPack = async (packId: string) => {
     // Check if credits system is enabled (Monetization toggle)
     if (!creditsEnabled) {
       toast({
@@ -85,13 +86,60 @@ export default function CreditsPage() {
       });
       return;
     }
-    
-    // TODO: Redirect to Paystack payment
-    toast({
-      title: 'Payment Integration',
-      description: 'Redirecting to payment gateway...',
-    });
-    // router.push(`/checkout?type=credits&pack=${packId}`);
+
+    if (!user?.uid || !user?.email) {
+      toast({
+        title: 'Error',
+        description: 'Please log in to purchase credits',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Find the selected pack
+    const pack = creditPacks.find(p => p.id === packId);
+    if (!pack) {
+      toast({
+        title: 'Error',
+        description: 'Invalid credit pack selected',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // Get the price based on selected currency
+      const amount = currency === 'usd' 
+        ? parseFloat(pack.priceUSD) 
+        : parseFloat(pack.priceNGN);
+
+      // Initialize Paystack payment
+      const response = await paystackService.initializeTransaction({
+        email: user.email,
+        amount: paystackService.toKobo(amount), // Convert to kobo/cents
+        currency: currency.toUpperCase() as 'NGN' | 'USD',
+        metadata: {
+          user_id: user.uid,
+          pack_id: packId,
+          credits: pack.credits,
+          description: `${pack.name} - ${pack.credits} credits`,
+        },
+      });
+
+      if (response.status && response.data?.authorization_url) {
+        // Redirect to Paystack payment page
+        window.location.href = response.data.authorization_url;
+      } else {
+        throw new Error(response.message || 'Failed to initialize payment');
+      }
+    } catch (error) {
+      console.error('Payment initialization error:', error);
+      toast({
+        title: 'Payment Error',
+        description: error instanceof Error ? error.message : 'Failed to initialize payment',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {
