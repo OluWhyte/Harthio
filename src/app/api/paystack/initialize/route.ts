@@ -22,8 +22,10 @@ export async function POST(request: NextRequest) {
     // Generate unique reference
     const reference = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Get the base URL from request origin (works for preview and production)
-    const baseUrl = request.nextUrl.origin;
+    // Get the base URL from headers (Vercel provides x-forwarded-host)
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || request.nextUrl.host;
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const baseUrl = `${protocol}://${host}`;
     
     // Initialize payment with Paystack
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
