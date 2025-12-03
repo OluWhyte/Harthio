@@ -11,6 +11,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { startFreeTrial } from '@/lib/services/tier-service';
 import { useToast } from '@/hooks/use-toast';
 import { platformSettingsService } from '@/lib/services/platform-settings-service';
+import { supabase } from '@/lib/supabase';
 
 function PricingContent() {
   const router = useRouter();
@@ -21,12 +22,28 @@ function PricingContent() {
   const [isStartingTrial, setIsStartingTrial] = useState(false);
   const [proEnabled, setProEnabled] = useState(false);
   const [creditsEnabled, setCreditsEnabled] = useState(false);
+  const [currency, setCurrency] = useState<'usd' | 'ngn'>('ngn');
+  const [proPricing, setProPricing] = useState({ usd: '9.99', ngn: '15000' });
 
   useEffect(() => {
     const loadSettings = async () => {
       const settings = await platformSettingsService.getSettings();
       setProEnabled(settings.proTierEnabled);
       setCreditsEnabled(settings.creditsEnabled);
+      
+      // Load Pro pricing
+      const { data } = await supabase
+        .from('platform_settings')
+        .select('setting_value')
+        .eq('setting_key', 'pricing')
+        .single();
+      
+      if (data?.setting_value?.pro) {
+        setProPricing({
+          usd: data.setting_value.pro.usd || '9.99',
+          ngn: data.setting_value.pro.ngn || '15000',
+        });
+      }
     };
     loadSettings();
   }, []);
@@ -368,7 +385,8 @@ function PricingContent() {
                   <CardHeader className="text-center pb-3 pt-5 px-4">
                     <CardTitle className="text-xl font-bold text-primary mb-1.5">Pro Monthly</CardTitle>
                     <div className="text-4xl font-bold text-primary">
-                      $9.99<span className="text-base text-gray-600 font-normal">/mo</span>
+                      {currency === 'usd' ? `$${proPricing.usd}` : `₦${parseFloat(proPricing.ngn).toLocaleString()}`}
+                      <span className="text-base text-gray-600 font-normal">/mo</span>
                     </div>
                     <p className="text-xs text-gray-600 mt-1">14-day free trial</p>
                   </CardHeader>
@@ -409,9 +427,16 @@ function PricingContent() {
                   <CardHeader className="text-center pb-3 pt-5 px-4">
                     <CardTitle className="text-xl font-bold text-accent mb-1.5">Pro Yearly</CardTitle>
                     <div className="text-4xl font-bold text-accent">
-                      $99.90<span className="text-base text-gray-600 font-normal">/yr</span>
+                      {currency === 'usd' 
+                        ? `$${(parseFloat(proPricing.usd) * 12 * 0.83).toFixed(2)}` 
+                        : `₦${(parseFloat(proPricing.ngn) * 12 * 0.83).toLocaleString()}`}
+                      <span className="text-base text-gray-600 font-normal">/yr</span>
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">Save $19.98 per year</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Save {currency === 'usd' 
+                        ? `$${(parseFloat(proPricing.usd) * 12 * 0.17).toFixed(2)}` 
+                        : `₦${(parseFloat(proPricing.ngn) * 12 * 0.17).toLocaleString()}`} per year
+                    </p>
                   </CardHeader>
 
                   <CardContent className="px-4 pb-4">

@@ -36,6 +36,15 @@ export default function CreditsPage() {
     }
   }, [user]);
 
+  // Refresh balance when returning from payment
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success' && user?.uid) {
+      // Reload data after successful payment
+      setTimeout(() => loadData(), 1000);
+    }
+  }, [user]);
+
   const loadData = async () => {
     if (!user?.uid) return;
 
