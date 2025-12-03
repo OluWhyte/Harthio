@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger';
 export interface PlatformSettings {
   proTierEnabled: boolean;
   creditsEnabled: boolean;
+  paymentsEnabled: boolean; // Master switch for all payments
   rateLimitingEnabled: boolean;
   trackerLimitsEnabled: boolean;
   trialModeEnabled: boolean;
@@ -45,6 +46,7 @@ export const platformSettingsService = {
       const settings = {
         proTierEnabled: settingsMap['pro_tier_enabled']?.enabled || false,
         creditsEnabled: settingsMap['credits_enabled']?.enabled || false,
+        paymentsEnabled: settingsMap['payments_enabled']?.enabled || false,
         rateLimitingEnabled: settingsMap['ai_rate_limiting_enabled']?.enabled || false,
         trackerLimitsEnabled: settingsMap['tracker_limits_enabled']?.enabled || false,
         trialModeEnabled: settingsMap['trial_mode_enabled']?.enabled || false,
@@ -188,6 +190,7 @@ export const platformSettingsService = {
     return {
       proTierEnabled: false, // Disabled by default for launch
       creditsEnabled: false, // Disabled by default for launch
+      paymentsEnabled: false, // Disabled by default - master payment switch
       rateLimitingEnabled: false,
       trackerLimitsEnabled: false,
       trialModeEnabled: false, // Disabled by default

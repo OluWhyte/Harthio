@@ -26,6 +26,7 @@ export default function CreditsPage() {
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState<'usd' | 'ngn'>('usd');
   const [creditsEnabled, setCreditsEnabled] = useState(false);
+  const [paymentsEnabled, setPaymentsEnabled] = useState(false);
 
   useEffect(() => {
     if (user?.uid) {
@@ -49,6 +50,7 @@ export default function CreditsPage() {
       setPurchaseHistory(historyData);
       setCreditPacks(packs);
       setCreditsEnabled(settings.creditsEnabled);
+      setPaymentsEnabled(settings.paymentsEnabled);
       
       // Detect currency based on user's country
       // You can get this from user profile if available
@@ -66,21 +68,29 @@ export default function CreditsPage() {
   };
 
   const handleBuyPack = (packId: string) => {
+    // Check if credits system is enabled (Monetization toggle)
     if (!creditsEnabled) {
       toast({
-        title: 'Coming Soon',
-        description: 'Credit purchases will be available soon!',
+        title: 'Credits Not Available',
+        description: 'The credits system is currently disabled.',
       });
       return;
     }
     
-    // TODO: Integrate with payment gateway
-    toast({
-      title: 'Payment integration coming soon',
-      description: 'Credit purchases will be available once payment gateway is integrated.',
-    });
+    // Check if payments are enabled (Finance toggle)
+    if (!paymentsEnabled) {
+      toast({
+        title: 'Payments Coming Soon',
+        description: 'Payment processing will be enabled soon. Check back later!',
+      });
+      return;
+    }
     
-    // For now, redirect to checkout page (to be built)
+    // TODO: Redirect to Paystack payment
+    toast({
+      title: 'Payment Integration',
+      description: 'Redirecting to payment gateway...',
+    });
     // router.push(`/checkout?type=credits&pack=${packId}`);
   };
 
