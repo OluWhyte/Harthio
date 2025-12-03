@@ -346,7 +346,7 @@ export default function BlogPage() {
             <div className="flex items-center gap-4 mb-4 sm:mb-0">
               <Logo />
               <p className="text-sm text-gray-400">
-                &copy; 2025 Stria Technologies All rights reserved.
+                &copy; 2025 Xcrowme Advisory Technology All rights reserved.
               </p>
             </div>
             <nav className="flex gap-6 text-sm">

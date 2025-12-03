@@ -2,21 +2,25 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import dynamic from 'next/dynamic';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/components/harthio/auth-provider';
-import { AppPerformanceProvider } from '@/components/common/app-performance-provider';
-import { Analytics } from '@/components/seo/analytics';
-import { ProactiveAIMonitor } from '@/components/harthio/proactive-ai-monitor';
 import { SWRProvider } from '@/components/common/swr-provider';
-import { PerformanceMonitor } from '@/components/common/performance-monitor';
 
-// Optimize font loading with next/font
+// Lazy load non-critical components
+const AppPerformanceProvider = dynamic(() => import('@/components/common/app-performance-provider').then(mod => ({ default: mod.AppPerformanceProvider })), { ssr: false });
+const Analytics = dynamic(() => import('@/components/seo/analytics').then(mod => ({ default: mod.Analytics })), { ssr: false });
+const ProactiveAIMonitor = dynamic(() => import('@/components/harthio/proactive-ai-monitor').then(mod => ({ default: mod.ProactiveAIMonitor })), { ssr: false });
+const PerformanceMonitor = dynamic(() => import('@/components/common/performance-monitor').then(mod => ({ default: mod.PerformanceMonitor })), { ssr: false });
+
+// Optimize font loading with next/font - only load weights you actually use
 const inter = Inter({
   subsets: ['latin'],
-  display: 'swap', // Show fallback font immediately
+  display: 'swap',
   preload: true,
   variable: '--font-inter',
-  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  weight: ['400', '500', '600', '700'], // Reduced from 7 to 4 weights
+  fallback: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
 });
 
 export const metadata: Metadata = {
@@ -90,9 +94,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
-        {/* Preconnect to external domains for faster loading */}
-        <link rel="preconnect" href="https://images.unsplash.com" />
-        <link rel="dns-prefetch" href="https://api.supabase.co" />
+        {/* Critical resource hints */}
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL || ''} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
       </head>
       <body className={`${inter.className} antialiased`}>
         <SWRProvider>

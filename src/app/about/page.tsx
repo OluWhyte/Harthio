@@ -378,7 +378,7 @@ export default function AboutPage() {
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mb-3 sm:mb-0">
               <Logo />
               <p className="text-xs sm:text-sm text-gray-400 text-center sm:text-left">
-                &copy; 2025 Stria Technologies All rights reserved.
+                &copy; 2025 Xcrowme Advisory Technology. All rights reserved.
               </p>
             </div>
             <nav className="flex gap-4 sm:gap-6 text-xs sm:text-sm">

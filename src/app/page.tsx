@@ -506,6 +506,38 @@ export default function LandingPage() {
                       seyi@harthio.com
                     </a>
                   </li>
+                  <li className="pt-2">
+                    <p className="text-xs font-semibold text-gray-300 mb-2">Follow Us</p>
+                    <div className="flex gap-3">
+                      <a
+                        href="https://x.com/harthiohq"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-white transition-colors"
+                        aria-label="X (Twitter)"
+                      >
+                        𝕏
+                      </a>
+                      <a
+                        href="https://instagram.com/harthiohq"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-white transition-colors"
+                        aria-label="Instagram"
+                      >
+                        IG
+                      </a>
+                      <a
+                        href="https://harthio.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-white transition-colors"
+                        aria-label="TikTok"
+                      >
+                        TT
+                      </a>
+                    </div>
+                  </li>
                   <li>
                     <Link
                       href="/privacy"
@@ -536,7 +568,7 @@ export default function LandingPage() {
 
             <div className="border-t border-gray-800 mt-6 sm:mt-8 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-0">
               <p className="text-xs text-gray-400 text-center sm:text-left">
-                &copy; 2025 Stria Technologies All rights reserved.
+                &copy; 2025 Xcrowme Advisory Technology All rights reserved.
               </p>
               <p className="text-xs text-gray-400 text-center sm:text-right">
                 Made with ❤️ for meaningful connections

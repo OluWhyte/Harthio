@@ -250,7 +250,7 @@ export default function TermsOfServicePage() {
                 <div className="space-y-4 text-gray-600">
                   <h3 className="text-lg font-semibold">Harthio's Rights</h3>
                   <p>
-                    The Service and its original content, features, and functionality are owned by Stria Technologies 
+                    The Service and its original content, features, and functionality are owned by Xcrowme Advisory Technology 
                     and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
                   </p>
 
@@ -305,7 +305,7 @@ export default function TermsOfServicePage() {
 
                   <h3 className="text-lg font-semibold">Limitation of Liability</h3>
                   <p>
-                    To the maximum extent permitted by law, Stria Technologies shall not be liable for any indirect, 
+                    To the maximum extent permitted by law, Xcrowme Advisory Technology shall not be liable for any indirect, 
                     incidental, special, consequential, or punitive damages, or any loss of profits or revenues, 
                     whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses.
                   </p>
@@ -400,7 +400,7 @@ export default function TermsOfServicePage() {
                   <div>
                     <h3 className="font-semibold mb-2">Company Information</h3>
                     <p>
-                      Stria Technologies<br />
+                      Xcrowme Advisory Technology<br />
                       Lagos, Nigeria<br />
                       <br />
                       Founder: Oluwaseyi Akinlolu
@@ -427,7 +427,7 @@ export default function TermsOfServicePage() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mb-3 sm:mb-0">
               <Logo />
-              <p className="text-xs sm:text-sm text-gray-400 text-center sm:text-left">&copy; 2025 Stria Technologies All rights reserved.</p>
+              <p className="text-xs sm:text-sm text-gray-400 text-center sm:text-left">&copy; 2025 Xcrowme Advisory Technology All rights reserved.</p>
             </div>
             <nav className="flex gap-4 sm:gap-6 text-xs sm:text-sm">
               <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">Privacy</Link>

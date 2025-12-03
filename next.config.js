@@ -13,11 +13,16 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Reduce timeout - if pages take this long, they should be dynamic
-  staticPageGenerationTimeout: 60, // 1 minute max
-  // Increase fetch timeout for external resources
+  // Performance optimizations
+  staticPageGenerationTimeout: 60,
+  swcMinify: true, // Use SWC for faster minification
+  reactStrictMode: true,
+  poweredByHeader: false, // Remove X-Powered-By header
+  
   experimental: {
     fetchCacheKeyPrefix: 'v1',
+    optimizeCss: true, // Enable CSS optimization
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'], // Tree-shake icon libraries
   },
   // Remove console.logs in production
   compiler: {

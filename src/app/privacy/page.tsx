@@ -397,7 +397,7 @@ export default function PrivacyPolicyPage() {
                   <div>
                     <h3 className="font-semibold mb-2">Mailing Address</h3>
                     <p className="text-gray-600">
-                      Stria Technologies<br />
+                      Xcrowme Advisory Technology<br />
                       Lagos, Nigeria
                     </p>
                   </div>
@@ -414,7 +414,7 @@ export default function PrivacyPolicyPage() {
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
             <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 mb-3 sm:mb-0">
               <Logo />
-              <p className="text-xs sm:text-sm text-gray-400 text-center sm:text-left">&copy; 2025 Stria Technologies All rights reserved.</p>
+              <p className="text-xs sm:text-sm text-gray-400 text-center sm:text-left">&copy; 2025 Xcrowme Advisory Technology All rights reserved.</p>
             </div>
             <nav className="flex gap-4 sm:gap-6 text-xs sm:text-sm">
               <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">Terms</Link>

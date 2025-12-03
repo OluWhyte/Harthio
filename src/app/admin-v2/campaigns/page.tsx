@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -846,7 +846,7 @@ export default function EmailCampaignsPage() {
                         <div className="flex-1 min-w-0">
                           <CardTitle className="text-base sm:text-lg break-words">{campaign.name}</CardTitle>
                           <CardDescription className="text-xs sm:text-sm break-words">
-                            From: {campaign.from_email} • {campaign.subject}
+                            From: {campaign.from_email} � {campaign.subject}
                           </CardDescription>
                           {template && (
                             <div className="mt-2 flex flex-wrap items-center gap-2">

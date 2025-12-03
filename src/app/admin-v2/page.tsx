@@ -116,7 +116,7 @@ export default function AdminV2Dashboard() {
       supabase.from('users').select('created_at').order('created_at', { ascending: true }),
       
       // All sessions with created_at for chart data
-      supabase.from('topics').select('created_at, user_id').order('created_at', { ascending: true })
+      supabase.from('topics').select('created_at, author_id').order('created_at', { ascending: true })
     ]);
 
     // Calculate credit stats
@@ -139,7 +139,7 @@ export default function AdminV2Dashboard() {
         
         // Count users created on this date
         const usersOnDate = (allUsersData.data || []).filter(u => 
-          new Date(u.created_at).toISOString().split('T')[0] === dateStr
+          u.created_at && new Date(u.created_at).toISOString().split('T')[0] === dateStr
         ).length;
         
         cumulativeCount += usersOnDate;
@@ -164,14 +164,15 @@ export default function AdminV2Dashboard() {
         
         // Count sessions created on this date
         const sessionsOnDate = (allSessionsData.data || []).filter(s => 
-          new Date(s.created_at).toISOString().split('T')[0] === dateStr
+          s.created_at && new Date(s.created_at).toISOString().split('T')[0] === dateStr
         ).length;
         
-        // Count unique participants (users) on this date
+        // Count unique participants (authors) on this date
         const participantsOnDate = new Set(
           (allSessionsData.data || [])
-            .filter(s => new Date(s.created_at).toISOString().split('T')[0] === dateStr)
-            .map(s => s.user_id)
+            .filter(s => s.created_at && new Date(s.created_at).toISOString().split('T')[0] === dateStr)
+            .map(s => s.author_id)
+            .filter(Boolean)
         ).size;
         
         data.push({
