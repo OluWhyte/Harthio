@@ -16,13 +16,35 @@ export interface ProactivePrompt {
   };
 }
 
-// Cooldown tracking to prevent spam
-const promptCooldowns = new Map<string, number>();
+// Cooldown tracking to prevent spam (persisted in localStorage)
 const COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours for free, will adjust for pro
+const STORAGE_KEY = 'proactive_ai_cooldowns';
+
+// Get cooldowns from localStorage
+function getCooldowns(): Record<string, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+// Save cooldowns to localStorage
+function saveCooldowns(cooldowns: Record<string, number>) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cooldowns));
+  } catch {
+    // Silently fail if localStorage is unavailable
+  }
+}
 
 // Check if we should show a prompt (respects cooldowns)
 function canShowPrompt(promptId: string, userTier: 'free' | 'pro'): boolean {
-  const lastShown = promptCooldowns.get(promptId);
+  const cooldowns = getCooldowns();
+  const lastShown = cooldowns[promptId];
   if (!lastShown) return true;
 
   const cooldown = userTier === 'pro' ? 30 * 60 * 1000 : COOLDOWN_MS; // 30 min pro, 2 hours free
@@ -30,7 +52,9 @@ function canShowPrompt(promptId: string, userTier: 'free' | 'pro'): boolean {
 }
 
 function markPromptShown(promptId: string) {
-  promptCooldowns.set(promptId, Date.now());
+  const cooldowns = getCooldowns();
+  cooldowns[promptId] = Date.now();
+  saveCooldowns(cooldowns);
 }
 
 // Trigger proactive AI prompt
