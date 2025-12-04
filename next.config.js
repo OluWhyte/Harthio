@@ -156,7 +156,7 @@ const nextConfig = {
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https: wss: ws: https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
               "media-src 'self' blob: data: https://session.harthio.com https://*.daily.co",
-              "frame-src 'self' https://session.harthio.com https://*.daily.co",
+              "frame-src 'self' https://vercel.live https://session.harthio.com https://*.daily.co",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'"
@@ -216,7 +216,7 @@ const nextConfig = {
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live https://api.resend.com https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
               "media-src 'self' blob: https://session.harthio.com https://*.daily.co",
-              "frame-src 'self' https://session.harthio.com https://*.daily.co",
+              "frame-src 'self' https://vercel.live https://session.harthio.com https://*.daily.co",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",

@@ -11,7 +11,6 @@ const PRECACHE_ASSETS = [
   '/',
   '/login',
   '/signup',
-  '/offline',
 ];
 
 // Cache strategies
