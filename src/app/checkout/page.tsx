@@ -9,6 +9,7 @@ import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { getTierInfo, addSubscriptionTime } from '@/lib/services/tier-service';
 import { PricingService } from '@/lib/services/pricing-service';
+import { paystackService } from '@/lib/services/paystack-service';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -20,6 +21,7 @@ function CheckoutContent() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [tierInfo, setTierInfo] = useState<any>(null);
   const [proPriceUSD, setProPriceUSD] = useState('9.99');
   const [proPriceNGN, setProPriceNGN] = useState('15000');
@@ -49,8 +51,8 @@ function CheckoutContent() {
     setTierInfo(info);
     setProPriceUSD(priceUSD);
     setProPriceNGN(priceNGN);
-    // Detect currency - you can enhance this with user's country
-    setCurrency('usd');
+    // Default to NGN for Nigerian users
+    setCurrency('ngn');
     setIsLoading(false);
   };
 
@@ -62,18 +64,45 @@ function CheckoutContent() {
     return Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
   };
 
-  const handlePayment = () => {
-    // TODO: Integrate with your payment gateway
-    // For now, just show a message
-    toast({
-      title: 'Payment Gateway Integration Required',
-      description: 'This will redirect to your payment processor (Stripe alternative)',
-      variant: 'default'
-    });
+  const handlePayment = async () => {
+    if (!user || !plan) return;
+    
+    setIsProcessing(true);
 
-    // Example: After successful payment, call addSubscriptionTime
-    // const months = plan === 'yearly' ? 12 : 1;
-    // await addSubscriptionTime(user.id, months, paymentId);
+    try {
+      // Calculate amount based on currency and plan
+      const amount = currency === 'ngn'
+        ? parseFloat(plan === 'yearly' ? (parseFloat(proPriceNGN) * 12 * 0.83).toFixed(0) : proPriceNGN)
+        : parseFloat(plan === 'yearly' ? (parseFloat(proPriceUSD) * 12 * 0.83).toFixed(2) : proPriceUSD);
+
+      // Initialize Paystack payment
+      const response = await paystackService.initializeTransaction({
+        email: user.email,
+        amount: paystackService.toKobo(amount), // Convert to kobo/cents
+        currency: currency.toUpperCase() as 'NGN' | 'USD',
+        metadata: {
+          user_id: user.uid,
+          tier: 'pro',
+          plan: plan, // 'monthly' or 'yearly'
+          description: `Pro ${plan === 'yearly' ? 'Yearly' : 'Monthly'} Subscription`
+        }
+      });
+
+      if (!response.status || !response.data?.authorization_url) {
+        throw new Error(response.message || 'Failed to initialize payment');
+      }
+
+      // Redirect to Paystack payment page
+      window.location.href = response.data.authorization_url;
+    } catch (error) {
+      console.error('Payment initialization error:', error);
+      toast({
+        title: 'Payment Failed',
+        description: error instanceof Error ? error.message : 'Failed to initialize payment',
+        variant: 'destructive'
+      });
+      setIsProcessing(false);
+    }
   };
 
   if (isLoading) {
@@ -126,7 +155,22 @@ function CheckoutContent() {
                     {plan === 'yearly' ? '12 months of Pro access' : '1 month of Pro access'}
                   </p>
                 </div>
-                <p className="text-2xl font-bold text-primary">${price}</p>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">
+                    {currency === 'ngn' 
+                      ? `₦${plan === 'yearly' ? (parseFloat(proPriceNGN) * 12 * 0.83).toFixed(0) : proPriceNGN}`
+                      : `$${plan === 'yearly' ? (parseFloat(proPriceUSD) * 12 * 0.83).toFixed(2) : proPriceUSD}`
+                    }
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs mt-1"
+                    onClick={() => setCurrency(currency === 'usd' ? 'ngn' : 'usd')}
+                  >
+                    Switch to {currency === 'usd' ? 'NGN' : 'USD'}
+                  </Button>
+                </div>
               </div>
 
               {tierInfo?.tier === 'pro' && currentMonths > 0 && (
@@ -180,8 +224,16 @@ function CheckoutContent() {
             onClick={handlePayment}
             className="w-full py-6 text-lg"
             size="lg"
+            disabled={isProcessing}
           >
-            Proceed to Payment
+            {isProcessing ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Proceed to Payment'
+            )}
           </Button>
 
           <p className="text-xs text-center text-gray-500 mt-4">

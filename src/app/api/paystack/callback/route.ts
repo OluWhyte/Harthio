@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { exchangeRateService, type SupportedCurrency } from '@/lib/services/exchange-rate-service';
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!;
 
@@ -48,14 +49,21 @@ export async function GET(request: NextRequest) {
 
     // Handle credit purchase using atomic function
     if (data.metadata?.credits && data.metadata?.user_id) {
+      const currency = (data.currency || 'NGN') as SupportedCurrency;
+      const localAmount = data.amount / 100; // Convert from kobo/cents
+      const usdAmount = exchangeRateService.toUSD(localAmount, currency);
+      const exchangeRate = exchangeRateService.getRate(currency);
+
+      console.log(`💱 [PAYSTACK] Currency conversion: ${exchangeRateService.format(localAmount, currency)} → ${exchangeRateService.format(usdAmount, 'USD')} (rate: ${exchangeRate})`);
+
       const { data: result, error } = await supabaseAdmin.rpc('add_credits_to_user', {
         p_user_id: data.metadata.user_id,
         p_credits: data.metadata.credits,
-        p_amount_usd: data.amount / 100,
+        p_amount_usd: usdAmount, // USD equivalent for analytics
         p_pack_id: data.metadata.pack_id || 'unknown',
         p_payment_gateway: 'paystack',
         p_gateway_payment_id: data.reference,
-        p_currency: data.currency || 'NGN',
+        p_currency: currency,
         p_gateway_customer_id: data.customer?.customer_code || null,
       });
 
@@ -70,14 +78,20 @@ export async function GET(request: NextRequest) {
     // Handle Pro subscription using atomic function
     if (data.metadata?.tier === 'pro' && data.metadata?.user_id) {
       const plan = data.metadata.plan || 'monthly';
+      const currency = (data.currency || 'NGN') as SupportedCurrency;
+      const localAmount = data.amount / 100; // Convert from kobo/cents
+      const usdAmount = exchangeRateService.toUSD(localAmount, currency);
+      const exchangeRate = exchangeRateService.getRate(currency);
+
+      console.log(`💱 [PAYSTACK] Currency conversion: ${exchangeRateService.format(localAmount, currency)} → ${exchangeRateService.format(usdAmount, 'USD')} (rate: ${exchangeRate})`);
       
       const { data: result, error } = await supabaseAdmin.rpc('upgrade_user_to_pro', {
         p_user_id: data.metadata.user_id,
         p_plan: plan,
-        p_amount_usd: data.amount / 100,
+        p_amount_usd: usdAmount, // USD equivalent for analytics
         p_payment_gateway: 'paystack',
         p_gateway_payment_id: data.reference,
-        p_currency: data.currency || 'NGN',
+        p_currency: currency,
         p_gateway_customer_id: data.customer?.customer_code || null,
       });
 

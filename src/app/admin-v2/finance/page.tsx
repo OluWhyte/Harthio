@@ -54,31 +54,42 @@ export default function AdminFinancePage() {
       
       setPaymentsEnabled(settingsMap['payments_enabled']?.setting_value?.enabled ?? false);
       
-      // Get credit purchases
+      // Get credit purchases (use amount_usd for accurate totals)
       const { data: creditPurchases } = await supabase
         .from('credit_purchases')
         .select('amount_usd, credits_purchased, status');
 
       const completedCredits = creditPurchases?.filter(p => p.status === 'completed') || [];
-      const creditsRevenue = completedCredits.reduce((sum, p) => sum + Number(p.amount_usd), 0);
-      const creditsSold = completedCredits.reduce((sum, p) => sum + p.credits_purchased, 0);
+      // Use amount_usd (already in USD) for accurate revenue calculation
+      const creditsRevenue = completedCredits.reduce((sum, p) => sum + (Number(p.amount_usd) || 0), 0);
+      const creditsSold = completedCredits.reduce((sum, p) => sum + (p.credits_purchased || 0), 0);
 
-      // Get subscription data
+      // Get actual subscription revenue from subscriptions table
+      const { data: subscriptions } = await supabase
+        .from('subscriptions')
+        .select('amount_usd, status, end_date');
+
+      const activeSubscriptions = subscriptions?.filter(s => 
+        s.status === 'active' && 
+        s.end_date && 
+        new Date(s.end_date) > new Date()
+      ) || [];
+
+      // Use actual subscription revenue (amount_usd)
+      const subscriptionRevenue = activeSubscriptions.reduce((sum, s) => sum + (Number(s.amount_usd) || 0), 0);
+      const activeSubscribers = activeSubscriptions.length;
+
+      // Get trial users
       const { data: users } = await supabase
         .from('users')
-        .select('subscription_tier, subscription_end_date, is_trial_active, trial_end_date');
-
-      const proUsers = users?.filter(u => u.subscription_tier === 'pro') || [];
-      const activeSubscribers = proUsers.filter(u => {
-        if (!u.subscription_end_date) return false;
-        return new Date(u.subscription_end_date) > new Date();
-      }).length;
+        .select('is_trial_active, trial_end_date');
 
       const trialUsers = users?.filter(u => u.is_trial_active && u.trial_end_date && new Date(u.trial_end_date) > new Date()).length || 0;
 
-      // Calculate subscription revenue (estimate: $9.99/month per active subscriber)
-      const subscriptionRevenue = activeSubscribers * 9.99;
-      const monthlyRecurring = subscriptionRevenue; // MRR
+      // MRR calculation (monthly recurring revenue)
+      const monthlyRecurring = activeSubscriptions
+        .filter(s => s.status === 'active')
+        .reduce((sum, s) => sum + (Number(s.amount_usd) || 0), 0);
 
       setStats({
         creditsRevenue,

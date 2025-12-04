@@ -31,7 +31,6 @@ const getInitials = (name: string = '') => {
 interface ProfileFormData {
   headline: string;
   country: string;
-  recovery_goals: string;
 }
 
 export default function EditProfilePage() {
@@ -47,7 +46,6 @@ export default function EditProfilePage() {
     defaultValues: {
       headline: '',
       country: '',
-      recovery_goals: '',
     },
   });
 
@@ -61,7 +59,6 @@ export default function EditProfilePage() {
       reset({
         headline: userProfile.headline || '',
         country: userProfile.country || '',
-        recovery_goals: userProfile.recovery_goals || '',
       });
       setPreviewUrl(userProfile.avatar_url || null);
     }
@@ -347,28 +344,7 @@ export default function EditProfilePage() {
           </div>
 
           {/* Recovery Information */}
-          <div className="bg-background px-4 md:px-6 py-6 space-y-5">
-            <h2 className="text-[17px] font-semibold">Recovery Journey</h2>
-            
-            <div className="space-y-2">
-              <Label htmlFor="recovery_goals" className="text-[15px]">Recovery Goals</Label>
-              <Textarea
-                id="recovery_goals"
-                placeholder="What are you working towards in your recovery? (Optional)"
-                rows={4}
-                {...register('recovery_goals', { 
-                  maxLength: { value: 500, message: 'Recovery goals must be 500 characters or less' }
-                })}
-                className={errors.recovery_goals ? 'border-destructive' : ''}
-              />
-              {errors.recovery_goals && (
-                <p className="text-xs text-destructive">{errors.recovery_goals.message}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Share your recovery goals to help others understand your journey. Max 500 characters.
-              </p>
-            </div>
-          </div>
+
 
         </form>
       </div>

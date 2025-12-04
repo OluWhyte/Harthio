@@ -281,14 +281,10 @@ export default function MePage() {
                     size="sm" 
                     className="w-full mt-4"
                     onClick={() => {
-                      if (proEnabled) {
-                        router.push('/me/edit');
-                      } else {
-                        toast({
-                          title: 'Coming Soon',
-                          description: 'Subscription management will be available soon!',
-                        });
-                      }
+                      toast({
+                        title: 'Subscription Management',
+                        description: 'To cancel or modify your subscription, please contact support.',
+                      });
                     }}
                   >
                     Manage Subscription

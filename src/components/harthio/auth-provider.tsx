@@ -437,6 +437,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (data: SignUpData) => {
     const displayName = `${data.firstName} ${data.lastName}`.trim();
 
+    // Detect country from IP (non-blocking)
+    let detectedCountry = 'Unknown';
+    try {
+      const { geolocationService } = await import('@/lib/services/geolocation-service');
+      detectedCountry = await geolocationService.detectCountryWithFallback();
+      console.log('🌍 Detected country:', detectedCountry);
+    } catch (error) {
+      console.warn('Failed to detect country, using Unknown:', error);
+    }
+
     const { data: signupData, error } = await withAuthTimeout(
       () => supabase.auth.signUp({
         email: data.email,
@@ -449,6 +459,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             display_name: displayName,
             first_name: data.firstName,
             last_name: data.lastName,
+            country: detectedCountry,
           },
         },
       }),
@@ -498,6 +509,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   signupData.user.id,
                   signupData.user.email || "",
                   signupData.user.user_metadata?.display_name ||
+                    `${signupData.user.user_metadata?.first_name || ""} ${signupData.user.user_metadata?.last_name || ""}`.trim(),
+                  signupData.user.user_metadata?.country ||
                     signupData.user.email ||
                     null
                 );
@@ -548,7 +561,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const createUserProfile = async (
     userId: string,
     email: string,
-    displayName: string | null
+    displayName: string | null,
+    country?: string
   ) => {
     try {
       // First check if profile already exists
@@ -584,6 +598,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           display_name: displayName,
           first_name: displayName?.split(" ")[0] || null,
           last_name: displayName?.split(" ").slice(1).join(" ") || null,
+          country: country || 'Unknown',
         })
         .select()
         .single();

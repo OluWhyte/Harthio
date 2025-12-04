@@ -78,7 +78,11 @@ Whether you're dealing with:
 - Life transitions
 - Or anything else
 
-There's someone who gets it.
+You get:
+🤝 Real conversations with people who've been there
+🤖 24/7 AI companion for support anytime
+📊 Recovery tracker to visualize your journey
+📈 Custom trackers for mood, habits, and progress
 
 It's free to join: harthio.com
 
@@ -97,7 +101,12 @@ I've really enjoyed being part of this community and seeing how supportive every
 
 I wanted to share something that might help some of you.
 
-I built Harthio because I felt alone in my struggles and couldn't find anyone who truly understood. It's a platform where you can connect with people who've walked your path.
+I built Harthio because I felt alone in my struggles and couldn't find anyone who truly understood. It's a platform where you can:
+
+✅ Connect with people who've walked your path
+✅ Get 24/7 AI support when you need it
+✅ Track your recovery journey with visual milestones
+✅ Monitor your progress with custom trackers
 
 If you've ever felt like "nobody gets what I'm going through," check it out: harthio.com
 
@@ -110,13 +119,18 @@ Thanks for being such a great community! 💙
 ```
 Quick update for anyone interested in Harthio!
 
-We just launched some new features:
+Here's what you get:
 
-🤖 AI Companion - 24/7 support when you need someone to talk to
-📊 Recovery Tracker - Track your progress with visual milestones
+🤖 AI Companion - 24/7 support with CBT tools & crisis detection
+📊 Recovery Tracker - Track sobriety milestones with visual journey
+� Ciustom Trackers - Monitor mood, habits, triggers (up to 20!)
 💬 Video Sessions - Connect face-to-face with people who get it
+✅ Daily Check-ins - Track your wellness over time
+📉 Progress Analytics - Visualize your journey with charts
 
 All free to use: harthio.com
+
+Upgrade to Pro for unlimited AI messages & advanced features!
 
 If you've signed up, I'd love to hear what you think!
 ```
@@ -150,9 +164,17 @@ Hope you're doing well!
 
 I finally launched Harthio and immediately thought of you.
 
-It's a platform where founders can connect with other founders who've been through the same struggles.
+It's a complete support platform for founders:
+
+🤝 Connect with founders who've been through it
+🤖 24/7 AI companion for those 2am stress moments
+📊 Track your startup journey & mental health
+📈 Monitor burnout signals with custom trackers
+✅ Daily check-ins to stay on top of your wellness
 
 I know how isolating founder life can be - the stress, the uncertainty, the "am I crazy?" moments.
+
+Whether you need someone to talk to, AI support when you can't sleep, or tools to track your mental health - Harthio has you covered.
 
 Would you try it and let me know what you think?
 
@@ -169,9 +191,23 @@ Hi [Name],
 
 I wanted to share something with you that I think could really help.
 
-I built Harthio - a platform where you can connect with people who truly understand your journey.
+I built Harthio - a complete support platform for single parents:
 
-I know being a single parent comes with unique challenges that not everyone gets. On Harthio, you can schedule a conversation with someone who's walked that path.
+🤝 Connect with other single parents who truly get it
+🤖 24/7 AI support when the kids are asleep and you need someone
+📊 Track your self-care journey (because you matter too!)
+📈 Monitor stress, mood, and wellness with custom trackers
+✅ Daily check-ins to stay on top of your mental health
+
+I know being a single parent comes with unique challenges that not everyone gets.
+
+Whether you need:
+- Someone to talk to who's been there
+- AI support at 2am when you're overwhelmed
+- Tools to track your wellness
+- A way to monitor your stress levels
+
+Harthio has you covered.
 
 Would you check it out? It's free: harthio.com
 
@@ -188,7 +224,21 @@ Remember when you mentioned thinking about [career change]?
 
 I built something that might help - Harthio.
 
-It's a platform where you can talk to people who've made similar transitions. Real advice, real support, no BS.
+It's a complete support platform for career transitions:
+
+🤝 Talk to people who've made similar transitions
+🤖 Get AI guidance on career decisions 24/7
+📊 Track your job search progress
+📈 Monitor your stress & confidence levels
+✅ Daily check-ins to stay motivated
+
+Whether you need:
+- Real advice from someone who's done it
+- AI support to work through decisions
+- Tools to track your progress
+- A way to manage transition anxiety
+
+Harthio has you covered. Real advice, real support, no BS.
 
 Would you try it? harthio.com
 
@@ -203,7 +253,13 @@ Hey [Name]! 👋
 
 I built something I'm really excited about and would love your thoughts.
 
-It's called Harthio - a platform for meaningful conversations with people who truly understand what you're going through.
+It's called Harthio - your complete support platform:
+
+🤝 Meaningful conversations with people who get it
+🤖 24/7 AI companion for anytime support
+📊 Track your recovery & progress visually
+📈 Custom trackers for mood, habits, wellness
+✅ Daily check-ins to monitor your journey
 
 You know that feeling when you're dealing with something and think "nobody gets it"? Harthio fixes that.
 
@@ -289,13 +345,18 @@ harthio.com
 ```
 After feeling alone in my struggles, I built something to fix it.
 
-Harthio - a platform where you can schedule real conversations with people who truly understand what you're going through.
+Harthio - your complete support platform:
 
-Not therapy. Not random strangers. Just someone who gets it.
+🤝 Real conversations with people who get it
+🤖 24/7 AI companion with CBT tools
+📊 Recovery tracker for your journey
+📈 Custom trackers for mood & habits
+
+Not therapy. Not random strangers. Real support.
 
 Free to join: harthio.com
 
-#MentalHealth #Community
+#MentalHealth #Community #AISupport #Recovery
 ```
 
 #### Tweet #2: Problem/Solution
@@ -332,17 +393,19 @@ harthio.com
 
 #### Tweet #4: Value Proposition
 ```
-What if you could talk to someone who's:
+What if you could:
 
-✅ Been through exactly what you're facing
-✅ Understands without judgment
-✅ Actually wants to help
+✅ Talk to someone who's been through it
+✅ Get AI support 24/7 when you need it
+✅ Track your progress with visual tools
+✅ Monitor your wellness with custom trackers
+✅ See your journey unfold with analytics
 
 That's Harthio.
 
-Find your person: harthio.com
+Find your support: harthio.com
 
-#MentalHealth #Support
+#MentalHealth #Support #AICompanion #Recovery
 ```
 
 #### Tweet #5: Behind the Scenes
@@ -589,9 +652,17 @@ Your friends don't get it ("just quit if it's so hard").
 Your family worries.
 And therapy is expensive.
 
-So I built Harthio - a platform where founders can schedule real conversations with other founders who've been there.
+So I built Harthio - a complete support platform for founders:
 
-Not networking. Not mentorship programs. Just real conversations with people who understand.
+🤝 Real conversations with founders who've been there
+🤖 24/7 AI companion for late-night stress
+📊 Track your startup journey & mental health
+📈 Monitor burnout signals before they become critical
+✅ Daily wellness check-ins
+
+Not networking. Not mentorship programs. Real support when you need it.
+
+Whether you need someone to talk to, AI guidance at 2am, or tools to track your mental health - it's all there.
 
 It's free, and we're live: harthio.com
 
@@ -612,9 +683,15 @@ You don't know anyone who's made the transition you're considering.
 Google gives generic advice.
 LinkedIn is full of highlight reels.
 
-So I built Harthio - a platform where you can talk to people who've actually made the change you're considering.
+So I built Harthio - a complete support platform for career changers:
 
-Real conversations. Real advice. Real support.
+🤝 Talk to people who've made the transition
+🤖 Get AI guidance on career decisions 24/7
+📊 Track your job search & interview progress
+📈 Monitor stress & confidence levels
+✅ Daily check-ins to stay motivated
+
+Real conversations. Real advice. Real tools. Real support.
 
 It's free: harthio.com
 
@@ -698,17 +775,39 @@ Hey [Name],
 
 I wanted to share something with you personally before I blast it everywhere.
 
-I finally launched Harthio - a platform for meaningful conversations with people who truly understand what you're going through.
+I finally launched Harthio - your complete support platform for life's challenges.
 
-After [personal story - divorce/startup stress/etc.], I realized how hard it is to find someone who actually gets it. Not therapy, not random strangers - just someone who's been there.
+After [personal story - divorce/startup stress/etc.], I realized how hard it is to find real support. Not therapy, not random strangers - just tools and people that actually help.
 
 So I built the solution.
 
-How it works:
+What Harthio offers:
+
+🤝 **Peer Sessions** - Talk to people who've been through it
 - Post what you want to talk about
 - Someone who's experienced it requests to join
 - Schedule a video call
 - Have a real conversation
+
+🤖 **24/7 AI Companion** - Support anytime you need it
+- Evidence-based CBT tools
+- Crisis detection & resources
+- Always available, never judges
+
+📊 **Recovery Tracker** - Visualize your journey
+- Track sobriety milestones
+- Celebrate achievements
+- See your progress over time
+
+📈 **Custom Trackers** - Monitor what matters to you
+- Track mood, habits, triggers
+- Up to 20 custom trackers
+- Data visualization & insights
+
+✅ **Daily Check-ins** - Stay on top of your wellness
+- Quick daily wellness checks
+- Track patterns over time
+- Identify what helps
 
 It's free, and we just launched: harthio.com
 
@@ -716,11 +815,13 @@ Would mean the world if you'd:
 1. Try it (even just to give feedback)
 2. Share with anyone who might benefit
 
+Whether someone needs to talk to someone, AI support, recovery tracking, or wellness tools - Harthio has them covered.
+
 Thanks for being part of this journey!
 
 - Tosin
 
-P.S. - If you know any founders, single parents, career changers, or anyone dealing with something challenging, please share. This could really help them.
+P.S. - If you know any founders, single parents, career changers, people in recovery, or anyone dealing with something challenging, please share. This could really help them.
 ```
 
 #### Email #2: To Professional Network
