@@ -241,14 +241,12 @@ export async function detectMultipleResets(userId: string) {
   });
 }
 
-// 5. No Check-ins Detection
+// 5. No Check-ins Detection (only checks once per day)
 export async function detectNoCheckins(userId: string) {
   const userTier = await getUserTier(userId);
   const promptId = 'no_checkins';
 
-  if (!canShowPrompt(promptId, userTier)) return;
-
-  // Check last check-in
+  // Check last check-in first
   const { data: lastCheckin } = await supabase
     .from('daily_checkins')
     .select('created_at')
@@ -263,16 +261,33 @@ export async function detectNoCheckins(userId: string) {
     (Date.now() - new Date(lastCheckin.created_at || Date.now()).getTime()) / (1000 * 60 * 60 * 24)
   );
 
+  // If user has checked in within 3 days, don't trigger anything
   if (daysSince < 3) return;
+
+  // Check cooldown - only run this check once per day (24 hours)
+  const cooldowns = getCooldowns();
+  const lastChecked = cooldowns[`${promptId}_checked`];
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  
+  if (lastChecked && Date.now() - lastChecked < oneDayMs) {
+    return; // Already checked today, skip
+  }
+
+  // Mark that we checked today
+  cooldowns[`${promptId}_checked`] = Date.now();
+  saveCooldowns(cooldowns);
+
+  // Check if we can show the prompt (respects cooldown)
+  if (!canShowPrompt(promptId, userTier)) return;
 
   triggerPrompt({
     id: promptId,
     emoji: '💙',
     message: getRandomMessage('no_checkins'),
     actions: [
-      { label: "I'm okay", action: 'dismiss' },
+      { label: "I'm okay", action: 'open_chat_context' },
       { label: 'Struggling', action: 'open_chat_context' },
-      { label: 'Been busy', action: 'dismiss', variant: 'outline' }
+      { label: 'Been busy', action: 'open_chat_context' }
     ]
   });
 }
