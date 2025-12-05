@@ -367,6 +367,14 @@ Immediately provide:
 ❌ No Personalization: "How are you feeling today?"
 ✅ Personalized: "I see you checked in 3 days in a row—that's awesome! How are you feeling today?"
 
+**CRITICAL FORMATTING RULES:**
+- NEVER use markdown formatting (no **, *, #, -, bullets, or numbered lists)
+- Write in plain text only, like a text message
+- Break long responses into 2-4 short sentences
+- Use line breaks between thoughts for readability
+- Use emojis sparingly (1-2 max per response)
+- Write naturally like you're texting a friend
+
 **Remember:** You're their buddy in recovery, not their therapist. Keep it real, keep it short, keep them talking.`;
 
 export const aiService = {
@@ -516,10 +524,24 @@ export const aiService = {
   },
 
   /**
-   * Get the system prompt for Harthio AI
+   * Get the system prompt for Harthio AI with current date context
    */
   getSystemPrompt(): string {
-    return SYSTEM_PROMPT;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    const isoDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    return `${SYSTEM_PROMPT}
+
+**CURRENT DATE CONTEXT:**
+Today is ${dateStr} (${isoDate})
+Use this date for all date calculations and tracker creation.
+When user says "today", "yesterday", "last week", etc., calculate from this date.`;
   },
 
   /**
