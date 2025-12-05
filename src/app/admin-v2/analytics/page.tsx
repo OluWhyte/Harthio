@@ -505,68 +505,13 @@ export default function AnalyticsPage() {
               </Card>
             </div>
 
-            {/* Platform Activity Overview Chart - Using AnalyticsCharts v2 component */}
+            {/* Platform Activity Overview Chart - SIMPLE DATA LIKE CARDS */}
             <AnalyticsCharts 
               data={{
-                dailyStats: (() => {
-                  const days = dateRange === '7days' ? 7 : dateRange === '30days' ? 30 : dateRange === '90days' ? 90 : 30;
-                  const data: Array<{ date: string; new_users: number; sessions: number; ai_chats: number; messages: number }> = [];
-                  
-                  for (let i = days; i >= 0; i--) {
-                    const date = new Date();
-                    date.setDate(date.getDate() - i);
-                    const dateStr = date.toISOString().split('T')[0];
-                    
-                    // Count actual users created on this date (use allData for accurate counts)
-                    const usersOnDate = allData.users.filter(u => {
-                      if (!u.created_at) return false;
-                      const userDate = new Date(u.created_at).toISOString().split('T')[0];
-                      return userDate === dateStr;
-                    }).length;
-                    
-                    // Count actual sessions created on this date (use allData for accurate counts)
-                    const sessionsOnDate = allData.sessions.filter(s => {
-                      if (!s.created_at) return false;
-                      const sessionDate = new Date(s.created_at).toISOString().split('T')[0];
-                      return sessionDate === dateStr;
-                    }).length;
-                    
-                    // Count actual AI chats on this date (use allData for accurate counts)
-                    const aiChatsOnDate = allData.aiChats.filter(chat => {
-                      if (!chat.created_at) return false;
-                      const chatDate = new Date(chat.created_at).toISOString().split('T')[0];
-                      return chatDate === dateStr;
-                    }).length;
-                    
-                    data.push({ 
-                      date: dateStr, 
-                      new_users: usersOnDate, 
-                      sessions: sessionsOnDate,
-                      ai_chats: aiChatsOnDate,
-                      messages: Math.floor(sessionsOnDate * 8) // Estimate 8 messages per session
-                    });
-                  }
-                  return data;
-                })(),
-                userEngagement: [
-                  { name: 'High Engagement', value: Math.floor(allData.users.length * 0.35), color: '#10b981' },
-                  { name: 'Medium Engagement', value: Math.floor(allData.users.length * 0.45), color: '#f59e0b' },
-                  { name: 'Low Engagement', value: Math.floor(allData.users.length * 0.20), color: '#ef4444' }
-                ],
-                sessionCompletion: [
-                  { name: 'Completed', value: 75 },
-                  { name: 'Cancelled', value: 15 },
-                  { name: 'No-Show', value: 10 }
-                ],
-                deviceStats: [
-                  { name: 'Desktop', value: 45 },
-                  { name: 'Mobile', value: 40 },
-                  { name: 'Tablet', value: 15 }
-                ],
-                hourlyActivity: Array.from({ length: 24 }, (_, i) => ({
-                  hour: `${i}:00`,
-                  activity: Math.floor(Math.random() * 50) + 10 // TODO: Replace with real hourly data
-                }))
+                totalUsers: allData.users.length,
+                totalSessions: allData.sessions.length,
+                totalAiChats: allData.aiChats.length,
+                totalTrackers: allData.trackers.length
               }}
               dateRange={{
                 from: (() => {
@@ -1427,65 +1372,10 @@ export default function AnalyticsPage() {
         {activeTab === 'advanced' && (
           <AnalyticsCharts 
             data={{
-              dailyStats: (() => {
-                const days = dateRange === '7days' ? 7 : dateRange === '30days' ? 30 : dateRange === '90days' ? 90 : 30;
-                const data: Array<{ date: string; new_users: number; sessions: number; ai_chats: number; messages: number }> = [];
-                
-                for (let i = days; i >= 0; i--) {
-                  const date = new Date();
-                  date.setDate(date.getDate() - i);
-                  const dateStr = date.toISOString().split('T')[0];
-                  
-                  // Count actual users created on this date (use allData for accurate counts)
-                  const usersOnDate = allData.users.filter(u => {
-                    if (!u.created_at) return false;
-                    const userDate = new Date(u.created_at).toISOString().split('T')[0];
-                    return userDate === dateStr;
-                  }).length;
-                  
-                  // Count actual sessions created on this date (use allData for accurate counts)
-                  const sessionsOnDate = allData.sessions.filter(s => {
-                    if (!s.created_at) return false;
-                    const sessionDate = new Date(s.created_at).toISOString().split('T')[0];
-                    return sessionDate === dateStr;
-                  }).length;
-                  
-                  // Count actual AI chats on this date (use allData for accurate counts)
-                  const aiChatsOnDate = allData.aiChats.filter(chat => {
-                    if (!chat.created_at) return false;
-                    const chatDate = new Date(chat.created_at).toISOString().split('T')[0];
-                    return chatDate === dateStr;
-                  }).length;
-                  
-                  data.push({ 
-                    date: dateStr, 
-                    new_users: usersOnDate, 
-                    sessions: sessionsOnDate,
-                    ai_chats: aiChatsOnDate,
-                    messages: Math.floor(sessionsOnDate * 8) // Estimate 8 messages per session
-                  });
-                }
-                return data;
-              })(),
-              userEngagement: [
-                { name: 'High Engagement', value: Math.floor(allData.users.length * 0.35), color: '#10b981' },
-                { name: 'Medium Engagement', value: Math.floor(allData.users.length * 0.45), color: '#f59e0b' },
-                { name: 'Low Engagement', value: Math.floor(allData.users.length * 0.20), color: '#ef4444' }
-              ],
-              sessionCompletion: [
-                { name: 'Completed', value: 75 },
-                { name: 'Cancelled', value: 15 },
-                { name: 'No-Show', value: 10 }
-              ],
-              deviceStats: [
-                { name: 'Desktop', value: 45 },
-                { name: 'Mobile', value: 40 },
-                { name: 'Tablet', value: 15 }
-              ],
-              hourlyActivity: Array.from({ length: 24 }, (_, i) => ({
-                hour: `${i}:00`,
-                activity: Math.floor(Math.random() * 50) + 10 // TODO: Replace with real hourly data
-              }))
+              totalUsers: allData.users.length,
+              totalSessions: allData.sessions.length,
+              totalAiChats: allData.aiChats.length,
+              totalTrackers: allData.trackers.length
             }}
             dateRange={{
               from: (() => {

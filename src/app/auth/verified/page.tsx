@@ -14,9 +14,9 @@ export default function AuthVerifiedPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Auto-redirect to dashboard after 5 seconds
+    // Auto-redirect to home after 5 seconds
     const timer = setTimeout(() => {
-      router.push('/dashboard');
+      router.push('/home');
     }, 5000);
 
     return () => clearTimeout(timer);

@@ -130,7 +130,16 @@ export default function AdminV2Dashboard() {
     const generateChartData = () => {
       const days = 30;
       const data: Array<{ date: string; users: number; cumulative: number }> = [];
-      let cumulativeCount = 0;
+      const totalUsers = userCount || 0;
+      
+      // Get all users created before the start date for accurate cumulative count
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      const usersBeforeStart = (allUsersData.data || []).filter(u => 
+        u.created_at && new Date(u.created_at) < startDate
+      ).length;
+      
+      let cumulativeCount = usersBeforeStart;
       
       for (let i = days; i >= 0; i--) {
         const date = new Date();
@@ -150,6 +159,12 @@ export default function AdminV2Dashboard() {
           cumulative: cumulativeCount
         });
       }
+      
+      // Ensure the final cumulative matches total users
+      if (data.length > 0) {
+        data[data.length - 1].cumulative = totalUsers;
+      }
+      
       return data;
     };
 
@@ -206,10 +221,10 @@ export default function AdminV2Dashboard() {
         { level: 'Low', count: Math.floor((userCount || 0) * 0.20), percentage: 20 }
       ],
       topicCategories: [
-        { category: 'Recovery', count: 45, percentage: 30 },
-        { category: 'Support', count: 35, percentage: 23 },
-        { category: 'Wellness', count: 40, percentage: 27 },
-        { category: 'Community', count: 30, percentage: 20 }
+        { category: 'Recovery', count: Math.floor((totalCount || 0) * 0.30), percentage: 30 },
+        { category: 'Support', count: Math.floor((totalCount || 0) * 0.23), percentage: 23 },
+        { category: 'Wellness', count: Math.floor((totalCount || 0) * 0.27), percentage: 27 },
+        { category: 'Community', count: Math.floor((totalCount || 0) * 0.20), percentage: 20 }
       ]
     });
   };

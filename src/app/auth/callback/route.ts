@@ -20,10 +20,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${requestUrl.origin}/auth/error?message=${encodeURIComponent('Verification failed. Please try again.')}`)
       }
 
-      // Immediately sign out the user after verification
-      await supabase.auth.signOut()
-      
-      // Redirect to verification success page
+      // Redirect to verification success page (keep user signed in)
       return NextResponse.redirect(`${requestUrl.origin}${next}`)
     } catch (error) {
       console.error('Unexpected error during verification:', error)
