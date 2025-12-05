@@ -16,10 +16,12 @@ import { Loader2, RotateCcw, Bell, Send, ThumbsUp, ThumbsDown } from 'lucide-rea
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { type Message } from '@/hooks/use-message-panel';
 import { MobilePageHeader } from '@/components/harthio/mobile-page-header';
+import { useRequestsCount } from '@/hooks/use-requests-count';
 
 export default function HarthioAIPage() {
   const { user, userProfile } = useAuth();
   const router = useRouter();
+  const notificationCount = useRequestsCount();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -849,7 +851,7 @@ export default function HarthioAIPage() {
               icon: Bell,
               onClick: () => router.push('/notifications'),
               label: 'Notifications',
-              badge: 0,
+              badge: notificationCount,
             },
           ]}
         />

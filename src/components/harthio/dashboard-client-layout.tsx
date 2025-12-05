@@ -186,7 +186,7 @@ export function DashboardClientLayout({ children }: { children: ReactNode }) {
                 >
                     <div className="relative flex-shrink-0">
                         <Icon className="h-6 w-6" strokeWidth={2.5} />
-                        {item.showBadge && notificationCount > 0 && (
+                        {item.showBadge && notificationCount > 0 && !pathname.startsWith('/notifications') && (
                           <Badge 
                             variant="destructive" 
                             className="absolute -top-1 -right-1 h-4 min-w-[16px] flex items-center justify-center p-0 px-1 text-[9px] font-bold rounded-full"
