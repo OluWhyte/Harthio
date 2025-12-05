@@ -77,7 +77,7 @@ function CheckoutContent() {
 
       // Initialize Paystack payment
       const response = await paystackService.initializeTransaction({
-        email: user.email,
+        email: user.email || '',
         amount: paystackService.toKobo(amount), // Convert to kobo/cents
         currency: currency.toUpperCase() as 'NGN' | 'USD',
         metadata: {

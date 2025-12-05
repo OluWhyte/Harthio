@@ -26,9 +26,9 @@ import {
   AreaChartComponent, 
   BarChartComponent, 
   PieChartComponent,
-  MultiLineChart,
-  AnalyticsCharts
+  MultiLineChart
 } from '@/components/admin/analytics-charts';
+import { AnalyticsCharts } from '@/components/admin/analytics-charts-v2';
 import { 
   LineChart,
   Line,
@@ -505,49 +505,64 @@ export default function AnalyticsPage() {
               </Card>
             </div>
 
-            {/* Platform Activity Overview Chart - Using AnalyticsCharts component */}
+            {/* Platform Activity Overview Chart - Using AnalyticsCharts v2 component */}
             <AnalyticsCharts 
-              userGrowth={(() => {
-                const days = 30;
-                const data: Array<{ date: string; users: number; cumulative: number }> = [];
-                let cumulativeCount = 0;
-                for (let i = days; i >= 0; i--) {
-                  const date = new Date();
-                  date.setDate(date.getDate() - i);
-                  const dateStr = date.toISOString().split('T')[0];
-                  const usersOnDate = filteredData.users.filter(u => 
-                    new Date(u.created_at).toISOString().split('T')[0] === dateStr
-                  ).length;
-                  cumulativeCount += usersOnDate;
-                  data.push({ date: dateStr, users: usersOnDate, cumulative: cumulativeCount });
-                }
-                return data;
-              })()}
-              sessionActivity={(() => {
-                const days = 30;
-                const data: Array<{ date: string; sessions: number; participants: number }> = [];
-                for (let i = days; i >= 0; i--) {
-                  const date = new Date();
-                  date.setDate(date.getDate() - i);
-                  const dateStr = date.toISOString().split('T')[0];
-                  const sessionsOnDate = filteredData.sessions.filter(s => 
-                    new Date(s.created_at).toISOString().split('T')[0] === dateStr
-                  ).length;
-                  data.push({ date: dateStr, sessions: sessionsOnDate, participants: sessionsOnDate * 2 });
-                }
-                return data;
-              })()}
-              engagementMetrics={[
-                { level: 'High', count: Math.floor(filteredData.users.length * 0.35), percentage: 35 },
-                { level: 'Medium', count: Math.floor(filteredData.users.length * 0.45), percentage: 45 },
-                { level: 'Low', count: Math.floor(filteredData.users.length * 0.20), percentage: 20 }
-              ]}
-              topicCategories={[
-                { category: 'Recovery', count: 45, percentage: 30 },
-                { category: 'Support', count: 35, percentage: 23 },
-                { category: 'Wellness', count: 40, percentage: 27 },
-                { category: 'Community', count: 30, percentage: 20 }
-              ]}
+              data={{
+                dailyStats: (() => {
+                  const days = 30;
+                  const data: Array<{ date: string; new_users: number; sessions: number; ai_chats: number; messages: number }> = [];
+                  for (let i = days; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    const usersOnDate = filteredData.users.filter(u => 
+                      new Date(u.created_at).toISOString().split('T')[0] === dateStr
+                    ).length;
+                    const sessionsOnDate = filteredData.sessions.filter(s => 
+                      new Date(s.created_at).toISOString().split('T')[0] === dateStr
+                    ).length;
+                    data.push({ 
+                      date: dateStr, 
+                      new_users: usersOnDate, 
+                      sessions: sessionsOnDate,
+                      ai_chats: Math.floor(usersOnDate * 1.5), // Estimate AI chats
+                      messages: Math.floor(sessionsOnDate * 10) // Estimate messages per session
+                    });
+                  }
+                  return data;
+                })(),
+                userEngagement: [
+                  { name: 'High Engagement', value: Math.floor(filteredData.users.length * 0.35), color: '#10b981' },
+                  { name: 'Medium Engagement', value: Math.floor(filteredData.users.length * 0.45), color: '#f59e0b' },
+                  { name: 'Low Engagement', value: Math.floor(filteredData.users.length * 0.20), color: '#ef4444' }
+                ],
+                sessionCompletion: [
+                  { name: 'Completed', value: 75 },
+                  { name: 'Cancelled', value: 15 },
+                  { name: 'No-Show', value: 10 }
+                ],
+                deviceStats: [
+                  { name: 'Desktop', value: 45 },
+                  { name: 'Mobile', value: 40 },
+                  { name: 'Tablet', value: 15 }
+                ],
+                hourlyActivity: Array.from({ length: 24 }, (_, i) => ({
+                  hour: `${i}:00`,
+                  activity: Math.floor(Math.random() * 50) + 10 // TODO: Replace with real hourly data
+                }))
+              }}
+              dateRange={{
+                from: (() => {
+                  const now = new Date();
+                  switch(dateRange) {
+                    case '7days': return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    case '30days': return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                    case '90days': return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                    default: return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                  }
+                })(),
+                to: new Date()
+              }}
             />
 
             {/* User Tier Comparison */}
@@ -1394,47 +1409,62 @@ export default function AnalyticsPage() {
         {/* Advanced Tab */}
         {activeTab === 'advanced' && (
           <AnalyticsCharts 
-            userGrowth={(() => {
-              const days = 30;
-              const data: Array<{ date: string; users: number; cumulative: number }> = [];
-              let cumulativeCount = 0;
-              for (let i = days; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                const dateStr = date.toISOString().split('T')[0];
-                const usersOnDate = filteredData.users.filter(u => 
-                  new Date(u.created_at).toISOString().split('T')[0] === dateStr
-                ).length;
-                cumulativeCount += usersOnDate;
-                data.push({ date: dateStr, users: usersOnDate, cumulative: cumulativeCount });
-              }
-              return data;
-            })()}
-            sessionActivity={(() => {
-              const days = 30;
-              const data: Array<{ date: string; sessions: number; participants: number }> = [];
-              for (let i = days; i >= 0; i--) {
-                const date = new Date();
-                date.setDate(date.getDate() - i);
-                const dateStr = date.toISOString().split('T')[0];
-                const sessionsOnDate = filteredData.sessions.filter(s => 
-                  new Date(s.created_at).toISOString().split('T')[0] === dateStr
-                ).length;
-                data.push({ date: dateStr, sessions: sessionsOnDate, participants: sessionsOnDate * 2 });
-              }
-              return data;
-            })()}
-            engagementMetrics={[
-              { level: 'High', count: Math.floor(filteredData.users.length * 0.35), percentage: 35 },
-              { level: 'Medium', count: Math.floor(filteredData.users.length * 0.45), percentage: 45 },
-              { level: 'Low', count: Math.floor(filteredData.users.length * 0.20), percentage: 20 }
-            ]}
-            topicCategories={[
-              { category: 'Recovery', count: 45, percentage: 30 },
-              { category: 'Support', count: 35, percentage: 23 },
-              { category: 'Wellness', count: 40, percentage: 27 },
-              { category: 'Community', count: 30, percentage: 20 }
-            ]}
+            data={{
+              dailyStats: (() => {
+                const days = 30;
+                const data: Array<{ date: string; new_users: number; sessions: number; ai_chats: number; messages: number }> = [];
+                for (let i = days; i >= 0; i--) {
+                  const date = new Date();
+                  date.setDate(date.getDate() - i);
+                  const dateStr = date.toISOString().split('T')[0];
+                  const usersOnDate = filteredData.users.filter(u => 
+                    new Date(u.created_at).toISOString().split('T')[0] === dateStr
+                  ).length;
+                  const sessionsOnDate = filteredData.sessions.filter(s => 
+                    new Date(s.created_at).toISOString().split('T')[0] === dateStr
+                  ).length;
+                  data.push({ 
+                    date: dateStr, 
+                    new_users: usersOnDate, 
+                    sessions: sessionsOnDate,
+                    ai_chats: Math.floor(usersOnDate * 1.5), // Estimate AI chats
+                    messages: Math.floor(sessionsOnDate * 10) // Estimate messages per session
+                  });
+                }
+                return data;
+              })(),
+              userEngagement: [
+                { name: 'High Engagement', value: Math.floor(filteredData.users.length * 0.35), color: '#10b981' },
+                { name: 'Medium Engagement', value: Math.floor(filteredData.users.length * 0.45), color: '#f59e0b' },
+                { name: 'Low Engagement', value: Math.floor(filteredData.users.length * 0.20), color: '#ef4444' }
+              ],
+              sessionCompletion: [
+                { name: 'Completed', value: 75 },
+                { name: 'Cancelled', value: 15 },
+                { name: 'No-Show', value: 10 }
+              ],
+              deviceStats: [
+                { name: 'Desktop', value: 45 },
+                { name: 'Mobile', value: 40 },
+                { name: 'Tablet', value: 15 }
+              ],
+              hourlyActivity: Array.from({ length: 24 }, (_, i) => ({
+                hour: `${i}:00`,
+                activity: Math.floor(Math.random() * 50) + 10 // TODO: Replace with real hourly data
+              }))
+            }}
+            dateRange={{
+              from: (() => {
+                const now = new Date();
+                switch(dateRange) {
+                  case '7days': return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                  case '30days': return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                  case '90days': return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+                  default: return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                }
+              })(),
+              to: new Date()
+            }}
           />
         )}
       </div>

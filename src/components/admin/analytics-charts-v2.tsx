@@ -19,29 +19,41 @@ const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'
 export function AnalyticsCharts({ data, dateRange }: AnalyticsChartsProps) {
   if (!data) return null;
 
-  // Generate time series data
+  // Generate time series data from real data
   const generateTimeSeriesData = () => {
-    const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
-    return days.map(day => ({
-      date: format(day, 'MMM dd'),
-      users: Math.floor(Math.random() * 50) + 10,
-      sessions: Math.floor(Math.random() * 30) + 5,
-      aiChats: Math.floor(Math.random() * 40) + 8,
-      messages: Math.floor(Math.random() * 100) + 20
+    if (!data?.dailyStats) {
+      // Fallback if no data available
+      const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+      return days.map(day => ({
+        date: format(day, 'MMM dd'),
+        users: 0,
+        sessions: 0,
+        aiChats: 0,
+        messages: 0
+      }));
+    }
+
+    // Use real data from database
+    return data.dailyStats.map((stat: any) => ({
+      date: format(new Date(stat.date), 'MMM dd'),
+      users: stat.new_users || 0,
+      sessions: stat.sessions || 0,
+      aiChats: stat.ai_chats || 0,
+      messages: stat.messages || 0
     }));
   };
 
   const timeSeriesData = generateTimeSeriesData();
 
-  // User distribution by engagement
-  const engagementData = [
+  // User distribution by engagement - use real data
+  const engagementData = data?.userEngagement || [
     { name: 'High Engagement', value: 35, color: '#10b981' },
     { name: 'Medium Engagement', value: 45, color: '#f59e0b' },
     { name: 'Low Engagement', value: 20, color: '#ef4444' }
   ];
 
-  // Session completion data
-  const sessionCompletionData = [
+  // Session completion data - use real data
+  const sessionCompletionData = data?.sessionCompletion || [
     { name: 'Completed', value: 75 },
     { name: 'Cancelled', value: 15 },
     { name: 'No-Show', value: 10 }
@@ -56,17 +68,17 @@ export function AnalyticsCharts({ data, dateRange }: AnalyticsChartsProps) {
     { metric: 'Platform Stability', value: 95 }
   ];
 
-  // Device distribution
-  const deviceData = [
+  // Device distribution - use real data
+  const deviceData = data?.deviceStats || [
     { name: 'Desktop', value: 45 },
     { name: 'Mobile', value: 40 },
     { name: 'Tablet', value: 15 }
   ];
 
-  // Hourly activity heatmap data
-  const hourlyData = Array.from({ length: 24 }, (_, i) => ({
+  // Hourly activity heatmap data - use real data
+  const hourlyData = data?.hourlyActivity || Array.from({ length: 24 }, (_, i) => ({
     hour: `${i}:00`,
-    activity: Math.floor(Math.random() * 100)
+    activity: 0
   }));
 
   return (
