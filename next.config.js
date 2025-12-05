@@ -210,11 +210,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self' https://*.ngrok-free.app https://*.ngrok.io",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://js.stripe.com https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://*.google-analytics.com",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://js.stripe.com https://js.paystack.co https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://*.google-analytics.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.ngrok-free.app https://*.ngrok.io",
               "img-src 'self' data: https://images.unsplash.com https://res.cloudinary.com https://i.imgur.com https://raw.githubusercontent.com https://placehold.co https://*.supabase.co",
               "font-src 'self' data: https://fonts.gstatic.com",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live https://api.resend.com https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vercel.live https://api.resend.com https://ipapi.co https://api.paystack.co https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
               "media-src 'self' blob: https://session.harthio.com https://*.daily.co",
               "frame-src 'self' https://vercel.live https://session.harthio.com https://*.daily.co",
               "object-src 'none'",
