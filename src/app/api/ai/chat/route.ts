@@ -459,13 +459,23 @@ async function generateActivitySummary(userId: string, supabase: any): Promise<s
     console.log('[AI] Generating activity summary for user:', userId);
     
     // Fetch user data in parallel for speed
-    const [trackersResult, checkInsResult, sessionsResult] = await Promise.all([
-      // Get trackers
+    const [activeTrackersResult, inactiveTrackersResult, checkInsResult, sessionsResult] = await Promise.all([
+      // Get ACTIVE trackers
       supabase
         .from('sobriety_trackers')
         .select('*')
         .eq('user_id', userId)
+        .eq('is_active', true)
         .order('created_at', { ascending: false }),
+      
+      // Get INACTIVE trackers (for history)
+      supabase
+        .from('sobriety_trackers')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', false)
+        .order('updated_at', { ascending: false })
+        .limit(5), // Last 5 deleted/reset trackers
       
       // Get recent check-ins (last 7 days)
       supabase
@@ -485,11 +495,13 @@ async function generateActivitySummary(userId: string, supabase: any): Promise<s
     ]);
 
     // Log what we got from database
-    console.log('[AI] Trackers found:', trackersResult.data?.length || 0);
+    console.log('[AI] Active trackers found:', activeTrackersResult.data?.length || 0);
+    console.log('[AI] Inactive trackers found:', inactiveTrackersResult.data?.length || 0);
     console.log('[AI] Check-ins found:', checkInsResult.data?.length || 0);
     console.log('[AI] Sessions found:', sessionsResult.data?.length || 0);
     
-    if (trackersResult.error) console.error('[AI] Tracker error:', trackersResult.error);
+    if (activeTrackersResult.error) console.error('[AI] Active tracker error:', activeTrackersResult.error);
+    if (inactiveTrackersResult.error) console.error('[AI] Inactive tracker error:', inactiveTrackersResult.error);
     if (checkInsResult.error) console.error('[AI] Check-in error:', checkInsResult.error);
     if (sessionsResult.error) console.error('[AI] Session error:', sessionsResult.error);
     
@@ -498,24 +510,37 @@ async function generateActivitySummary(userId: string, supabase: any): Promise<s
     
     let summary = '\n\nUSER ACTIVITY CONTEXT:\n';
     
-    // Trackers (JSON format for efficiency)
-    if (trackersResult.data && trackersResult.data.length > 0) {
-      summary += 'Trackers: [\n';
+    // Active Trackers (what user is currently tracking)
+    if (activeTrackersResult.data && activeTrackersResult.data.length > 0) {
+      summary += 'Active Trackers: [\n';
       
-      trackersResult.data.forEach((tracker: any, index: number) => {
-        const startDate = new Date(tracker.start_date);
-        const today = new Date();
-        const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const diffTime = todayDateOnly.getTime() - startDateOnly.getTime();
-        const daysSober = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      activeTrackersResult.data.forEach((tracker: any, index: number) => {
+        const start = new Date(tracker.start_date);
+        const now = new Date();
+        const diffMs = now.getTime() - start.getTime();
+        const daysSober = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
         
-        summary += `  {name: "${tracker.tracker_name}", type: "${tracker.tracker_type}", days: ${daysSober}}${index < trackersResult.data.length - 1 ? ',' : ''}\n`;
+        summary += `  {name: "${tracker.tracker_name}", type: "${tracker.tracker_type}", days: ${daysSober}}${index < activeTrackersResult.data.length - 1 ? ',' : ''}\n`;
       });
       
       summary += ']\n';
     } else {
-      summary += 'Trackers: []\n';
+      summary += 'Active Trackers: []\n';
+    }
+    
+    // Inactive Trackers (history - deleted/reset)
+    if (inactiveTrackersResult.data && inactiveTrackersResult.data.length > 0) {
+      summary += 'Past Trackers (deleted/reset): [\n';
+      
+      inactiveTrackersResult.data.forEach((tracker: any, index: number) => {
+        const start = new Date(tracker.start_date);
+        const updated = new Date(tracker.updated_at);
+        const daysTracked = Math.max(0, Math.floor((updated.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+        
+        summary += `  {name: "${tracker.tracker_name}", type: "${tracker.tracker_type}", tracked_for: ${daysTracked} days, stopped: "${updated.toLocaleDateString()}"}${index < inactiveTrackersResult.data.length - 1 ? ',' : ''}\n`;
+      });
+      
+      summary += ']\n';
     }
     
     // Check-ins (JSON format)
@@ -550,7 +575,40 @@ async function generateActivitySummary(userId: string, supabase: any): Promise<s
 
 // Get tier-specific system prompt (OPTIMIZED - 50% token reduction)
 function getTierSystemPrompt(tier: 'free' | 'pro', currentDate?: string): string {
-  const dateInfo = currentDate ? `CONTEXT: Today is ${currentDate}. User data provided in USER ACTIVITY CONTEXT below. Use exact numbers provided - don't calculate.\n\n` : '';
+  const dateInfo = currentDate ? `⚠️ CRITICAL - CURRENT DATE: ${currentDate}
+When user asks "what's today's date" or "what date is it", respond with EXACTLY: "${currentDate}"
+DO NOT use your training data date. USE THIS DATE: ${currentDate}
+
+User data provided in USER ACTIVITY CONTEXT below. Use exact numbers provided - don't calculate.
+
+⚠️ WHEN TO USE USER DATA:
+- User asks about progress/stats → Reference active trackers, check-ins, sessions
+- User mentions struggling → Check recent moods for patterns
+- User asks general questions → DON'T force data into response
+- Casual chat → Respond naturally, mention data ONLY if relevant
+- Mixed moods (struggling + good) → Acknowledge both: "I see you've had some ups and downs"
+- No sessions → DON'T mention unless user asks about connections/sessions
+
+IDENTITY & HISTORY QUESTIONS:
+User: "Who am I?" / "What do you know about me?"
+→ Summarize: active trackers, recent moods, sessions, past trackers if relevant
+→ "You're tracking smoking (5 days), gambling (9 days), and alcohol (9 days). You've checked in 4 times this week feeling mostly good. I also remember you tracked drugs for 10 days last month."
+
+User: "When last did I smoke?" (HAS smoke tracker)
+→ "You're 5 days smoke free right now. Last smoke was Nov 30."
+
+User: "When last did I smoke?" (NO smoke tracker, but has past tracker)
+→ "I remember you tracked smoking for 10 days back in November, then stopped tracking. Not sure if you still smoke or if you quit. Do you still smoke?"
+
+User: "When last did I smoke?" (NO tracker at all)
+→ "I don't know—you haven't tracked smoking with me. Want to start tracking it?"
+
+User: "Do I still drink?" (NO alcohol tracker, but has past tracker)
+→ "You tracked alcohol for 9 days last month, then stopped. Did you quit or just stop tracking? Want to tell me about it?"
+
+User: "What's my history?"
+→ Mention active + past trackers, patterns in moods, sessions joined
+→ "You've been tracking smoking (5d), gambling (9d), alcohol (9d). Before that, you tracked drugs for 10 days in November. You've joined 5 sessions and check in regularly."\n\n` : '';
   
   const basePrompt = `${dateInfo}ROLE: Harthio AI - recovery companion (friend, not therapist)
 
@@ -559,46 +617,91 @@ TONE: Conversational, supportive, direct
 - Avoid: "I hear you" (max 1x), therapist language, over-explaining
 - Max 1 emoji per response
 
-CRITICAL - TEXT FORMATTING:
-- NEVER use markdown: no **, __, *, #, -, •, or any formatting symbols
-- NEVER use bullet points or lists
-- NEVER use headers or bold text
-- Write like you're texting a friend - plain text only
-- Use line breaks for separation, not symbols
+CRITICAL - TEXT FORMATTING (MUST FOLLOW):
+- ABSOLUTELY NO MARKDOWN: no **, __, *, #, -, •, 1., 2., or ANY formatting symbols
+- NEVER use bullet points, numbered lists, or any list formatting
+- NEVER use headers, bold, italic, or any text styling
+- Write EXACTLY like texting a friend - plain text ONLY
+- Use line breaks for separation, NOT symbols or formatting
+- Example: "Hey that sounds tough. Want to try something that might help? We could do breathing or grounding."
+- NOT: "**Hey** that sounds tough. Want to try: • Breathing • Grounding"
 
 MEMORY: Reference previous conversation. Notice patterns. Follow up on topics.
 
+CONTEXTUAL DATA USAGE (Vary your phrasing):
+
+Mixed moods:
+- "Looks like you've had some rough days mixed with good ones. That's real recovery—not perfect, just progress."
+- "I see it's been a bit of a rollercoaster. But hey, those good days count too."
+- "Some ups and downs this week, huh? The fact you're still showing up says a lot."
+
+No sessions (don't mention unless asked):
+- If asked: "Haven't seen you in any sessions lately. Want to connect with someone?"
+- Otherwise: Focus on trackers/moods, ignore sessions completely
+
+Low check-ins:
+- "You've been quiet this week. How's it going?"
+- "Only checked in once lately. Everything alright?"
+- "Haven't heard from you much. What's been happening?"
+
+High check-ins:
+- "You've been checking in almost every day. That consistency is paying off."
+- "Five check-ins this week? You're really staying on top of things."
+- "Love seeing you check in regularly. How's that helping?"
+
+Combine data naturally:
+- "Nine days sober and you've checked in 4 times. You're doing the work."
+- "Five days smoke free, and I see you've been feeling good lately. Keep it up!"
+- "Your trackers look solid, and those check-ins show you're staying aware. Nice."
+
 EMOTIONAL INTELLIGENCE (Critical - Study these):
 
-Relapse:
+Relapse (vary responses):
 ❌ "Relapse is a normal part of recovery. Many people experience this."
-✅ "Hey, you're not a failure. You made it X days - that's real progress. What happened?"
+✅ "You're not a failure. You made it X days—that's real progress. What happened?"
+✅ "Setbacks happen. You did X days before, you can do it again. What triggered it?"
+✅ "Hey, you're still here talking to me. That counts. What's your next move?"
 
-Milestone:
+Milestone (vary responses):
 ❌ "That's great! Keep up the good work."
 ✅ "Hell yeah! 47 days is huge. How are you feeling about it?"
+✅ "Damn, 30 days? That's a big deal. What's been helping you most?"
+✅ "Look at you—two weeks strong. What's different this time?"
 
-Crisis/Craving:
+Crisis/Craving (vary responses):
 ❌ "I understand you're struggling. Have you tried coping techniques?"
 ✅ "That's a tough spot. What's going on right now? Can you call your sponsor?"
+✅ "Cravings are brutal. What usually helps you ride them out?"
+✅ "Okay, let's get through this. What's triggering it right now?"
 
-Hopelessness:
+Hopelessness (vary responses):
 ❌ "Things will get better. You need to stay positive."
 ✅ "I hear you. Recovery is hard as hell. What's one small thing that might help today?"
+✅ "That's a dark place to be. You don't have to fix everything today—just get through today."
+✅ "I get it. Some days feel impossible. What's kept you going before?"
 
-Anxiety:
+Anxiety (vary responses):
 ❌ "Anxiety is your body's alarm system. Let me explain the science."
 ✅ "Anxiety sucks. Want to try something quick that might calm things down?"
+✅ "That racing feeling is the worst. Want to do some breathing with me?"
+✅ "Anxiety hitting hard? Let's try grounding—it helps some people."
 
-Self-blame:
+Self-blame (vary responses):
 ❌ "You shouldn't be so hard on yourself."
 ✅ "You're being really tough on yourself. What would you tell a friend in this situation?"
+✅ "Hey, you're human. Beating yourself up doesn't help. What do you need right now?"
+✅ "That inner critic is loud, huh? Let's challenge that thought together."
 
 FORMATTING REMINDER:
 ❌ "Here are **three things**: • Breathing • Grounding • Walking"
 ✅ "Here are three things: breathing, grounding, or walking"
 
-CRISIS: If suicide/self-harm → Express concern, provide 988, be brief.`;
+CRISIS: If suicide/self-harm → Express concern, provide 988, be brief.
+
+⚠️⚠️⚠️ CRITICAL DATE REMINDER ⚠️⚠️⚠️
+CURRENT DATE: ${currentDate || 'Not provided'}
+If user asks about today's date, time, or "what day is it", respond with THIS date ONLY.
+DO NOT use your training data. USE THE DATE ABOVE.`;
 
   if (tier === 'free') {
     return basePrompt + `
@@ -616,7 +719,12 @@ Be warm, not salesy.`;
   return basePrompt + `
 
 TIER: PRO (Full Access)
-All features available: CBT tools, pattern analysis, unlimited support.`;
+All features available: CBT tools, pattern analysis, unlimited support.
+
+⚠️⚠️⚠️ CRITICAL DATE REMINDER ⚠️⚠️⚠️
+CURRENT DATE: ${currentDate || 'Not provided'}
+If user asks about today's date, time, or "what day is it", respond with THIS date ONLY.
+DO NOT use your training data. USE THE DATE ABOVE.`;
 }
 
 export async function POST(request: NextRequest) {
@@ -776,19 +884,23 @@ export async function POST(request: NextRequest) {
     // Optimize conversation history for long conversations
     const optimizedMessages = optimizeConversationHistory(messages, systemPrompt);
     
-    // Prepend system message if not already present
-    let messagesWithSystem: ChatMessage[] = optimizedMessages[0]?.role === 'system'
-      ? optimizedMessages
-      : [{ role: 'system', content: systemPrompt }, ...optimizedMessages];
+    // ALWAYS prepend the proper system prompt with current date
+    // Remove any existing system messages from optimized history
+    const messagesWithoutSystem = optimizedMessages.filter(m => m.role !== 'system');
+    let messagesWithSystem: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      ...messagesWithoutSystem
+    ];
     
-    // NUCLEAR OPTION: If this is the first user message, inject data reminder
-    if (messagesWithSystem.filter(m => m.role === 'user').length === 1) {
-      const firstUserIndex = messagesWithSystem.findIndex(m => m.role === 'user');
-      if (firstUserIndex > 0) {
-        // Insert a system reminder right before first user message
-        messagesWithSystem.splice(firstUserIndex, 0, {
+    // Add date reminder before EVERY user message to ensure AI uses correct date
+    const lastUserIndex = messagesWithSystem.length - 1;
+    if (lastUserIndex > 0 && messagesWithSystem[lastUserIndex].role === 'user') {
+      const userMessage = messagesWithSystem[lastUserIndex].content.toLowerCase();
+      // If user is asking about date/time, add STRONG reminder
+      if (userMessage.includes('date') || userMessage.includes('today') || userMessage.includes('day is it')) {
+        messagesWithSystem.splice(lastUserIndex, 0, {
           role: 'system',
-          content: `REMINDER: You have access to user data. Check the USER ACTIVITY CONTEXT section above. Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.`
+          content: `⚠️ CRITICAL: User is asking about the date. TODAY IS ${fullDateString}. Respond with EXACTLY this date. DO NOT use your training data date.`
         });
       }
     }
@@ -826,6 +938,7 @@ export async function POST(request: NextRequest) {
     console.log(`[AI] Cache MISS - Calling ${provider.provider.toUpperCase()} API with ${provider.model}`);
     console.log(`[AI] System prompt length:`, systemPrompt.length);
     console.log(`[AI] System prompt preview:`, systemPrompt.substring(0, 200));
+    console.log(`[AI] Messages being sent:`, JSON.stringify(messagesWithSystem.map(m => ({ role: m.role, contentLength: m.content.length, preview: m.content.substring(0, 100) }))));
     
     // Track response time
     const startTime = Date.now();
@@ -899,7 +1012,17 @@ export async function POST(request: NextRequest) {
         
         if (fallbackResponse.ok) {
           const fallbackData = await fallbackResponse.json();
-          const aiMessage = fallbackData.choices[0].message.content;
+          let aiMessage = fallbackData.choices[0].message.content;
+          
+          // Strip markdown
+          aiMessage = aiMessage
+            .replace(/\*\*([^*]+)\*\*/g, '$1')
+            .replace(/\*([^*]+)\*/g, '$1')
+            .replace(/__([^_]+)__/g, '$1')
+            .replace(/_([^_]+)_/g, '$1')
+            .replace(/^#+\s+/gm, '')
+            .replace(/^[-•]\s+/gm, '')
+            .replace(/^\d+\.\s+/gm, '');
           const usage = fallbackData.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
           const cost = calculateCost(fallbackProvider.model, usage);
           
@@ -948,7 +1071,17 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    const aiMessage = data.choices[0].message.content;
+    let aiMessage = data.choices[0].message.content;
+    
+    // Strip any markdown formatting that slipped through
+    aiMessage = aiMessage
+      .replace(/\*\*([^*]+)\*\*/g, '$1')  // Remove **bold**
+      .replace(/\*([^*]+)\*/g, '$1')      // Remove *italic*
+      .replace(/__([^_]+)__/g, '$1')      // Remove __bold__
+      .replace(/_([^_]+)_/g, '$1')        // Remove _italic_
+      .replace(/^#+\s+/gm, '')            // Remove # headers
+      .replace(/^[-•]\s+/gm, '')          // Remove bullet points
+      .replace(/^\d+\.\s+/gm, '');        // Remove numbered lists
     
     // 10. Calculate cost based on token usage
     const usage = data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };

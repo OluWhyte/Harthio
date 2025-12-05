@@ -555,7 +555,11 @@ export default function HarthioAIPage() {
     // Check if user needs CBT tools
     const cbtNeed = aiService.detectCBTNeed(userMessage);
     
-    // Add user message
+    // Get smart context BEFORE adding new message to state
+    // Use current messages (before update) to avoid duplicates
+    const recentMessages = messages.slice(-30); // Last 30 messages for better context retention
+    
+    // Add user message to UI
     const userMsg: Message = {
       id: Date.now().toString(),
       content: userMessage,
@@ -580,11 +584,6 @@ export default function HarthioAIPage() {
     // Tracker creation is now handled conversationally by AI
     // AI will ask for details, confirm, then user can say "yes create it"
     // The actual creation happens when AI detects confirmation
-
-    // Get smart context: last 30 messages + memory summary
-    // IMPORTANT: Don't include the current message from state since we add it manually below
-    // messages state hasn't updated yet (setState is async), so we use the old messages
-    const recentMessages = messages.slice(-30); // Last 30 messages for better context retention
     const chatMessages: ChatMessage[] = recentMessages
       .filter(m => m.sender !== 'System')
       .map(m => ({
@@ -681,62 +680,51 @@ export default function HarthioAIPage() {
       systemPrompt += `\n\n**IMMEDIATE NEED:** The user just expressed ${cbtNeed.keywords.join(', ')}. After validating their feelings, offer relevant CBT tools: ${cbtNeed.suggestedTools.join(', ')}. Guide them through the exercise step-by-step.`;
     }
     
-    // Use streaming for better UX
-    let streamingMessageId = Date.now().toString();
-    let fullResponse = '';
-    
-    // Add placeholder message for streaming
-    const streamingMsg: Message = {
-      id: streamingMessageId,
-      content: '',
-      sender: 'Harthio AI',
-      timestamp: new Date(),
-      isOwn: false,
-    };
-    setMessages(prev => [...prev, streamingMsg]);
-
     try {
-      // Note: System prompt with date and user context is added by the backend API
-      // We only send the conversation messages
-      await aiService.chatStream(
-        chatMessages,
-        // On each chunk
-        (chunk) => {
-          fullResponse += chunk;
+      // Use non-streaming chat with loading indicator (3 dots)
+      const response = await aiService.chat(chatMessages);
+      
+      // Simulate streaming by revealing text character by character
+      const fullText = response.message || "I'm having trouble connecting. Please try again.";
+      const aiMessageId = Date.now().toString();
+      
+      // Add empty message first
+      const aiMsg: Message = {
+        id: aiMessageId,
+        content: '',
+        sender: 'Harthio AI',
+        timestamp: new Date(),
+        isOwn: false,
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      setIsLoading(false);
+      
+      // Simulate typing effect (very fast - barely noticeable but looks premium)
+      let currentIndex = 0;
+      const typingInterval = setInterval(() => {
+        currentIndex += 5; // Reveal 5 characters at a time for very fast typing
+        
+        if (currentIndex >= fullText.length) {
+          clearInterval(typingInterval);
+          // Update with full text and handle completion
           setMessages(prev => 
             prev.map(msg => 
-              msg.id === streamingMessageId 
-                ? { ...msg, content: fullResponse }
-                : msg
+              msg.id === aiMessageId ? { ...msg, content: fullText } : msg
             )
           );
-        },
-        // On complete
-        (finalText) => {
-          fullResponse = finalText;
-          setIsLoading(false);
-          
-          // Continue with existing logic (crisis detection, tracker creation, etc.)
-          handleAIResponseComplete(finalText, streamingMessageId);
-        },
-        // On error - fallback to non-streaming
-        async (error) => {
-          console.log('[Streaming] Error, falling back to non-streaming:', error);
-          
-          // Remove streaming message
-          setMessages(prev => prev.filter(msg => msg.id !== streamingMessageId));
-          
-          // Use regular chat (backend adds system prompt with date)
-          const response = await aiService.chat(chatMessages);
-          
-          setIsLoading(false);
-          handleAIResponseComplete(response.message || "I'm having trouble connecting. Please try again.", Date.now().toString());
+          handleAIResponseComplete(fullText, aiMessageId);
+        } else {
+          // Update with partial text
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === aiMessageId ? { ...msg, content: fullText.substring(0, currentIndex) } : msg
+            )
+          );
         }
-      );
+      }, 10); // 10ms per update = very fast, barely noticeable delay
     } catch (error) {
       console.error('[AI Chat] Error:', error);
       setIsLoading(false);
-      setMessages(prev => prev.filter(msg => msg.id !== streamingMessageId));
       
       const errorMsg: Message = {
         id: Date.now().toString(),
