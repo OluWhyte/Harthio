@@ -17,7 +17,13 @@ interface AnalyticsChartsProps {
 const COLORS = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'];
 
 export function AnalyticsCharts({ data, dateRange }: AnalyticsChartsProps) {
-  if (!data) return null;
+  if (!data) {
+    console.log('AnalyticsCharts: No data provided');
+    return null;
+  }
+  
+  console.log('AnalyticsCharts data:', data);
+  console.log('AnalyticsCharts dateRange:', dateRange);
 
   // Generate time series data from real data
   const generateTimeSeriesData = () => {

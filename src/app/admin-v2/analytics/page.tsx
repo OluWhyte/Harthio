@@ -509,32 +509,49 @@ export default function AnalyticsPage() {
             <AnalyticsCharts 
               data={{
                 dailyStats: (() => {
-                  const days = 30;
+                  const days = dateRange === '7days' ? 7 : dateRange === '30days' ? 30 : dateRange === '90days' ? 90 : 30;
                   const data: Array<{ date: string; new_users: number; sessions: number; ai_chats: number; messages: number }> = [];
+                  
                   for (let i = days; i >= 0; i--) {
                     const date = new Date();
                     date.setDate(date.getDate() - i);
                     const dateStr = date.toISOString().split('T')[0];
-                    const usersOnDate = filteredData.users.filter(u => 
-                      new Date(u.created_at).toISOString().split('T')[0] === dateStr
-                    ).length;
-                    const sessionsOnDate = filteredData.sessions.filter(s => 
-                      new Date(s.created_at).toISOString().split('T')[0] === dateStr
-                    ).length;
+                    
+                    // Count actual users created on this date (use allData for accurate counts)
+                    const usersOnDate = allData.users.filter(u => {
+                      if (!u.created_at) return false;
+                      const userDate = new Date(u.created_at).toISOString().split('T')[0];
+                      return userDate === dateStr;
+                    }).length;
+                    
+                    // Count actual sessions created on this date (use allData for accurate counts)
+                    const sessionsOnDate = allData.sessions.filter(s => {
+                      if (!s.created_at) return false;
+                      const sessionDate = new Date(s.created_at).toISOString().split('T')[0];
+                      return sessionDate === dateStr;
+                    }).length;
+                    
+                    // Count actual AI chats on this date (use allData for accurate counts)
+                    const aiChatsOnDate = allData.aiChats.filter(chat => {
+                      if (!chat.created_at) return false;
+                      const chatDate = new Date(chat.created_at).toISOString().split('T')[0];
+                      return chatDate === dateStr;
+                    }).length;
+                    
                     data.push({ 
                       date: dateStr, 
                       new_users: usersOnDate, 
                       sessions: sessionsOnDate,
-                      ai_chats: Math.floor(usersOnDate * 1.5), // Estimate AI chats
-                      messages: Math.floor(sessionsOnDate * 10) // Estimate messages per session
+                      ai_chats: aiChatsOnDate,
+                      messages: Math.floor(sessionsOnDate * 8) // Estimate 8 messages per session
                     });
                   }
                   return data;
                 })(),
                 userEngagement: [
-                  { name: 'High Engagement', value: Math.floor(filteredData.users.length * 0.35), color: '#10b981' },
-                  { name: 'Medium Engagement', value: Math.floor(filteredData.users.length * 0.45), color: '#f59e0b' },
-                  { name: 'Low Engagement', value: Math.floor(filteredData.users.length * 0.20), color: '#ef4444' }
+                  { name: 'High Engagement', value: Math.floor(allData.users.length * 0.35), color: '#10b981' },
+                  { name: 'Medium Engagement', value: Math.floor(allData.users.length * 0.45), color: '#f59e0b' },
+                  { name: 'Low Engagement', value: Math.floor(allData.users.length * 0.20), color: '#ef4444' }
                 ],
                 sessionCompletion: [
                   { name: 'Completed', value: 75 },
@@ -1411,32 +1428,49 @@ export default function AnalyticsPage() {
           <AnalyticsCharts 
             data={{
               dailyStats: (() => {
-                const days = 30;
+                const days = dateRange === '7days' ? 7 : dateRange === '30days' ? 30 : dateRange === '90days' ? 90 : 30;
                 const data: Array<{ date: string; new_users: number; sessions: number; ai_chats: number; messages: number }> = [];
+                
                 for (let i = days; i >= 0; i--) {
                   const date = new Date();
                   date.setDate(date.getDate() - i);
                   const dateStr = date.toISOString().split('T')[0];
-                  const usersOnDate = filteredData.users.filter(u => 
-                    new Date(u.created_at).toISOString().split('T')[0] === dateStr
-                  ).length;
-                  const sessionsOnDate = filteredData.sessions.filter(s => 
-                    new Date(s.created_at).toISOString().split('T')[0] === dateStr
-                  ).length;
+                  
+                  // Count actual users created on this date (use allData for accurate counts)
+                  const usersOnDate = allData.users.filter(u => {
+                    if (!u.created_at) return false;
+                    const userDate = new Date(u.created_at).toISOString().split('T')[0];
+                    return userDate === dateStr;
+                  }).length;
+                  
+                  // Count actual sessions created on this date (use allData for accurate counts)
+                  const sessionsOnDate = allData.sessions.filter(s => {
+                    if (!s.created_at) return false;
+                    const sessionDate = new Date(s.created_at).toISOString().split('T')[0];
+                    return sessionDate === dateStr;
+                  }).length;
+                  
+                  // Count actual AI chats on this date (use allData for accurate counts)
+                  const aiChatsOnDate = allData.aiChats.filter(chat => {
+                    if (!chat.created_at) return false;
+                    const chatDate = new Date(chat.created_at).toISOString().split('T')[0];
+                    return chatDate === dateStr;
+                  }).length;
+                  
                   data.push({ 
                     date: dateStr, 
                     new_users: usersOnDate, 
                     sessions: sessionsOnDate,
-                    ai_chats: Math.floor(usersOnDate * 1.5), // Estimate AI chats
-                    messages: Math.floor(sessionsOnDate * 10) // Estimate messages per session
+                    ai_chats: aiChatsOnDate,
+                    messages: Math.floor(sessionsOnDate * 8) // Estimate 8 messages per session
                   });
                 }
                 return data;
               })(),
               userEngagement: [
-                { name: 'High Engagement', value: Math.floor(filteredData.users.length * 0.35), color: '#10b981' },
-                { name: 'Medium Engagement', value: Math.floor(filteredData.users.length * 0.45), color: '#f59e0b' },
-                { name: 'Low Engagement', value: Math.floor(filteredData.users.length * 0.20), color: '#ef4444' }
+                { name: 'High Engagement', value: Math.floor(allData.users.length * 0.35), color: '#10b981' },
+                { name: 'Medium Engagement', value: Math.floor(allData.users.length * 0.45), color: '#f59e0b' },
+                { name: 'Low Engagement', value: Math.floor(allData.users.length * 0.20), color: '#ef4444' }
               ],
               sessionCompletion: [
                 { name: 'Completed', value: 75 },
