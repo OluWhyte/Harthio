@@ -152,7 +152,7 @@ const nextConfig = {
               "default-src 'self' 'unsafe-eval' 'unsafe-inline' data: blob:",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live https://*.ngrok-free.app https://*.ngrok.io https://session.harthio.com https://www.googletagmanager.com https://www.google-analytics.com https://*.googletagmanager.com https://*.google-analytics.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' data: blob: https: http:",
+              "img-src 'self' data: blob: https: http: https://vercel.live",
               "font-src 'self' data: https://fonts.gstatic.com",
               "connect-src 'self' https: wss: ws: https://session.harthio.com wss://session.harthio.com https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net",
               "media-src 'self' blob: data: https://session.harthio.com https://*.daily.co",

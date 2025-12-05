@@ -48,6 +48,7 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('detailed');
+  const [bulkVerifying, setBulkVerifying] = useState(false);
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
   const [sortBy, setSortBy] = useState<string>('newest');
@@ -78,6 +79,47 @@ export default function UsersPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const bulkVerifyUsers = async () => {
+    try {
+      setBulkVerifying(true);
+      
+      // Get current session token
+      const { supabase } = await import('@/lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('/api/admin/bulk-verify-users', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast({
+          title: 'Bulk Verification Complete',
+          description: `Successfully verified ${result.stats.successfullyVerified} users. ${result.stats.errors > 0 ? `${result.stats.errors} errors occurred.` : ''}`,
+        });
+        
+        // Reload users to see updated verification status
+        await loadUsers();
+      } else {
+        throw new Error(result.message || 'Bulk verification failed');
+      }
+    } catch (error) {
+      console.error('Error bulk verifying users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to bulk verify users. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setBulkVerifying(false);
     }
   };
 
@@ -258,6 +300,22 @@ export default function UsersPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={bulkVerifyUsers} 
+              disabled={bulkVerifying}
+              className="gap-2 bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+            >
+              {bulkVerifying ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">
+                {bulkVerifying ? 'Verifying...' : 'Bulk Verify'}
+              </span>
+            </Button>
             <Button variant="outline" size="sm" onClick={loadUsers} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               <span className="hidden sm:inline">Refresh</span>

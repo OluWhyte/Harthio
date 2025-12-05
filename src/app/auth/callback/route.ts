@@ -6,6 +6,10 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code')
   const next = requestUrl.searchParams.get('next') ?? '/auth/verified'
 
+  console.log('[AUTH CALLBACK] Request URL:', requestUrl.toString())
+  console.log('[AUTH CALLBACK] Code present:', !!code)
+  console.log('[AUTH CALLBACK] Next URL:', next)
+
   if (code) {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
