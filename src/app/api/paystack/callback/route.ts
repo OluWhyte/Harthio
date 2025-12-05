@@ -10,6 +10,8 @@ const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY!;
  * 
  * Callback URL: https://harthio.com/api/paystack/callback
  */
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Get the correct base URL from headers

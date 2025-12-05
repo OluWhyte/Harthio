@@ -69,8 +69,7 @@ export async function POST(request: NextRequest) {
     // Filter users who can log in but are not verified
     const unverifiedUsers = authUsers.users.filter(user => 
       !user.email_confirmed_at && // Not verified
-      user.created_at && // Has account
-      !user.banned_until // Not banned
+      user.created_at // Has account
     );
 
     console.log(`[BULK VERIFY] Found ${unverifiedUsers.length} unverified users to fix`);
