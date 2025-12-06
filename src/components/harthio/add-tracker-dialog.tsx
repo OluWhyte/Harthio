@@ -47,7 +47,7 @@ export function AddTrackerDialog({ userId, onTrackerAdded, children }: AddTracke
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [trackerType, setTrackerType] = useState<TrackerType>('alcohol');
-  const [trackerName, setTrackerName] = useState('');
+  const [trackerName, setTrackerName] = useState('Alcohol Free'); // Default name for default type
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState('');
   const { toast } = useToast();

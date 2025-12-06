@@ -18,6 +18,38 @@ import { type Message } from '@/hooks/use-message-panel';
 import { MobilePageHeader } from '@/components/harthio/mobile-page-header';
 import { useRequestsCount } from '@/hooks/use-requests-count';
 
+// Helper function to split long responses into multiple messages
+function splitIntoMessages(text: string): string[] {
+  // Split by double line breaks first (natural paragraph breaks)
+  const paragraphs = text.split('\n\n').filter(p => p.trim());
+  
+  // If only 1-2 short paragraphs, return as is
+  if (paragraphs.length <= 2 && text.length < 200) {
+    return [text];
+  }
+  
+  // If 3-4 paragraphs, split into 2 messages
+  if (paragraphs.length >= 3) {
+    const mid = Math.ceil(paragraphs.length / 2);
+    return [
+      paragraphs.slice(0, mid).join('\n\n'),
+      paragraphs.slice(mid).join('\n\n')
+    ];
+  }
+  
+  // For single long paragraph, split by sentences
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  if (sentences.length >= 4) {
+    const mid = Math.ceil(sentences.length / 2);
+    return [
+      sentences.slice(0, mid).join(' ').trim(),
+      sentences.slice(mid).join(' ').trim()
+    ];
+  }
+  
+  return [text];
+}
+
 export default function HarthioAIPage() {
   const { user, userProfile } = useAuth();
   const router = useRouter();
@@ -684,20 +716,42 @@ export default function HarthioAIPage() {
       // Use non-streaming chat with loading indicator (3 dots)
       const response = await aiService.chat(chatMessages);
       
-      // Simulate streaming by revealing text character by character
-      const fullText = response.message || "I'm having trouble connecting. Please try again.";
-      const aiMessageId = Date.now().toString();
+      // Clean TRACKER_CREATE command BEFORE displaying
+      let fullText = response.message || "I'm having trouble connecting. Please try again.";
       
-      // Add empty message first
-      const aiMsg: Message = {
-        id: aiMessageId,
-        content: '',
-        sender: 'Harthio AI',
-        timestamp: new Date(),
-        isOwn: false,
-      };
-      setMessages(prev => [...prev, aiMsg]);
+      // Check for tracker creation command and clean it immediately
+      const trackerMatch = fullText.match(/TRACKER_CREATE:\s*(\w+)\|([^|]+)\|(\d{4}-\d{2}-\d{2})/);
+      if (trackerMatch) {
+        // Remove the command from the text before displaying
+        fullText = fullText.replace(/TRACKER_CREATE:[^\n]+\n\n?/, '');
+      }
+      
+      // Split long responses into multiple messages (feels more human)
+      const splitMessages = splitIntoMessages(fullText);
+      
       setIsLoading(false);
+      
+      // Add messages one by one with slight delay
+      for (let i = 0; i < splitMessages.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, i * 800)); // 800ms delay between messages
+        
+        const aiMessageId = `${Date.now()}-${i}`;
+        const aiMsg: Message = {
+          id: aiMessageId,
+          content: splitMessages[i],
+          sender: 'Harthio AI',
+          timestamp: new Date(),
+          isOwn: false,
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        
+        // Handle completion for the last message
+        if (i === splitMessages.length - 1) {
+          handleAIResponseComplete(fullText, aiMessageId);
+        }
+      }
+      
+      return; // Skip the typing effect below
       
       // Simulate typing effect (very fast - barely noticeable but looks premium)
       let currentIndex = 0;
