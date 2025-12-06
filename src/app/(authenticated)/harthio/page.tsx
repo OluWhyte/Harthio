@@ -731,19 +731,43 @@ export default function HarthioAIPage() {
       
       setIsLoading(false);
       
-      // Add messages one by one with slight delay
+      // Add messages one by one with character-by-character typing
       for (let i = 0; i < splitMessages.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, i * 800)); // 800ms delay between messages
+        // Small delay between messages (only 200ms)
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
         
         const aiMessageId = `${Date.now()}-${i}`;
+        const messageText = splitMessages[i];
+        
+        // Add empty message first
         const aiMsg: Message = {
           id: aiMessageId,
-          content: splitMessages[i],
+          content: '',
           sender: 'Harthio AI',
           timestamp: new Date(),
           isOwn: false,
         };
         setMessages(prev => [...prev, aiMsg]);
+        
+        // Type out character by character (fast - 10ms per char)
+        for (let charIndex = 0; charIndex <= messageText.length; charIndex += 3) {
+          await new Promise(resolve => setTimeout(resolve, 10));
+          const partialText = messageText.substring(0, charIndex);
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === aiMessageId ? { ...msg, content: partialText } : msg
+            )
+          );
+        }
+        
+        // Ensure full text is shown
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === aiMessageId ? { ...msg, content: messageText } : msg
+          )
+        );
         
         // Handle completion for the last message
         if (i === splitMessages.length - 1) {

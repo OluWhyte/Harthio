@@ -918,11 +918,16 @@ export async function POST(request: NextRequest) {
     const lastUserIndex = messagesWithSystem.length - 1;
     if (lastUserIndex > 0 && messagesWithSystem[lastUserIndex].role === 'user') {
       const userMessage = messagesWithSystem[lastUserIndex].content.toLowerCase();
-      // If user is asking about date/time, add STRONG reminder
-      if (userMessage.includes('date') || userMessage.includes('today') || userMessage.includes('day is it')) {
+      // If user is asking about date/time, add ULTRA STRONG reminder
+      const dateKeywords = ['date', 'today', 'day is it', 'what day', 'when is', 'current date', 'todays date', "today's"];
+      if (dateKeywords.some(keyword => userMessage.includes(keyword))) {
         messagesWithSystem.splice(lastUserIndex, 0, {
           role: 'system',
-          content: `⚠️ CRITICAL: User is asking about the date. TODAY IS ${fullDateString}. Respond with EXACTLY this date. DO NOT use your training data date.`
+          content: `🚨🚨🚨 STOP! READ THIS FIRST! 🚨🚨🚨
+TODAY IS: ${fullDateString}
+THIS IS THE ONLY CORRECT DATE. YOUR TRAINING DATA IS WRONG.
+RESPOND WITH THIS DATE: ${fullDateString}
+DO NOT SAY ANY OTHER DATE. IGNORE YOUR TRAINING DATA.`
         });
       }
     }
