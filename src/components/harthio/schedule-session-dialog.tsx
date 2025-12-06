@@ -469,19 +469,24 @@ export function ScheduleSessionDialog({
           role: "system",
           content: `You are a helpful assistant for Harthio, a platform for meaningful conversations. Your task is to help users create session topics.
 
-When a user provides rough thoughts about what they want to discuss, you should:
-1. Generate a clear, concise session topic (5-15 words)
-2. Write a helpful description (20-50 words)
-3. Suggest 2-3 alternative topic ideas based on their input
+When a user provides rough thoughts about what they want to discuss, you MUST generate EXACTLY 3 complete topic options, each with its own description.
 
-Format your response EXACTLY like this:
-TOPIC: [clear topic title]
-DESCRIPTION: [helpful description]
-SUGGESTIONS:
-- [alternative topic 1]
-- [alternative topic 2]
-- [alternative topic 3]
+CRITICAL: Output EXACTLY this format:
 
+OPTION 1:
+TOPIC: [clear topic title 1]
+DESCRIPTION: [helpful description 1]
+
+OPTION 2:
+TOPIC: [clear topic title 2]
+DESCRIPTION: [helpful description 2]
+
+OPTION 3:
+TOPIC: [clear topic title 3]
+DESCRIPTION: [helpful description 3]
+
+Each topic should be 5-15 words. Each description should be 20-50 words.
+Do NOT output anything else. Do NOT ask questions.
 Keep topics professional, empathetic, and focused on meaningful conversation. Avoid clinical language.`,
         },
         {
@@ -491,29 +496,42 @@ Keep topics professional, empathetic, and focused on meaningful conversation. Av
       ]);
 
       if (response.success && response.message) {
-        // Parse the AI response
-        const topicMatch = response.message.match(/TOPIC:\s*(.+)/);
-        const descMatch = response.message.match(/DESCRIPTION:\s*(.+)/);
-        const suggestionsMatch = response.message.match(/SUGGESTIONS:\s*([\s\S]+)/);
-
-        if (topicMatch && descMatch) {
-          // Auto-fill the form
-          form.setValue("topic", topicMatch[1].trim());
-          form.setValue("description", descMatch[1].trim());
-
-          // Extract suggestions
-          if (suggestionsMatch) {
-            const suggestions = suggestionsMatch[1]
-              .split("\n")
-              .filter((line) => line.trim().startsWith("-"))
-              .map((line) => line.replace(/^-\s*/, "").trim())
-              .filter((s) => s.length > 0);
-            setAiSuggestions(suggestions);
+        // Parse the new format with multiple options
+        const options: Array<{ topic: string; description: string }> = [];
+        
+        // Extract all OPTION blocks
+        const optionBlocks = response.message.split(/OPTION \d+:/);
+        
+        for (const block of optionBlocks) {
+          if (!block.trim()) continue;
+          
+          const topicMatch = block.match(/TOPIC:\s*(.+)/);
+          const descMatch = block.match(/DESCRIPTION:\s*(.+)/);
+          
+          if (topicMatch && descMatch) {
+            options.push({
+              topic: topicMatch[1].trim(),
+              description: descMatch[1].trim()
+            });
           }
+        }
+
+        console.log('[TOPIC HELPER] Parsed options:', options);
+
+        if (options.length > 0) {
+          // Auto-fill with first option
+          form.setValue("topic", options[0].topic);
+          form.setValue("description", options[0].description);
+
+          // Store all options for preview
+          setAiSuggestions(options.map(opt => opt.topic));
+          
+          // Store the full options data for later use
+          (window as any).__topicOptions = options;
 
           toast({
-            title: "✨ Topic generated!",
-            description: "Review and edit as needed",
+            title: "✨ Topics generated!",
+            description: `${options.length} options ready. Click to preview each.`,
           });
         } else {
           throw new Error("Could not parse AI response");
@@ -534,12 +552,25 @@ Keep topics professional, empathetic, and focused on meaningful conversation. Av
   };
 
   const applySuggestion = (suggestion: string) => {
-    form.setValue("topic", suggestion);
-    setAiSuggestions([]);
-    toast({
-      title: "Topic applied",
-      description: "Feel free to edit it further",
-    });
+    // Find the matching option with its description
+    const options = (window as any).__topicOptions || [];
+    const selectedOption = options.find((opt: any) => opt.topic === suggestion);
+    
+    if (selectedOption) {
+      form.setValue("topic", selectedOption.topic);
+      form.setValue("description", selectedOption.description);
+      toast({
+        title: "Topic preview",
+        description: "Click another to preview, or edit as needed",
+      });
+    } else {
+      // Fallback if options not found
+      form.setValue("topic", suggestion);
+      toast({
+        title: "Topic applied",
+        description: "Edit the description as needed",
+      });
+    }
   };
 
   // Reset states when dialog closes

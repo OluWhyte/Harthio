@@ -445,8 +445,11 @@ export default function HarthioAIPage() {
     }
     
     // Check for tracker creation command
+    console.log('[TRACKER] Checking AI response for TRACKER_CREATE command:', aiResponse.substring(0, 200));
     const trackerMatch = aiResponse.match(/TRACKER_CREATE:\s*(\w+)\|([^|]+)\|(\d{4}-\d{2}-\d{2})/);
+    console.log('[TRACKER] Regex match result:', trackerMatch);
     if (trackerMatch && user) {
+      console.log('[TRACKER] Match found! Creating tracker:', { type: trackerMatch[1], name: trackerMatch[2], date: trackerMatch[3] });
       const [, type, name, dateStr] = trackerMatch;
       const parsedDate = new Date(dateStr);
       const now = new Date();
@@ -459,20 +462,32 @@ export default function HarthioAIPage() {
         now.getSeconds()
       );
       
-      const cleanedResponse = aiResponse.replace(/TRACKER_CREATE:[^\n]+\n\n?/, '');
+      // Remove TRACKER_CREATE command from display (handle with or without newline)
+      const cleanedResponse = aiResponse.replace(/TRACKER_CREATE:[^\n]+(\n\n?)?/, '');
+      
+      console.log('[TRACKER] Calling sobrietyService.createTracker with:', { userId: user.uid, type, name, startDate });
       const result = await sobrietyService.createTracker(
         user.uid,
         type as any,
         name,
         startDate
       );
+      console.log('[TRACKER] createTracker result:', result);
       
       if (result.success) {
+        console.log('[TRACKER] Success! Showing toast and refreshing');
         toast({
           title: 'Tracker Created! 🎉',
           description: `Your ${name} tracker is now active.`,
         });
         window.history.replaceState({}, '', '/harthio');
+      } else {
+        console.error('[TRACKER] Failed to create tracker:', result.error);
+        toast({
+          title: 'Error Creating Tracker',
+          description: result.error || 'Something went wrong',
+          variant: 'destructive',
+        });
       }
       
       // Update message with cleaned response
@@ -719,11 +734,51 @@ export default function HarthioAIPage() {
       // Clean TRACKER_CREATE command BEFORE displaying
       let fullText = response.message || "I'm having trouble connecting. Please try again.";
       
-      // Check for tracker creation command and clean it immediately
+      // Check for tracker creation command and handle it
       const trackerMatch = fullText.match(/TRACKER_CREATE:\s*(\w+)\|([^|]+)\|(\d{4}-\d{2}-\d{2})/);
-      if (trackerMatch) {
+      if (trackerMatch && user) {
+        const [, type, name, dateStr] = trackerMatch;
+        console.log('[TRACKER] Match found in response! Creating tracker:', { type, name, dateStr });
+        
         // Remove the command from the text before displaying
-        fullText = fullText.replace(/TRACKER_CREATE:[^\n]+\n\n?/, '');
+        fullText = fullText.replace(/TRACKER_CREATE:[^\n]+(\n\n?)?/, '');
+        
+        // Create the tracker
+        const parsedDate = new Date(dateStr);
+        const now = new Date();
+        const startDate = new Date(
+          parsedDate.getFullYear(),
+          parsedDate.getMonth(),
+          parsedDate.getDate(),
+          now.getHours(),
+          now.getMinutes(),
+          now.getSeconds()
+        );
+        
+        console.log('[TRACKER] Calling sobrietyService.createTracker');
+        const result = await sobrietyService.createTracker(
+          user.uid,
+          type as any,
+          name,
+          startDate
+        );
+        console.log('[TRACKER] Result:', result);
+        
+        if (result.success) {
+          console.log('[TRACKER] Success! Showing toast');
+          toast({
+            title: 'Tracker Created! 🎉',
+            description: `Your ${name} tracker is now active.`,
+          });
+          window.history.replaceState({}, '', '/harthio');
+        } else {
+          console.error('[TRACKER] Failed:', result.error);
+          toast({
+            title: 'Error Creating Tracker',
+            description: result.error || 'Something went wrong',
+            variant: 'destructive',
+          });
+        }
       }
       
       // Split long responses into multiple messages (feels more human)
