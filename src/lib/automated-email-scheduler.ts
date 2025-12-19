@@ -6,8 +6,15 @@
 import { supabase } from './supabase';
 import { emailCampaignService } from './email-campaign-service';
 import { getEmailBaseUrl } from './url-utils';
+import { createClient } from '@supabase/supabase-js';
 
-const typedSupabase = supabase as any;
+// Use service role for server-side operations
+const serviceSupabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const typedSupabase = serviceSupabase as any;
 
 interface UserForEmail {
   user_id: string;
@@ -43,13 +50,21 @@ export const automatedEmailScheduler = {
 
       console.log(`📧 [SCHEDULER] Found ${users.length} users for welcome email`);
 
-      // Get welcome email template
-      const templates = await emailCampaignService.getTemplates();
-      const welcomeTemplate = templates.find(t => t.name === 'Welcome Email');
+      // Get welcome email template directly with service role
+      const { data: templates, error: templateError } = await serviceSupabase
+        .from('email_templates')
+        .select('*');
+      
+      if (templateError) {
+        console.error('❌ [SCHEDULER] Error fetching templates:', templateError);
+        throw templateError;
+      }
+      
+      const welcomeTemplate = templates?.find(t => t.name === 'Welcome Email');
 
       if (!welcomeTemplate) {
         console.error('❌ [SCHEDULER] Welcome email template not found');
-        return { sent: 0, failed: 0, skipped: users.length };
+        return { sent: 0, failed: 0, skipped: users?.length || 0 };
       }
 
       return await this.sendEmailBatch(users, welcomeTemplate, 'welcome', 'Tosin from Harthio <tosin@harthio.com>');
@@ -82,8 +97,17 @@ export const automatedEmailScheduler = {
 
       console.log(`📧 [SCHEDULER] Found ${users.length} users for day 3 email`);
 
-      const templates = await emailCampaignService.getTemplates();
-      const day3Template = templates.find(t => t.name === 'Day 3 Follow-up');
+      // Get day 3 email template directly with service role
+      const { data: templates, error: templateError } = await serviceSupabase
+        .from('email_templates')
+        .select('*');
+      
+      if (templateError) {
+        console.error('❌ [SCHEDULER] Error fetching templates:', templateError);
+        throw templateError;
+      }
+      
+      const day3Template = templates?.find(t => t.name === 'Day 3 Follow-up');
 
       if (!day3Template) {
         console.error('❌ [SCHEDULER] Day 3 email template not found');
@@ -120,8 +144,17 @@ export const automatedEmailScheduler = {
 
       console.log(`📧 [SCHEDULER] Found ${users.length} users for week 1 email`);
 
-      const templates = await emailCampaignService.getTemplates();
-      const week1Template = templates.find(t => t.name === 'Week 1 Check-in');
+      // Get week 1 email template directly with service role
+      const { data: templates, error: templateError } = await serviceSupabase
+        .from('email_templates')
+        .select('*');
+      
+      if (templateError) {
+        console.error('❌ [SCHEDULER] Error fetching templates:', templateError);
+        throw templateError;
+      }
+      
+      const week1Template = templates?.find(t => t.name === 'Week 1 Check-in');
 
       if (!week1Template) {
         console.error('❌ [SCHEDULER] Week 1 email template not found');
@@ -158,8 +191,17 @@ export const automatedEmailScheduler = {
 
       console.log(`📧 [SCHEDULER] Found ${users.length} inactive users for re-engagement email`);
 
-      const templates = await emailCampaignService.getTemplates();
-      const inactiveTemplate = templates.find(t => t.name === 'Re-engagement');
+      // Get re-engagement email template directly with service role
+      const { data: templates, error: templateError } = await serviceSupabase
+        .from('email_templates')
+        .select('*');
+      
+      if (templateError) {
+        console.error('❌ [SCHEDULER] Error fetching templates:', templateError);
+        throw templateError;
+      }
+      
+      const inactiveTemplate = templates?.find(t => t.name === 'Re-engagement');
 
       if (!inactiveTemplate) {
         console.error('❌ [SCHEDULER] Re-engagement email template not found');
@@ -239,19 +281,21 @@ export const automatedEmailScheduler = {
 
         console.log(`📧 [SCHEDULER] Sending ${emailType} to ${user.email}`);
 
-        // Send email using email service
-        const { emailService } = await import('./email-service');
-        const sendResult = await emailService.sendEmail(
-          user.email,
-          {
-            subject,
-            html: htmlContent,
-            text: textContent
-          },
-          fromEmail
-        );
+        // Send email directly via Resend (bypass API authentication issues)
+        const { Resend } = await import('resend');
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        
+        const sendResult = await resend.emails.send({
+          from: fromEmail,
+          to: [user.email],
+          subject,
+          html: htmlContent,
+          text: textContent
+        });
+        
+        const success = !sendResult.error;
 
-        if (sendResult) {
+        if (success) {
           // Log successful send
           await typedSupabase.rpc('log_automated_email', {
             p_user_id: user.user_id,
@@ -260,7 +304,7 @@ export const automatedEmailScheduler = {
             p_status: 'sent'
           });
           sent++;
-          console.log(`✅ [SCHEDULER] Sent ${emailType} to ${user.email}`);
+          console.log(`✅ [SCHEDULER] Sent ${emailType} to ${user.email}`, sendResult.data?.id);
         } else {
           // Log failed send
           await typedSupabase.rpc('log_automated_email', {
@@ -268,7 +312,7 @@ export const automatedEmailScheduler = {
             p_email_type: emailType,
             p_template_id: template.id,
             p_status: 'failed',
-            p_error_message: 'Email service returned false'
+            p_error_message: sendResult.error?.message || 'Email service failed'
           });
           failed++;
           console.log(`❌ [SCHEDULER] Failed to send ${emailType} to ${user.email}`);
